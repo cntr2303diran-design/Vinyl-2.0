@@ -191,3 +191,62 @@ object BackdropDim {
         return Triple(s(dim * 0.7f), s(dim), s(dim * 1.35f))
     }
 }
+
+/**
+ * Kebalikan [BackdropDim] untuk tema TERANG (ruang putih "Retro Projection"): teks GELAP di atas dinding yang bisa
+ * menerima proyeksi berwarna apa saja (cover gelap, gambar pengguna). Alih-alih menggelapkan, latar DIPUTIHKAN dengan
+ * lapisan putih beralpha terkecil yang membuat teks gelap tetap >= 4,5:1.
+ *
+ * Urutan render yang diasumsikan: latar/proyeksi → lapisan putih ini → efek ruang yang MENGGELAPKAN (vignette CRT,
+ * bayangan kontak, sudut ruangan; paling banyak [Tokens.A11y.LIGHT_SHADE_PEAK]) → teks. Efek terang (glow) hanya menambah
+ * kontras teks gelap, jadi tidak dihitung.
+ *
+ * Pencarian biner aman karena predikatnya monoton: selama latar masih lebih gelap daripada teks, kontras paling banyak
+ * (L_teks + 0,05) / 0,05 — untuk teks di [TEXTS] itu < 2,7, jauh di bawah target — sehingga predikat "lolos" baru bisa
+ * benar setelah latar lebih terang daripada teks, dan dari situ kontras naik seiring alpha (dibuktikan BackdropLiftTest).
+ */
+object BackdropLift {
+    /** Tingkat teks yang boleh diletakkan langsung di atas dinding/lantai ruang terang. */
+    val TEXTS: List<Long> = listOf(Tokens.Retro.INK, Tokens.Retro.INK_SECONDARY)
+
+    /** [bgArgb] ditimpa lapisan putih beralpha [alpha] (0..1). */
+    fun lighten(bgArgb: Long, alpha: Double): Long = BackdropDim.withGlass(bgArgb, alpha)
+
+    /** [bgArgb] setelah efek ruang yang menggelapkan, paling banyak [shade]. */
+    fun withShade(bgArgb: Long, shade: Double = Tokens.A11y.LIGHT_SHADE_PEAK): Long = BackdropDim.darken(bgArgb, shade)
+
+    private fun worstContrast(bg: Long, texts: List<Long>): Double = texts.minOf { ColorMath.contrast(it, bg) }
+
+    /**
+     * Alpha lapisan putih terkecil (0..1) agar semua [texts] mencapai >= [target] di atas [bgArgb] yang telah diputihkan,
+     * termasuk setelah efek penggelap ruang bila [effects] = true. 0 bila latar sudah cukup terang.
+     */
+    fun minVeilAlpha(
+        bgArgb: Long,
+        texts: List<Long> = TEXTS,
+        target: Double = Tokens.A11y.MIN_CONTRAST + BackdropDim.SAFETY_MARGIN,
+        effects: Boolean = true,
+    ): Double {
+        fun seen(c: Long) = if (effects) withShade(c) else c
+        if (worstContrast(seen(bgArgb), texts) >= target) return 0.0
+        var lo = 0.0
+        var hi = 1.0
+        repeat(30) {
+            val mid = (lo + hi) / 2
+            if (worstContrast(seen(lighten(bgArgb, mid)), texts) >= target) hi = mid else lo = mid
+        }
+        return hi
+    }
+
+    /** Piksel (ARGB, dibuat opak) dengan luminans TERENDAH — titik terburuk untuk teks gelap; null bila kosong. */
+    fun darkest(pixels: IntArray): Long? {
+        var best: Long? = null
+        var bestLum = 2.0
+        for (p in pixels) {
+            val argb = (p.toLong() and 0xFFFFFFFFL) or (0xFFL shl 24)
+            val l = ColorMath.luminance(argb)
+            if (l < bestLum) { bestLum = l; best = argb }
+        }
+        return best
+    }
+}

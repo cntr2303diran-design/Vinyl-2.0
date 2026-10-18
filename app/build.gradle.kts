@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.roborazzi)
 }
 
 android {
@@ -89,6 +90,11 @@ android {
         compose = true
     }
 
+    // Robolectric (tangkapan layar Compose di JVM) butuh resource Android saat tes
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+    }
+
     lint {
         // Laporan HTML + teks selalu dibuat (CI mengunggahnya). Temuan berseverity error menggagalkan
         // tugas lint; peringatan hanya dilaporkan.
@@ -161,4 +167,13 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
 
     testImplementation(libs.junit)
+    // Tangkapan layar tanpa HP: Robolectric menggambar Compose di JVM, Roborazzi menyimpannya sebagai PNG
+    testImplementation(libs.robolectric)
+    testImplementation(libs.roborazzi)
+    testImplementation(libs.roborazzi.compose)
+    testImplementation(libs.roborazzi.junit.rule)
+    testImplementation(libs.androidx.test.ext.junit)
+    testImplementation(platform(libs.androidx.compose.bom))
+    testImplementation(libs.androidx.ui.test.junit4)
+    debugImplementation(libs.androidx.ui.test.manifest)
 }

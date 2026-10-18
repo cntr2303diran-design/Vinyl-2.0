@@ -83,3 +83,55 @@ Satu keputusan, `FxPlan`, mengubah (pengaturan + lingkungan) menjadi apa yang bo
 - Jump bar A–Z dijadikan satu kontrol yang bisa disesuaikan (geser naik/turun) untuk pembaca layar, karena 27 huruf tidak mungkin
   masing-masing 48dp; kolom cari dan chip kategori adalah jalur utamanya.
 - Skala font 200%: label ikon boleh dua baris; huruf jump bar sengaja tidak ikut skala (dekoratif, ada jalur lain).
+
+---
+
+## Tema "Retro Projection" (TV tabung) — branch `retro-tv`
+
+Tema baru menggantikan identitas piringan hitam dengan TV tabung di ruang putih, dinding proyeksi, kaset, knob, dan VFD.
+Semua fitur Vinyl tetap ada (lihat tabel pemetaan di `claude/PROMPT-RetroTV-Launcher.md` di Project).
+
+### Prinsip yang dipadukan
+
+| Prinsip | Sumber | Dipakai untuk |
+|---|---|---|
+| Warna dinamis dari konten, bentuk bulat, tipografi jelas | Material 3 / Pixel | Warna proyeksi & cahaya layar diambil dari cover; sudut bodi TV/kaset membulat |
+| Hierarki kuat, ruang lega, gerak pegas halus | Apple HIG | Ruang putih yang lapang dengan satu fokus (TV); kaset & knob memakai pegas |
+| Kontrol di jangkauan jempol, kontras nyaman | Samsung One UI | Kaset & knob di separuh bawah layar; console gelap dengan teks krem |
+| Kedalaman lewat lapisan, material tembus pandang subtil | Microsoft Fluent | Lantai–TV–dinding sebagai lapisan; kaca CRT dengan pantulan tipis |
+| Mekanis & taktil | Perangkat analog (umum, tanpa merek) | Tombol kaset tertekan, knob berdetak, VFD bercahaya |
+
+### Token (`ui/theme/DesignTokens.kt` → `Tokens.Retro`, `Tokens.Motion`, `Tokens.A11y.LIGHT_SHADE_PEAK`)
+
+| Token | Nilai | Pemakaian |
+|---|---|---|
+| `WARM_WHITE` | `#F7F6F2` | Dinding & lantai |
+| `CREAM_BEIGE` | `#C5AD87` | Bodi TV, label kaset |
+| `WALNUT` | `#684832` | Panel kayu TV & rak |
+| `CHARCOAL` | `#343633` | Tombol, detail, latar Audio Console |
+| `AMBER` | `#D6A64D` | Lampu indikator, VFD amber |
+| `MUTED_GREEN` | `#82977A` | Aksen saja — **bukan teks** di atas charcoal (3,8:1, dibuktikan tes) |
+| `INK` / `INK_SECONDARY` / `INK_TERTIARY` | `#1E1D1B` / `#55524C` / `#67635C` | Teks di ruang terang |
+| `CREAM_TEXT` / `CREAM_TEXT_SECONDARY` | `#EDE3D1` / `#C9BEAA` | Teks di panel gelap |
+| `VFD_GLASS` + `VFD_AMBER` / `VFD_GREEN` | `#141613` + `#D6A64D` / `#9FC29A` | Karakter VFD |
+
+Gerak: `CRT_POWER_ON_MS` 420, `CRT_POWER_OFF_MS` 360, `CASSETTE_EJECT_MS` 280, `CASSETTE_INSERT_MS` 340,
+`CASSETTE_RAPID_MS` 120 (skip beruntun), `KNOB_ZOOM_IN_MS` 320 / `OUT` 260, `PROJECTION_CROSSFADE_MS` 900,
+`PAGE_SLIDE_MS` 380, `VFD_CYCLE_MS` 4000, `VFD_PRIORITY_MS` 3000, gulungan 40/60 rpm.
+
+### Kontras pada tema terang
+
+Ruang utama terang, jadi teks gelap. Ancaman kontras bukan lagi latar yang terlalu terang, melainkan **proyeksi
+gelap/berwarna dan efek yang menggelapkan** (vignette CRT, bayangan kontak, sudut ruangan). `BackdropLift`
+(`ColorMath.kt`) menghitung alpha lapisan putih terkecil agar `INK` dan `INK_SECONDARY` tetap >= 4,5:1 (+0,15
+cadangan) setelah penggelapan terburuk `LIGHT_SHADE_PEAK` = 0,10. `BackdropLiftTest` membuktikannya di 224 warna latar
+(grid seluruh ruang warna + warna sulit) dan membuktikan pencarian biner aman. Saat diuji, `INK_TERTIARY` lama
+(`#6E6A63`) hanya 4,19:1 di sudut ruangan, jadi diganti `#67635C` (4,66:1).
+
+### Migrasi pengaturan
+
+`AppSettings.retro` (`data/RetroSettings.kt`) menyimpan gaya TV tabung. Field vinyl lama tidak dihapus atau diganti
+nama. Dokumen tanpa kunci `retro` (pengaturan & cadangan dari versi vinyl) dimigrasi oleh `SettingsMigration`:
+piringan klasik/berwarna/transparan/bergambar → kaset hitam/berwarna (TV space-age)/transparan/bergambar, tonearm
+perak/hitam/emas → knob krom/bakelite/kuningan, 45 RPM → gulungan cepat. Preset lama mendapat padanannya saat diterapkan.
+Dibuktikan `SettingsMigrationTest`.

@@ -45,7 +45,7 @@ class SettingsRepository private constructor(private val context: Context) {
     val settings: StateFlow<AppSettings> = flow.stateIn(scope, SharingStarted.Eagerly, AppSettings())
 
     private fun decode(raw: String): AppSettings =
-        runCatching { json.decodeFromString(AppSettings.serializer(), raw) }
+        runCatching { SettingsMigration.decode(json, raw) }
             .map { SettingsSanitizer.sanitize(it, ::isAllowedImage) }
             .getOrDefault(AppSettings())
 

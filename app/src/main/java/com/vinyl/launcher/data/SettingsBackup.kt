@@ -2,6 +2,8 @@ package com.vinyl.launcher.data
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonObject
 
 /**
  * Ekspor/impor pengaturan sebagai satu berkas JSON berversi.
@@ -56,13 +58,16 @@ object SettingsBackup {
      */
     fun parse(text: String, current: AppSettings, isAllowedImage: (String) -> Boolean = { false }): ImportResult {
         if (text.length > MAX_BYTES) return ImportResult.Error("Berkas terlalu besar untuk sebuah cadangan Vinyl.")
-        val env = try {
-            json.decodeFromString(Envelope.serializer(), text)
+        val (env, incoming) = try {
+            val root = json.parseToJsonElement(text).jsonObject
+            val env = json.decodeFromJsonElement(Envelope.serializer(), root)
+            // Bagian "settings" dimigrasi dari objek JSON aslinya: cadangan dari versi vinyl tidak punya kunci "retro",
+            // dan gaya TV tabungnya harus diturunkan dari gaya vinyl di cadangan itu, bukan diisi nilai bawaan.
+            env to (root["settings"] as? JsonObject)?.let { SettingsMigration.migrate(json, it) }
         } catch (e: IllegalArgumentException) {
             // SerializationException turunan IllegalArgumentException; pesan teknisnya sengaja tidak ditampilkan
             return ImportResult.Error("Berkas rusak atau bukan cadangan Vinyl Launcher.")
         }
-        val incoming = env.settings
         if (env.format != FORMAT || incoming == null) return ImportResult.Error("Berkas ini bukan cadangan Vinyl Launcher.")
         if (env.version < 1) return ImportResult.Error("Versi cadangan tidak dikenali.")
         if (env.version > VERSION) return ImportResult.Error("Cadangan dibuat oleh versi aplikasi yang lebih baru. Perbarui aplikasi dulu.")

@@ -50,6 +50,49 @@ object Tokens {
         const val PANEL = 0xF2151517L
     }
 
+    /**
+     * Palet tema "Retro Projection" (TV tabung di ruang putih). Ruang utama TERANG (teks gelap di atas putih hangat);
+     * Audio Console dan panel gelap memakai charcoal dengan teks krem. Cover album dan proyeksi adalah satu-satunya
+     * sumber warna jenuh; warna di sini sengaja kalem. Pasangan teks/latar dijaga >= 4,5:1 oleh RetroPaletteTest.
+     */
+    object Retro {
+        // Enam warna inti (dari spesifikasi konsep)
+        const val WARM_WHITE = 0xFFF7F6F2L      // dinding & lantai White Void
+        const val CREAM_BEIGE = 0xFFC5AD87L     // bodi TV, label kaset
+        const val WALNUT = 0xFF684832L          // panel kayu TV & rak
+        const val CHARCOAL = 0xFF343633L        // tombol, detail, latar Audio Console
+        const val AMBER = 0xFFD6A64DL           // lampu indikator, VFD amber
+        const val MUTED_GREEN = 0xFF82977AL     // aksen VFD hijau
+
+        // Turunan ruang: gradasi putih hangat untuk memperlihatkan bentuk ruangan tanpa garis tegas
+        const val VOID_WALL_TOP = 0xFFFBFAF7L
+        const val VOID_FLOOR = 0xFFEFEDE7L
+        const val VOID_CORNER = 0xFFE6E3DBL     // sudut dinding–lantai, samar
+        const val CONTACT_SHADOW = 0x40332A20L  // bayangan kontak di lantai (hangat, tidak hitam pekat)
+
+        // Teks di atas ruang terang (dinding/lantai/kartu putih)
+        const val INK = 0xFF1E1D1BL
+        const val INK_SECONDARY = 0xFF55524CL
+        const val INK_TERTIARY = 0xFF67635CL   // 4,66:1 di sudut ruangan (tergelap)
+
+        // Panel gelap (Audio Console, drawer, layar kunci)
+        const val CHARCOAL_DEEP = 0xFF252724L
+        const val CHARCOAL_RAISED = 0xFF3E403CL
+        const val CREAM_TEXT = 0xFFEDE3D1L
+        const val CREAM_TEXT_SECONDARY = 0xFFC9BEAAL
+
+        // VFD: kaca gelap kebiruan-hijau, karakter amber atau hijau bercahaya
+        const val VFD_GLASS = 0xFF141613L
+        const val VFD_AMBER = AMBER
+        const val VFD_GREEN = 0xFF9FC29AL
+        /** Segmen VFD yang "mati" (tetap samar terlihat, seperti layar VFD sungguhan). Dekoratif saja. */
+        const val VFD_GHOST = 0x1FFFFFFFL
+
+        // Layar CRT: kaca gelap saat standby, lampu standby merah redup
+        const val CRT_GLASS = 0xFF101211L
+        const val STANDBY_LED = 0xFFB4442EL
+    }
+
     /** Jarak dalam dp. Kelipatan 4 supaya ritme tata letak konsisten. */
     object Space {
         const val XS = 4
@@ -80,6 +123,27 @@ object Tokens {
         /** Pegas halus: sedikit memantul, tidak "kenyal". */
         const val SPRING_DAMPING = 0.78f
         const val SPRING_STIFFNESS = 380f
+
+        // --- Tema TV tabung. Semua menghormati "Hapus animasi" (durasi 0) dan mode hemat daya.
+        /** CRT menyala: garis horizontal mengembang menjadi gambar. */
+        const val CRT_POWER_ON_MS = 420
+        /** CRT mati (sleep timer selesai): gambar menyusut menjadi titik. */
+        const val CRT_POWER_OFF_MS = 360
+        const val CASSETTE_EJECT_MS = 280
+        const val CASSETTE_INSERT_MS = 340
+        /** Batas bawah satu langkah animasi kaset saat skip beruntun (animasi digabung & dipercepat). */
+        const val CASSETTE_RAPID_MS = 120
+        const val KNOB_ZOOM_IN_MS = 320
+        const val KNOB_ZOOM_OUT_MS = 260
+        const val PROJECTION_CROSSFADE_MS = 900
+        const val PAGE_SLIDE_MS = 380
+        /** Lama satu informasi tampil di VFD sebelum bergantian. */
+        const val VFD_CYCLE_MS = 4000
+        /** Lama nama output audio baru diprioritaskan di VFD. */
+        const val VFD_PRIORITY_MS = 3000
+        /** Putaran gulungan kaset per menit pada kecepatan normal / cepat. */
+        const val REEL_RPM_NORMAL = 40f
+        const val REEL_RPM_FAST = 60f
 
         /** Easing standar M3 (0.2, 0, 0, 1). */
         val EASE_STANDARD = floatArrayOf(0.2f, 0f, 0f, 1f)
@@ -114,6 +178,12 @@ object Tokens {
          * dengan faktor yang sama sebelum menghitung alpha peredam; tidak dihitung sebagai putih tambahan.
          */
         const val DIST_PEAK = 0.03f
+        /**
+         * Penggelapan terbanyak (lapisan hitam, alpha) yang boleh dijatuhkan efek ruang terang di bawah teks: vignette
+         * CRT, bayangan kontak, sudut ruangan. Pada tema terang teks GELAP, jadi efek yang menggelapkan latar-lah yang
+         * mengancam kontras; [com.vinyl.launcher.ui.theme.BackdropLift] menghitungnya.
+         */
+        const val LIGHT_SHADE_PEAK = 0.10
         /** Skala font maksimum yang diuji tata letaknya. */
         const val MAX_FONT_SCALE = 2.0f
     }

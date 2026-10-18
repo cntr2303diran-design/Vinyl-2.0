@@ -205,7 +205,14 @@ data class WeatherSettings(
 
 /** Preset tema: salinan gaya home + layar kunci. */
 @Serializable
-data class ThemePreset(val id: Long, val name: String, val home: HomeSettings, val cover: CoverSettings)
+data class ThemePreset(
+    val id: Long,
+    val name: String,
+    val home: HomeSettings,
+    val cover: CoverSettings,
+    /** Gaya TV tabung; null pada preset yang dibuat sebelum tema TV tabung (diturunkan lewat SettingsMigration.retroFor). */
+    val retro: RetroSettings? = null,
+)
 
 /** Pengaturan app drawer. Nilai awal dipilih agar fitur terlihat tanpa izin tambahan. */
 @Serializable
@@ -293,6 +300,8 @@ data class AppSettings(
     val drawer: DrawerSettings = DrawerSettings(),
     val music: MusicSettings = MusicSettings(),
     val visual: VisualSettings = VisualSettings(),
+    /** Tema TV tabung. Dokumen lama tanpa kunci ini dimigrasi dari gaya vinyl (SettingsMigration). */
+    val retro: RetroSettings = RetroSettings(),
     /** Paket aplikasi musik default (null = pilih otomatis). */
     val defaultMusicPackage: String? = null,
     val hiddenApps: Set<String> = emptySet(),

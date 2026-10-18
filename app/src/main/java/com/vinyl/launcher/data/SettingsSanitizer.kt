@@ -50,6 +50,7 @@ object SettingsSanitizer {
         drawer = drawer(s.drawer),
         music = s.music.copy(sleepMinutes = SleepTimerPlan.clampMinutes(s.music.sleepMinutes)),
         visual = s.visual.copy(parallaxStrength = s.visual.parallaxStrength.fix(MIN_PARALLAX, 1f, 0.6f)),
+        retro = retro(s.retro),
         customGestures = s.customGestures
             .filter { g -> g.points.size == GESTURE_POINTS * 2 && g.points.all { it.isFinite() && it in -2f..2f } }
             .distinctBy { it.id }
@@ -69,7 +70,14 @@ object SettingsSanitizer {
         presets = s.presets
             .distinctBy { it.id }
             .take(MAX_PRESETS)
-            .map { it.copy(name = it.name.text(MAX_NAME), home = home(it.home, isAllowedImage), cover = cover(it.cover, isAllowedImage)) },
+            .map {
+                it.copy(
+                    name = it.name.text(MAX_NAME),
+                    home = home(it.home, isAllowedImage),
+                    cover = cover(it.cover, isAllowedImage),
+                    retro = it.retro?.let(::retro),
+                )
+            },
     )
 
     /** Nama paket Android yang wajar (huruf, angka, titik, garis bawah). */
@@ -119,6 +127,11 @@ object SettingsSanitizer {
         gradientStart = b.gradientStart.argb(),
         gradientEnd = b.gradientEnd.argb(),
         imagePath = b.imagePath?.takeIf { it.length <= 1024 && ok(it) },
+    )
+
+    private fun retro(r: RetroSettings) = r.copy(
+        crtStrength = r.crtStrength.fix(0f, 1f, 0.6f),
+        glowIntensity = r.glowIntensity.fix(0f, 1f, 0.7f),
     )
 
     private fun binding(b: GestureBinding) = b.copy(packageName = b.packageName?.takeIf { isPackageName(it) })

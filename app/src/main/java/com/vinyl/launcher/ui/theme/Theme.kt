@@ -42,6 +42,33 @@ val TextTertiary = Color(Tokens.Argb.TEXT_TERTIARY)
 val Accent = Color(Tokens.Argb.ACCENT)          // oranye hangat ala label piringan
 val AccentOn = Color(Tokens.Argb.ACCENT_ON)
 
+// ===== Tema TV tabung ("Retro Projection") — nilai dari Tokens.Retro =====
+object RetroColors {
+    val WarmWhite = Color(Tokens.Retro.WARM_WHITE)
+    val WallTop = Color(Tokens.Retro.VOID_WALL_TOP)
+    val Floor = Color(Tokens.Retro.VOID_FLOOR)
+    val Corner = Color(Tokens.Retro.VOID_CORNER)
+    val ContactShadow = Color(Tokens.Retro.CONTACT_SHADOW)
+    val CreamBeige = Color(Tokens.Retro.CREAM_BEIGE)
+    val Walnut = Color(Tokens.Retro.WALNUT)
+    val Charcoal = Color(Tokens.Retro.CHARCOAL)
+    val CharcoalDeep = Color(Tokens.Retro.CHARCOAL_DEEP)
+    val CharcoalRaised = Color(Tokens.Retro.CHARCOAL_RAISED)
+    val Amber = Color(Tokens.Retro.AMBER)
+    val MutedGreen = Color(Tokens.Retro.MUTED_GREEN)
+    val Ink = Color(Tokens.Retro.INK)
+    val InkSecondary = Color(Tokens.Retro.INK_SECONDARY)
+    val InkTertiary = Color(Tokens.Retro.INK_TERTIARY)
+    val CreamText = Color(Tokens.Retro.CREAM_TEXT)
+    val CreamTextSecondary = Color(Tokens.Retro.CREAM_TEXT_SECONDARY)
+    val VfdGlass = Color(Tokens.Retro.VFD_GLASS)
+    val VfdAmber = Color(Tokens.Retro.VFD_AMBER)
+    val VfdGreen = Color(Tokens.Retro.VFD_GREEN)
+    val VfdGhost = Color(Tokens.Retro.VFD_GHOST)
+    val CrtGlass = Color(Tokens.Retro.CRT_GLASS)
+    val StandbyLed = Color(Tokens.Retro.STANDBY_LED)
+}
+
 // Nama lama dipertahankan agar komponen lain tetap kompatibel
 val VinylBlack = Ink
 val PaperCream = TextPrimary

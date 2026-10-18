@@ -82,6 +82,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vinyl.launcher.data.MAX_DOCK_APPS
 import com.vinyl.launcher.data.DockPosition
 import com.vinyl.launcher.data.NavOrder
+import com.vinyl.launcher.data.SettingsMigration
 import com.vinyl.launcher.service.NavButtonsService
 import com.vinyl.launcher.ui.cover.CoverActivity
 import com.vinyl.launcher.media.MediaRepository
@@ -353,7 +354,7 @@ private fun SettingsScreen(vm: SettingsViewModel, onBack: () -> Unit) {
             s.presets.forEach { p ->
                 Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(p.name, Modifier.weight(1f))
-                    TextButton(onClick = { vm.update { it.copy(home = p.home, cover = p.cover) } }) { Text("Terapkan") }
+                    TextButton(onClick = { vm.update { it.copy(home = p.home, cover = p.cover, retro = SettingsMigration.retroFor(p)) } }) { Text("Terapkan") }
                     TextButton(onClick = { vm.update { st -> st.copy(presets = st.presets.filterNot { it.id == p.id }) } }) { Text("Hapus") }
                 }
             }

@@ -13,6 +13,7 @@ import com.vinyl.launcher.data.ContactsRepository
 import com.vinyl.launcher.data.HistoryRepository
 import com.vinyl.launcher.data.HomeSettings
 import com.vinyl.launcher.data.PlayRecord
+import com.vinyl.launcher.data.SettingsMigration
 import com.vinyl.launcher.util.SoundFx
 import com.vinyl.launcher.data.MAX_DOCK_APPS
 import com.vinyl.launcher.data.SettingsRepository
@@ -125,12 +126,12 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     fun savePreset(name: String) = viewModelScope.launch {
         val home = _draft.value ?: settings.value.home
         settingsRepo.update {
-            it.copy(presets = it.presets + ThemePreset(System.currentTimeMillis(), name.ifBlank { "Preset ${it.presets.size + 1}" }, home, it.cover))
+            it.copy(presets = it.presets + ThemePreset(System.currentTimeMillis(), name.ifBlank { "Preset ${it.presets.size + 1}" }, home, it.cover, it.retro))
         }
     }
     fun applyPreset(preset: ThemePreset) {
         if (_draft.value != null) _draft.value = preset.home
-        else viewModelScope.launch { settingsRepo.update { it.copy(home = preset.home, cover = preset.cover) } }
+        else viewModelScope.launch { settingsRepo.update { it.copy(home = preset.home, cover = preset.cover, retro = SettingsMigration.retroFor(preset)) } }
     }
     fun deletePreset(id: Long) = viewModelScope.launch {
         settingsRepo.update { s -> s.copy(presets = s.presets.filterNot { it.id == id }) }
