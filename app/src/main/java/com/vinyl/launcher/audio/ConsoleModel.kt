@@ -53,9 +53,28 @@ object ConsoleRows {
             .sortedByDescending { it.active }
     }
 
-    /** Baterai perangkat Bluetooth aktif: hanya lewat Akses lanjutan; untuk keluaran non-Bluetooth dijelaskan. */
-    fun battery(s: AudioSnapshot, adv: AdvancedReadings): Reading =
-        if (!isBluetooth(s.active.device?.kind)) Reading.unavailable("Keluaran aktif bukan perangkat Bluetooth") else adv.battery
+    /**
+     * Baterai perangkat Bluetooth aktif. Sumber, dari yang lebih diutamakan: laporan diagnostik (Akses lanjutan) bila
+     * memuatnya, lalu siaran baterai Bluetooth sistem (jalur tidak resmi, butuh izin Perangkat sekitar) yang dicocokkan
+     * dengan ALAMAT perangkat aktif — tidak pernah ditebak dari perangkat lain.
+     */
+    fun battery(
+        s: AudioSnapshot,
+        adv: AdvancedReadings,
+        permissionGranted: Boolean = false,
+        reports: Map<String, Int> = emptyMap(),
+    ): Reading {
+        val d = s.active.device
+        if (!isBluetooth(d?.kind)) return Reading.unavailable("Keluaran aktif bukan perangkat Bluetooth")
+        if (adv.battery.source != Source.UNAVAILABLE) return adv.battery
+        val level = d?.address?.takeIf { it.isNotBlank() }?.let { reports[BatteryReports.key(it)] }
+        return when {
+            level != null -> Reading.reported("$level%", "Dilaporkan sistem Bluetooth lewat siaran tidak resmi; diperbarui saat levelnya berubah")
+            !permissionGranted -> Reading.unavailable("Butuh izin Perangkat sekitar (Bluetooth)")
+            d?.address.isNullOrBlank() -> Reading.unavailable("Sistem tidak membuka alamat perangkat ini, jadi laporan baterai tidak bisa dicocokkan")
+            else -> Reading.unavailable("Belum ada laporan. Sistem mengirimnya saat perangkat tersambung atau levelnya berubah")
+        }
+    }
 
     fun quality(s: AudioSnapshot, adv: AdvancedReadings): List<ConsoleRow> {
         val bt = isBluetooth(s.active.device?.kind)
@@ -100,6 +119,21 @@ object ConsoleRows {
                 ),
             ),
         )
+    }
+}
+
+/** Laporan baterai Bluetooth per alamat perangkat (dari siaran sistem). Murni agar validasinya diuji. */
+object BatteryReports {
+    const val MAX_DEVICES = 16
+
+    fun key(address: String): String = address.trim().uppercase()
+
+    /** Terima laporan hanya bila level 0..100 dan alamatnya berbentuk alamat Bluetooth; selain itu abaikan. */
+    fun accept(current: Map<String, Int>, address: String?, level: Int): Map<String, Int> {
+        val a = address?.let(::key) ?: return current
+        if (level !in 0..100 || !Regex("^[0-9A-F]{2}(:[0-9A-F]{2}){5}$").matches(a)) return current
+        val next = current - a + (a to level)
+        return if (next.size > MAX_DEVICES) next.entries.drop(next.size - MAX_DEVICES).associate { it.key to it.value } else next
     }
 }
 

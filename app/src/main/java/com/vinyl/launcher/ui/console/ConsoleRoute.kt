@@ -23,6 +23,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.vinyl.launcher.advanced.AdvancedAccess
 import com.vinyl.launcher.audio.AdvancedReadings
 import com.vinyl.launcher.audio.AudioConsoleRuntime
+import com.vinyl.launcher.audio.BluetoothBattery
 import com.vinyl.launcher.audio.AudioMonitor
 import com.vinyl.launcher.audio.ChannelTest
 import com.vinyl.launcher.audio.EqEngine
@@ -58,6 +59,12 @@ fun ConsoleRoute(
     val access by AdvancedAccess.state.collectAsStateWithLifecycle()
     var advanced by remember { mutableStateOf(AdvancedReadings()) }
     var copied by remember { mutableStateOf(false) }
+    val btLevels by BluetoothBattery.levels.collectAsStateWithLifecycle()
+    var btPermission by remember { mutableStateOf(BluetoothBattery.granted(context)) }
+    val btRequest = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
+        btPermission = ok
+        if (ok) { BluetoothBattery.refresh(context); AudioMonitor.refresh() }
+    }
 
     var shortcuts by remember { mutableStateOf(emptyList<SystemAudioShortcuts.Shortcut>()) }
     LaunchedEffect(Unit) { shortcuts = withContext(Dispatchers.IO) { SystemAudioShortcuts.available(context) } }
@@ -65,6 +72,7 @@ fun ConsoleRoute(
     LifecycleResumeEffect(Unit) {
         AudioMonitor.acquire(context)
         AdvancedAccess.refresh() // pengguna mungkin baru saja menjalankan perintah ADB
+        btPermission = BluetoothBattery.granted(context) // bisa dicabut lewat Pengaturan sistem
         onPauseOrDispose {
             AudioMonitor.release()
             ChannelTest.stop()
@@ -120,6 +128,8 @@ fun ConsoleRoute(
             access = access,
             isSamsung = SystemAudioShortcuts.isSamsung,
             copied = copied,
+            btPermission = btPermission,
+            btLevels = btLevels,
         ),
         actions = ConsoleActions(
             onBack = onBack,
@@ -136,6 +146,7 @@ fun ConsoleRoute(
             },
             onCheckAccess = AdvancedAccess::refresh,
             onGrantShizuku = AdvancedAccess::grantViaShizuku,
+            onRequestBluetooth = { btRequest.launch(BluetoothBattery.permission) },
         ),
         modifier = modifier,
         vu = vu,

@@ -42,6 +42,13 @@
     -->
     <uses-permission android:name="android.permission.DUMP" tools:ignore="ProtectedPermissions" />
     <!--
+      Baterai earphone/speaker Bluetooth di Audio Console (opsional). Diminta hanya saat pengguna menekan "Izinkan baca baterai
+      Bluetooth". Android 12+: BLUETOOTH_CONNECT; Android 10–11: BLUETOOTH (izin biasa). Dipakai untuk menerima siaran level
+      baterai dari sistem; tidak memindai, tidak menyambung, tidak mengubah perangkat.
+    -->
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+    <!--
       Dibawa library Media3 (ExoPlayer) untuk memperkirakan jenis jaringan saat streaming. Video di layar TV hanya berkas lokal,
       dan Media3 menangani ketiadaan izin ini (NetworkTypeObserver: SecurityException → jenis jaringan tidak diketahui), jadi dibuang.
     -->

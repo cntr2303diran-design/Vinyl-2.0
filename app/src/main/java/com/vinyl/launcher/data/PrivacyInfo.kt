@@ -81,6 +81,18 @@ object PrivacyInfo {
             optional = true,
         ),
         Item(
+            "android.permission.BLUETOOTH_CONNECT", "Perangkat sekitar (Bluetooth)",
+            "Opsional, diminta saat Anda menekan \"Izinkan baca baterai Bluetooth\" di Audio Console. Hanya untuk menerima laporan " +
+                "level baterai earphone/speaker Bluetooth dari sistem (jalur tidak resmi). Tidak memindai, tidak menyambung, dan tidak " +
+                "mengubah perangkat; level baterai hanya di memori.",
+            optional = true,
+        ),
+        Item(
+            "android.permission.BLUETOOTH", "Bluetooth (Android 10–11)",
+            "Padanan lama izin di atas untuk Android 10 dan 11 (diberikan saat pemasangan). Dipakai untuk hal yang sama saja.",
+            optional = true,
+        ),
+        Item(
             ID_SHIZUKU, "Shizuku (opsional)",
             "Izin API Shizuku (moe.shizuku.manager.permission.API_V23) ditambahkan library resmi Shizuku. Hanya dipakai bila Shizuku " +
                 "terpasang dan Anda menekan \"Berikan izin lewat Shizuku\": launcher menjalankan satu perintah tetap " +

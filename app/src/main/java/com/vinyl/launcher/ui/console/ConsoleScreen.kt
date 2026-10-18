@@ -86,6 +86,10 @@ data class ConsoleUi(
     val isSamsung: Boolean,
     /** "Disalin" tampil sebentar setelah perintah ADB disalin. */
     val copied: Boolean = false,
+    /** Izin baca baterai Bluetooth (Perangkat sekitar) sudah diberikan. */
+    val btPermission: Boolean = false,
+    /** Level baterai Bluetooth per alamat dari siaran sistem. */
+    val btLevels: Map<String, Int> = emptyMap(),
 )
 
 class ConsoleActions(
@@ -99,6 +103,7 @@ class ConsoleActions(
     val onCheckAccess: () -> Unit = {},
     /** Dipanggil setelah pengguna menyetujui dialog yang menampilkan perintah Shizuku. */
     val onGrantShizuku: () -> Unit = {},
+    val onRequestBluetooth: () -> Unit = {},
 )
 
 /**
@@ -193,7 +198,11 @@ private fun DevicesPanel(ui: ConsoleUi, actions: ConsoleActions) {
         val rows = ConsoleRows.devices(ui.snapshot)
         if (rows.isEmpty()) ConsoleNote("Tidak ada perangkat keluaran musik yang dilaporkan sistem.")
         rows.forEach { DeviceLine(it) }
-        ReadingRow("Baterai", ConsoleRows.battery(ui.snapshot, ui.advanced))
+        ReadingRow("Baterai", ConsoleRows.battery(ui.snapshot, ui.advanced, ui.btPermission, ui.btLevels))
+        if (!ui.btPermission) {
+            ConsoleButton("Izinkan baca baterai Bluetooth", actions.onRequestBluetooth, description = "Minta izin Perangkat sekitar untuk membaca baterai Bluetooth")
+            ConsoleNote("Memakai laporan baterai dari sistem Bluetooth lewat jalur tidak resmi; bisa tidak tersedia di sebagian perangkat.")
+        }
         ShortcutButtons(ui, actions, listOf(Kind.BLUETOOTH, Kind.VOLUME_PANEL))
     }
 }

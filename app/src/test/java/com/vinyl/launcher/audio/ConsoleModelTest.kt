@@ -44,9 +44,41 @@ class ConsoleModelTest {
     }
 
     @Test
-    fun batteryOnlyForBluetooth() {
+    fun batteryOnlyForBluetoothAndOnlyForTheSameAddress() {
         assertEquals("Keluaran aktif bukan perangkat Bluetooth", ConsoleRows.battery(snap(speaker, Source.REPORTED, speaker), AdvancedReadings()).note)
-        assertEquals(AdvancedReadings.NEEDS_ADVANCED, ConsoleRows.battery(snap(buds, Source.REPORTED, buds), AdvancedReadings()))
+        val budsMac = buds.copy(address = "aa:bb:cc:dd:ee:ff")
+        val s = snap(budsMac, Source.REPORTED, budsMac)
+        // Tanpa izin
+        assertEquals("Butuh izin Perangkat sekitar (Bluetooth)", ConsoleRows.battery(s, AdvancedReadings()).note)
+        // Izin ada, belum ada laporan
+        assertTrue(ConsoleRows.battery(s, AdvancedReadings(), true).note.startsWith("Belum ada laporan"))
+        // Laporan perangkat lain tidak dipakai
+        assertEquals(Source.UNAVAILABLE, ConsoleRows.battery(s, AdvancedReadings(), true, mapOf("11:22:33:44:55:66" to 40)).source)
+        // Laporan alamat yang sama (beda huruf besar/kecil)
+        val r = ConsoleRows.battery(s, AdvancedReadings(), true, mapOf("AA:BB:CC:DD:EE:FF" to 80))
+        assertEquals("80%", r.text)
+        assertEquals(Source.REPORTED, r.source)
+        assertTrue(r.note.contains("tidak resmi"))
+        // Laporan diagnostik (bila ada) diutamakan
+        val adv = AdvancedReadings(battery = Reading.reported("75%", "dumpsys"))
+        assertEquals("75%", ConsoleRows.battery(s, adv, true, mapOf("AA:BB:CC:DD:EE:FF" to 80)).text)
+        // Alamat tidak dibuka sistem
+        assertTrue(ConsoleRows.battery(snap(buds.copy(address = ""), Source.REPORTED), AdvancedReadings(), true).note.contains("alamat"))
+    }
+
+    @Test
+    fun batteryReportsAreValidatedAndBounded() {
+        var m = emptyMap<String, Int>()
+        m = BatteryReports.accept(m, "aa:bb:cc:dd:ee:ff", 55)
+        assertEquals(mapOf("AA:BB:CC:DD:EE:FF" to 55), m)
+        assertEquals(m, BatteryReports.accept(m, "aa:bb:cc:dd:ee:ff", -1))     // tidak diketahui
+        assertEquals(m, BatteryReports.accept(m, "aa:bb:cc:dd:ee:ff", -100))   // Bluetooth mati
+        assertEquals(m, BatteryReports.accept(m, "aa:bb:cc:dd:ee:ff", 101))
+        assertEquals(m, BatteryReports.accept(m, "bukan alamat", 50))
+        assertEquals(m, BatteryReports.accept(m, null, 50))
+        repeat(40) { i -> m = BatteryReports.accept(m, "00:00:00:00:00:%02X".format(i), i) }
+        assertEquals(BatteryReports.MAX_DEVICES, m.size)
+        assertEquals(39, m["00:00:00:00:00:27"])
     }
 
     @Test
