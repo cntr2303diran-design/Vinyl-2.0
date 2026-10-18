@@ -134,8 +134,12 @@ class AppsRepository private constructor(private val context: Context) {
 
     private fun LauncherActivityInfo.toAppInfo(): AppInfo {
         val key = componentName.flattenToString() + if (user != android.os.Process.myUserHandle()) "#${user.hashCode()}" else ""
-        val icon = iconCache.getOrPut(key) {
-            getBadgedIcon(0).toBitmap(iconSizePx, iconSizePx).asImageBitmap()
+        val icon = iconCache[key] ?: try {
+            getBadgedIcon(0).toBitmap(iconSizePx, iconSizePx).asImageBitmap().also { iconCache[key] = it }
+        } catch (e: RuntimeException) {
+            // Satu ikon rusak (resource hilang, drawable tidak valid) tidak boleh mengosongkan seluruh daftar aplikasi.
+            // Aplikasi tetap tampil dan bisa dibuka; ikon kosong tidak disimpan di cache sehingga dicoba lagi saat muat ulang.
+            ImageBitmap(iconSizePx, iconSizePx)
         }
         val appLabel = label.toString()
         val category = AppCategorizer.categorize(platformCategory(applicationInfo), componentName.packageName, appLabel)
