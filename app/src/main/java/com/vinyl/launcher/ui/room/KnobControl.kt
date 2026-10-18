@@ -192,8 +192,14 @@ fun KnobLayer(
 
     // Gelembung waktu di samping kanan knob (seperti referensi); pindah ke kiri bila tidak muat
     var bubbleSize by remember { mutableStateOf(IntSize.Zero) }
+    // Gelembung pasif (tanpa sentuhan) hanya bila muat di KANAN knob; di ponsel tegak ia akan menutupi judul di layar,
+    // dan waktu sudah terlihat di garis progres.
+    val fitsRight = with(density) {
+        val bw = if (bubbleSize.width > 0) bubbleSize.width else 120.dp.roundToPx()
+        (cx + knobR * zoom + 14.dp).roundToPx() + bw <= stageWidthPx
+    }
     AnimatedVisibility(
-        visible = state.active || (alwaysShowBubble && np.hasTrack && np.durationMs > 0),
+        visible = state.active || (alwaysShowBubble && fitsRight && np.hasTrack && np.durationMs > 0),
         enter = fadeIn(tween(Tokens.Motion.FAST_MS)),
         exit = fadeOut(tween(Tokens.Motion.FAST_MS)),
         modifier = Modifier.offset {
