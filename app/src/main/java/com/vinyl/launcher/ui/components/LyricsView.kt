@@ -20,6 +20,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -99,6 +100,9 @@ fun LyricsLines(
     modifier: Modifier = Modifier,
     fontSize: TextUnit = 24.sp,
     align: TextAlign = TextAlign.Center,
+    /** Warna baris aktif & berikutnya; bawaan untuk latar gelap, ruang TV terang memakai tinta gelap. */
+    primary: Color = TextPrimary,
+    secondary: Color = TextSecondary,
 ) {
     if (lyrics == null || !lyrics.hasSynced) return
     val reduceMotion = rememberReduceMotion()
@@ -134,7 +138,7 @@ fun LyricsLines(
                 style = MaterialTheme.typography.headlineSmall.copy(
                     fontFamily = InterDisplay, fontWeight = FontWeight.Bold, fontSize = fontSize, letterSpacing = (-0.015).em,
                 ),
-                color = TextPrimary,
+                color = primary,
                 textAlign = align,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
@@ -142,7 +146,7 @@ fun LyricsLines(
             if (next.isNotBlank()) Text(
                 next,
                 style = MaterialTheme.typography.titleMedium.copy(fontSize = fontSize * 0.68f, fontWeight = FontWeight.SemiBold),
-                color = TextSecondary,    // 38% putih dulu < 4,5:1; teks sekunder dijamin BackdropDim
+                color = secondary,    // 38% putih dulu < 4,5:1; teks sekunder dijamin BackdropDim / BackdropLift
                 textAlign = align,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,

@@ -309,6 +309,11 @@ fun FxOverlay(
     mode: ParallaxMode,
     strength: Float,
     modifier: Modifier = Modifier,
+    /**
+     * Warna partikel. Putih untuk latar gelap; ruang TV terang memakai debu abu hangat. Alpha tetap dibatasi anggaran
+     * efek yang sama, jadi pada ruang terang partikel menggelapkan paling banyak FX_PEAK (< LIGHT_SHADE_PEAK).
+     */
+    particleColor: Color = Color.White,
 ) {
     if (!plan.glow && !plan.particles) return
     val density = LocalDensity.current.density
@@ -350,8 +355,8 @@ fun FxOverlay(
                 val c = Offset(field.x[i] * w + shift.dx, field.y[i] * h + shift.dy)
                 val r = field.radius(i, level) * minSide
                 val a = field.alpha(i, level)
-                drawCircle(Color.White.copy(alpha = a * 0.35f), r * 2.4f, c)
-                drawCircle(Color.White.copy(alpha = a), r, c)
+                drawCircle(particleColor.copy(alpha = a * 0.35f), r * 2.4f, c)
+                drawCircle(particleColor.copy(alpha = a), r, c)
             }
         }
     }

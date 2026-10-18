@@ -20,9 +20,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
 import com.vinyl.launcher.ui.components.formatMs
 import com.vinyl.launcher.ui.components.glass
-import com.vinyl.launcher.ui.theme.TextPrimary
-import com.vinyl.launcher.ui.theme.TextSecondary
-import com.vinyl.launcher.ui.theme.TextTertiary
 import kotlinx.coroutines.delay
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -70,17 +67,12 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vinyl.launcher.data.HomeSettings
-import com.vinyl.launcher.data.TurntablePosition
 import com.vinyl.launcher.data.WeatherSettings
 import com.vinyl.launcher.data.WidgetConfig
 import com.vinyl.launcher.data.WidgetType
 import com.vinyl.launcher.media.NowPlaying
-import com.vinyl.launcher.ui.components.BackgroundLayer
 import com.vinyl.launcher.ui.components.BatteryIndicator
 import com.vinyl.launcher.ui.components.ClockView
-import com.vinyl.launcher.ui.components.TURNTABLE_ASPECT
-import com.vinyl.launcher.ui.components.Turntable
-import com.vinyl.launcher.ui.components.TurntableStyle
 import com.vinyl.launcher.ui.components.TwoMonthCalendar
 import com.vinyl.launcher.ui.components.LyricsLines
 import com.vinyl.launcher.ui.components.PhotoWidget
@@ -139,6 +131,17 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 import com.vinyl.launcher.ui.console.ConsoleScreen
 import com.vinyl.launcher.ui.theme.rememberReduceMotion
+import com.vinyl.launcher.data.BackgroundType
+import com.vinyl.launcher.data.RetroSettings
+import com.vinyl.launcher.fx.FxOverlay
+import com.vinyl.launcher.fx.fxBackdrop
+import com.vinyl.launcher.fx.rememberPowerSave
+import com.vinyl.launcher.ui.components.rememberFileImage
+import com.vinyl.launcher.ui.room.RoomBackdrop
+import com.vinyl.launcher.ui.room.RoomFloor
+import com.vinyl.launcher.ui.room.RoomStage
+import com.vinyl.launcher.ui.room.VfdTicker
+import com.vinyl.launcher.ui.room.RoomInk
 
 /** Warna netral saat tidak ada musik. */
 private val NeutralBg = Color(0xFF1B1B1F)
@@ -212,6 +215,14 @@ fun HomeScreen(vm: HomeViewModel) {
     }
     fun indexOf(p: RoomPage) = PageNav.indexOf(p, swapPages, rtl)
 
+    // ----- Ruang TV: dinding, proyeksi, nada teks -----
+    val motionAllowed = !reduceMotion && !rememberPowerSave()
+    var roomFloor by remember { mutableStateOf(RoomFloor.UNKNOWN) }
+    val picture = if (home.background.type == BackgroundType.IMAGE) rememberFileImage(home.background.imagePath) else null
+    val cover = np.art.takeIf { np.hasTrack }
+    val projected = if (home.background.type == BackgroundType.IMAGE) picture else if (home.background.type == BackgroundType.ALBUM) cover else null
+    val look = rememberRoomLook(settings.retro.room, home.background, projected)
+
     Box(Modifier.fillMaxSize().onSizeChanged { screenWidthPx = it.width }) {
     Box(
         Modifier
@@ -226,11 +237,23 @@ fun HomeScreen(vm: HomeViewModel) {
                 }
             }
     ) {
-        BackgroundLayer(
-            home.background, bgColor, art = np.art.takeIf { np.hasTrack }, swatches = np.swatches, animate = np.isPlaying,
-            cinematic = settings.music.cinematicColors && !editing,
-            fx = fx, fxPlan = fxPlan, visual = settings.visual, fxTint = accent,
+        RoomBackdrop(
+            tone = settings.retro.room,
+            floor = roomFloor,
+            source = wallSource(home.background, cover, picture),
+            animate = np.isPlaying && motionAllowed && !editing,
+            // Warna sinematik mati = cahaya layar netral (putih hangat), bukan warna cover
+            glow = if (settings.music.cinematicColors) accent else Color(0xFFFFF1DC),
+            glowAlpha = if (np.hasTrack) settings.retro.glowIntensity * 0.18f else 0f,
+            wallColor = if (home.background.type == BackgroundType.SOLID) home.background.solidColor.toColor() else null,
+            wallGradient = if (home.background.type == BackgroundType.GRADIENT)
+                home.background.gradientStart.toColor() to home.background.gradientEnd.toColor() else null,
+            projectionModifier = Modifier.fxBackdrop(fx, fxPlan, settings.visual.parallax, settings.visual.parallaxStrength),
         )
+        // Debu halus (partikel) di atas dinding, di bawah konten; cahaya reaktif sudah digambar ruang (bukan lapisan putih)
+        if (fxPlan.particles) {
+            FxOverlay(fx, fxPlan.copy(glow = false), accent, settings.visual.parallax, settings.visual.parallaxStrength, particleColor = dustColor(look.tone))
+        }
 
         // Area konten; saat edit, menyusut agar pratinjau tidak tertutup panel editor
         Box(
@@ -312,7 +335,6 @@ fun HomeScreen(vm: HomeViewModel) {
                 home = home,
                 np = np,
                 accent = accent,
-                dominant = dominant,
                 weather = settings.weather,
                 lyricsOnline = settings.music.lyricsOnline,
                 editing = editing,
@@ -320,6 +342,11 @@ fun HomeScreen(vm: HomeViewModel) {
                 fxPlan = fxPlan,
                 visual = settings.visual,
                 visualizerUnavailable = visualizerState == VisualizerStatus.State.UNAVAILABLE,
+                retro = settings.retro,
+                look = look,
+                landscape = landscape,
+                motionAllowed = motionAllowed,
+                onFloor = { roomFloor = it },
                 onWidgetChange = { updated -> vm.updateDraft { h -> h.copy(widgets = h.widgets.map { if (it.id == updated.id) updated else it }) } },
                 vm = vm,
             )
@@ -437,7 +464,6 @@ private fun HomeContent(
     home: HomeSettings,
     np: NowPlaying,
     accent: Color,
-    dominant: Color,
     weather: WeatherSettings,
     lyricsOnline: Boolean,
     editing: Boolean,
@@ -445,58 +471,58 @@ private fun HomeContent(
     fxPlan: FxPlan,
     visual: VisualSettings,
     visualizerUnavailable: Boolean,
+    retro: RetroSettings,
+    look: RoomLook,
+    landscape: Boolean,
+    motionAllowed: Boolean,
+    onFloor: (RoomFloor) -> Unit,
     onWidgetChange: (WidgetConfig) -> Unit,
     vm: HomeViewModel,
 ) {
     val now by rememberNow()
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val maxW = maxWidth
-        val maxH = maxHeight
 
-        // ----- Turntable (+ info lagu di bawahnya, ala Apple Music) -----
+        // ----- Ruang TV: TV tabung (+ kaset, Tahap 4) di lantai, info lagu di bawahnya -----
         val showInfo = home.trackInfoVisible
-        val heightShare = if (showInfo) (if (home.lyricsVisible) 0.58f else 0.66f) else 0.80f
-        val baseWidth = minOf(maxW * 0.94f, maxH * heightShare * TURNTABLE_ASPECT)
-        val ttWidth = baseWidth * home.turntableSize
-        val ttHeight = ttWidth / TURNTABLE_ASPECT
-        val align = when (home.turntablePosition) {
-            TurntablePosition.LEFT -> Alignment.CenterStart
-            TurntablePosition.CENTER -> Alignment.Center
-            TurntablePosition.RIGHT -> Alignment.CenterEnd
+        val clockText = "%02d:%02d".format(now.hour, now.minute)
+        val vfdLines = remember(clockText, np.hasTrack, np.isPlaying) {
+            listOf(
+                VfdTicker.line("clock", clockText),
+                VfdTicker.line("state", VfdTicker.playback(np.hasTrack, np.isPlaying)),
+            )
         }
         Column(
-            Modifier.align(align).padding(horizontal = 24.dp),
+            Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Turntable(
-                nowPlaying = np,
-                style = TurntableStyle(
-                    vinylStyle = home.vinylStyle,
-                    tonearmStyle = home.tonearmStyle,
-                    coverVisible = home.coverVisible,
-                    coverRounded = home.coverRounded,
-                    coverShadow = home.coverShadow,
-                    rpm = home.rpm,
-                ),
-                labelColor = accent,
-                discTint = dominant,
-                interactive = !editing,
-                onTogglePlay = vm::togglePlay,
-                onNext = vm::next,
-                onPrevious = vm::previous,
-                onSeek = vm::seek,
-                onOpenMusic = vm::openMusic,
-                onNeedleDown = vm::needleDown,
-                onNeedleUp = vm::needleUp,
-                onTick = vm::tick,
-                modifier = Modifier.size(ttWidth, ttHeight).fxForeground(fx, fxPlan, visual.parallax, visual.parallaxStrength),
+            RoomStage(
+                np = np,
+                retro = retro,
+                tvSize = home.turntableSize,
+                position = home.turntablePosition,
+                landscape = landscape,
+                accent = accent,
+                motionAllowed = motionAllowed && !editing,
+                vfdLines = vfdLines,
+                onScreenTap = { if (editing) Unit else if (np.hasTrack) vm.togglePlay() else vm.openMusic() },
+                onFloor = onFloor,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .padding(horizontal = 16.dp)
+                    .fxForeground(fx, fxPlan, visual.parallax, visual.parallaxStrength),
             )
             if (showInfo) {
                 TrackInfo(
                     np, home.lyricsVisible, lyricsOnline, onOpenCrate = vm::openCrate, onOpenLyrics = vm::openLyrics,
                     fx = fx, visualizer = fxPlan.visualizer, visualizerMode = visual.visualizer,
-                    visualizerUnavailable = visualizerUnavailable, barColor = accent,
-                    modifier = Modifier.padding(top = 28.dp).width(minOf(ttWidth * 0.62f, 560.dp)),
+                    visualizerUnavailable = visualizerUnavailable, barColor = accent, look = look,
+                    modifier = Modifier
+                        .padding(top = 12.dp, bottom = 12.dp)
+                        .width(minOf(maxW * 0.86f, 560.dp))
+                        .roomPlate(look)
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
                 )
             }
         }
@@ -504,10 +530,11 @@ private fun HomeContent(
         // ----- Jam & tanggal (kecil, default pojok kiri atas) -----
         if (home.clock.visible) {
             ClockView(
-                settings = home.clock,
+                // Warna jam tersimpan dipakai bila terbaca di dinding; krem bawaan tema vinyl diganti tinta ruang
+                settings = home.clock.copy(color = RoomInk.readable(home.clock.color, look.tone)),
                 now = now,
                 horizontalAlignment = home.clock.anchor.horizontal(),
-                modifier = Modifier.align(home.clock.anchor.toAlignment()).padding(28.dp),
+                modifier = Modifier.align(home.clock.anchor.toAlignment()).padding(20.dp).roomPlate(look).padding(8.dp),
             )
         }
 
@@ -515,7 +542,7 @@ private fun HomeContent(
         val wPx = constraints.maxWidth
         val hPx = constraints.maxHeight
         home.widgets.forEach { w ->
-            HomeWidget(w, wPx, hPx, editing, accent, weather, home.clock.color.toColor(), onWidgetChange)
+            HomeWidget(w, wPx, hPx, editing, accent, weather, Color(RoomInk.readable(home.clock.color, look.tone)), onWidgetChange)
         }
     }
 }
@@ -624,6 +651,7 @@ private fun TrackInfo(
     visualizerMode: VisualizerMode,
     visualizerUnavailable: Boolean,
     barColor: Color,
+    look: RoomLook,
     modifier: Modifier = Modifier,
 ) {
     val lyrics = rememberLyrics(np, showLyrics, lyricsOnline)
@@ -647,14 +675,14 @@ private fun TrackInfo(
                 Text(
                     if (np.hasTrack) title else "Tidak ada yang diputar",
                     style = MaterialTheme.typography.headlineSmall,
-                    color = TextPrimary,
+                    color = look.primary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    if (np.hasTrack) artist else "Ketuk sampul untuk membuka aplikasi musik",
+                    if (np.hasTrack) artist else "Ketuk TV untuk membuka aplikasi musik",
                     style = MaterialTheme.typography.bodyLarge,
-                    color = TextSecondary,
+                    color = look.secondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(top = 2.dp),
@@ -664,21 +692,23 @@ private fun TrackInfo(
         if (np.hasTrack && np.durationMs > 0) {
             Box(
                 Modifier.padding(top = 18.dp).fillMaxWidth().height(4.dp)
-                    .clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = 0.16f))
+                    .clip(RoundedCornerShape(50)).background(look.primary.copy(alpha = 0.16f))
             ) {
-                Box(Modifier.fillMaxWidth(progress.coerceIn(0f, 1f)).fillMaxHeight().background(Color.White.copy(alpha = 0.78f)))
+                Box(Modifier.fillMaxWidth(progress.coerceIn(0f, 1f)).fillMaxHeight().background(look.primary.copy(alpha = 0.78f)))
             }
             Row(Modifier.fillMaxWidth().padding(top = 6.dp)) {
-                Text(posText, style = MaterialTheme.typography.labelSmall.copy(fontFeatureSettings = "tnum"), color = TextTertiary)
+                Text(posText, style = MaterialTheme.typography.labelSmall.copy(fontFeatureSettings = "tnum"), color = look.secondary)
                 Spacer(Modifier.weight(1f))
-                Text(formatMs(np.durationMs), style = MaterialTheme.typography.labelSmall.copy(fontFeatureSettings = "tnum"), color = TextTertiary)
+                Text(formatMs(np.durationMs), style = MaterialTheme.typography.labelSmall.copy(fontFeatureSettings = "tnum"), color = look.secondary)
             }
         }
-        if (np.hasTrack) VisualizerStrip(fx, visualizer, visualizerMode, visualizerUnavailable, barColor)
+        if (np.hasTrack) VisualizerStrip(fx, visualizer, visualizerMode, visualizerUnavailable, barColor, look.secondary)
         if (np.hasTrack && showLyrics) {
             LyricsLines(
                 np, lyrics,
-                Modifier.padding(top = 20.dp).fillMaxWidth()
+                primary = look.primary,
+                secondary = look.secondary,
+                modifier = Modifier.padding(top = 20.dp).fillMaxWidth()
                     .clip(Corner.s)
                     .clickable(onClickLabel = "Buka lirik layar penuh", role = Role.Button, onClick = onOpenLyrics),
             )
@@ -690,16 +720,16 @@ private fun TrackInfo(
             ) {
                 for ((label, clickLabel, action) in listOf(
                     Triple("Lirik", "Buka lirik layar penuh", onOpenLyrics),
-                    Triple("Berikutnya  ›", "Buka rak piringan", onOpenCrate),
+                    Triple("Kaset  ›", "Buka perpustakaan kaset", onOpenCrate),
                 )) {
                     Text(
                         label,
                         style = MaterialTheme.typography.labelLarge,
-                        color = TextSecondary,
+                        color = look.primary,
                         modifier = Modifier
                             .minimumInteractiveComponentSize()
                             .clip(RoundedCornerShape(50))
-                            .glass(RoundedCornerShape(50), fillAlpha = 0.06f)
+                            .border(1.dp, look.secondary.copy(alpha = 0.5f), RoundedCornerShape(50))
                             .clickable(onClickLabel = clickLabel, role = Role.Button, onClick = action)
                             .padding(horizontal = 16.dp, vertical = 8.dp),
                     )
@@ -720,6 +750,7 @@ private fun VisualizerStrip(
     mode: VisualizerMode,
     unavailable: Boolean,
     barColor: Color,
+    noteColor: Color,
 ) {
     val note: String? = when {
         plan == VisualizerPlan.NEEDS_PERMISSION -> "Visualizer audio asli butuh izin mikrofon. Atur di Pengaturan → Efek visual."
@@ -742,7 +773,7 @@ private fun VisualizerStrip(
             Text(
                 note,
                 style = MaterialTheme.typography.labelSmall,
-                color = TextSecondary,
+                color = noteColor,
                 modifier = Modifier.padding(top = if (showBars) 6.dp else 0.dp),
             )
         }
