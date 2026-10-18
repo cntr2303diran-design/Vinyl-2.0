@@ -160,10 +160,10 @@ fun RoomScene(
     wallColor: Color? = null,
     wallGradient: Pair<Color, Color>? = null,
     wallPicture: ImageBitmap? = null,
-    /** Isi tambahan di layar TV (batang visualizer, lirik saat TV didekatkan); menerima status zoom TV. */
-    screenOverlay: @Composable (zoomed: Boolean) -> Unit = {},
     /** Video milik pengguna untuk layar TV (hanya TV utama; pantulan di lantai tetap memakai cover). */
     screenVideo: (@Composable () -> Unit)? = null,
+    /** Isi tambahan di layar TV (batang visualizer, lirik saat TV didekatkan); menerima status zoom TV. Lambda terakhir. */
+    screenOverlay: @Composable (zoomed: Boolean) -> Unit = {},
 ) {
     val colors = SceneTheme.of(tone)
     val mode = TvScreen.mode(np.hasTrack, np.isPlaying, retro.albumMotion, motionAllowed)
