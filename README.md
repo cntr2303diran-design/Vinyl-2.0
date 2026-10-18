@@ -20,10 +20,10 @@ Launcher Android untuk tablet dengan tema **TV tabung analog** (sebelumnya "tabl
 | Pergantian lembut | Opsional: volume turun sebentar lalu naik saat ganti lagu. **Bukan crossfade** — launcher tidak memutar audio |
 | Suara & getar | Bunyi tombol kaset & motor, desing pita saat ganti lagu, klik knob, desis pita opsional; volume & kekuatan getar bisa diatur |
 | Layar kunci TV | Tampil di atas keyguard: TV dengan cover & VFD (jam, artis), jam besar, tanggal, kalender, kartu lagu + lirik; geser untuk membuka, tekan lama untuk editor |
-| App drawer | **A–Z** dengan bilah lompat, **Sering dipakai**, **kategori**, **lencana notifikasi**, pintasan aplikasi, **pencarian universal** (aplikasi · lagu · kontak opsional · pengaturan sistem) |
-| Taskbar & tombol navigasi | Bar gaya PC di atas semua aplikasi; tombol Kembali/Home/Terbaru melayang yang bisa diatur |
+| App drawer (Panduan Channel) | Tiap aplikasi punya **nomor channel** tetap (urutan abjad); **A–Z** dengan bilah lompat, **Sering dipakai**, **kategori**, **lencana notifikasi**, pintasan aplikasi, **pencarian universal** (aplikasi · lagu · kontak opsional · pengaturan sistem) |
+| Taskbar & tombol navigasi | Bar bergaya panel depan VCR di atas semua aplikasi (tombol mekanis, jam & lagu di jendela VFD); tombol Kembali/Home/Terbaru bergaya tombol remote yang bisa diatur |
 | Gestur | Swipe atas/bawah & ketuk dua kali, plus gestur gambar sendiri (16 aksi) |
-| Kustomisasi | Tekan lama area kosong: TV & kaset (bodi, ukuran, posisi, knob, VFD, layar CRT, cangkang & gulungan kaset, tukar halaman), dinding, jam sudut, widget, gestur, preset tema |
+| Kustomisasi | Tekan lama area kosong membuka *service menu*: TV & kaset (bodi, ukuran, posisi, knob, VFD, layar CRT, cangkang & gulungan kaset, tukar halaman), dinding, jam sudut, widget, gestur, preset tema |
 | Efek visual | Distorsi kaca, cahaya reaktif, partikel, parallax, visualizer audio (*Audio asli* butuh izin mikrofon; *Animasi dekoratif* diberi label). Mati otomatis saat animasi sistem dimatikan atau Penghemat baterai aktif |
 
 ## Cara build di Android Studio

@@ -159,3 +159,14 @@ Dibuktikan `SettingsMigrationTest`.
 - Karena drawer, pengaturan, dialog, onboarding, taskbar, dan lirik memakai skema Material dari token ini, semuanya ikut
   berganti tanpa kode warna terpisah.
 - Layar kunci dan onboarding memakai komponen `CrtTv` yang sama dengan ruang TV (gaya dari `RetroSettings`).
+
+### Layar pendukung bertema TV (desain ulang 1.0)
+
+| Layar | Metafora | Catatan aksesibilitas & performa |
+|---|---|---|
+| App drawer | Panduan Channel: nomor channel tetap = urutan pada daftar abjad lengkap (`DrawerLayout.channels`, diuji), sama di kategori, "Sering dipakai", dan hasil pencarian; pencarian = "tuning"; penghitung channel bergaya VFD | Pelat nomor = amber VFD di atas kaca VFD (pasangan teruji `RetroPaletteTest`), tidak dibacakan TalkBack dan tidak ikut skala font (hiasan); nomor dihitung sekali per perubahan daftar aplikasi |
+| Taskbar | Panel depan VCR: badan arang, tombol mekanis yang turun 1dp saat ditekan, jam & lagu di jendela VFD | Ukuran tetap diputuskan `TaskbarPlanner` (tanggal VFD huruf kapital mono muat di `TRAY_DATE_W`); simbol krem di atas arang (teruji) |
+| Tombol navigasi | Tombol karet remote; Home amber seperti tombol OK | Simbol Android standar tetap dipakai agar langsung dikenali |
+| Editor beranda | Service menu: baris status mono amber, tab huruf kapital mono, tab terpilih ▸ di atas amber | Tab = `Role.Tab` dengan status terpilih; target sentuh tab & preset dinaikkan ke 48dp |
+| Lirik | Halaman teletext/subtitel | Garis scan hanya menggelapkan; kotak subtitel menjaga kontras baris aktif |
+| Widget | Kalender sobek, cuaca VFD, baterai jarum, polaroid | Tiap widget membawa permukaannya sendiri, jadi kontras tidak bergantung warna dinding |
