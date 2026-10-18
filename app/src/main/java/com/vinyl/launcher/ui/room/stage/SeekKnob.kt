@@ -192,7 +192,9 @@ fun SeekOsd(state: SeekState, durationMs: Long, tvWidth: Dp) {
         delta < 0 -> StatusText.Transport.REWIND
         else -> StatusText.Transport.PLAY
     }
-    val big = (tvWidth.value * 0.07f).coerceIn(14f, 60f)
+    // Mengikuti ukuran TV; skala huruf sistem ikut sampai 1,3× agar kotak tetap di dalam layar TV
+    val fs = LocalDensity.current.fontScale
+    val big = (tvWidth.value * 0.07f).coerceIn(14f, 60f) * fs.coerceAtMost(1.3f) / fs
     Box(Modifier.fillMaxSize().clearAndSetSemantics { }) {
         // Garis gangguan pita selama mencari
         if (delta != 0L) Canvas(Modifier.fillMaxSize()) {

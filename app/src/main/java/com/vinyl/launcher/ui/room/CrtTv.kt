@@ -25,7 +25,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.State
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -45,6 +45,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -250,7 +251,8 @@ fun CrtTv(
             contentAlignment = Alignment.Center,
         ) {
             val color = if (vfdColor == VfdColor.GREEN) RetroColors.VfdGreen else RetroColors.VfdAmber
-            val size = (w.value * 0.021f).coerceIn(6f, 16f).sp
+            // Bagian dari gambar TV: ukurannya mengikuti TV, bukan skala huruf sistem (kalau ikut, keluar jendela VFD)
+            val size = ((w.value * 0.021f).coerceIn(6f, 16f) / LocalDensity.current.fontScale).sp
             Text(
                 line, color = color, fontFamily = MonoFamily, fontWeight = FontWeight.Medium, fontSize = size,
                 lineHeight = size, maxLines = 1, softWrap = false, overflow = TextOverflow.Clip,
@@ -263,7 +265,9 @@ fun CrtTv(
 @Composable
 private fun ScreenCaption(title: String, artist: String, tvWidth: Dp) {
     if (title.isBlank()) return
-    val big = (tvWidth.value * 0.062f).coerceIn(13f, 54f)
+    // Skala huruf sistem ikut sampai 1,3× (lebih besar menutupi seluruh layar TV); judul lengkap tetap di TalkBack & lirik
+    val fs = LocalDensity.current.fontScale
+    val big = (tvWidth.value * 0.062f).coerceIn(13f, 54f) * fs.coerceAtMost(1.3f) / fs
     Column(
         Modifier.fillMaxSize().padding(start = tvWidth * 0.035f, end = tvWidth * 0.05f, bottom = tvWidth * 0.04f),
         verticalArrangement = Arrangement.Bottom,
@@ -309,7 +313,7 @@ private fun StandbyText(tvWidth: Dp) {
             "NO TAPE",
             color = Color.White.copy(alpha = 0.22f),
             fontFamily = OsdFamily,
-            fontSize = (tvWidth.value * 0.05f).coerceIn(10f, 40f).sp,
+            fontSize = ((tvWidth.value * 0.05f).coerceIn(10f, 40f) / LocalDensity.current.fontScale).sp,
         )
     }
 }
@@ -317,17 +321,18 @@ private fun StandbyText(tvWidth: Dp) {
 /** Cover di layar (Mode B) atau cover bergerak (Mode C). */
 @Composable
 private fun ScreenPicture(art: ImageBitmap?, accent: Color, motion: AlbumMotion, moving: Boolean) {
-    val t = if (moving) {
-        val tr = rememberInfiniteTransition(label = "albumMotion")
-        val v by tr.animateFloat(0f, 1f, infiniteRepeatable(tween(16_000, easing = LinearEasing), RepeatMode.Restart), label = "m")
-        v
-    } else 0f
-    val cycle = sin(t * 2 * PI).toFloat()
+    // Fase animasi dibaca di graphicsLayer (fase gambar): cover bergerak tanpa rekomposisi tiap frame
+    val phase: State<Float>? = if (moving) {
+        rememberInfiniteTransition(label = "albumMotion")
+            .animateFloat(0f, 1f, infiniteRepeatable(tween(16_000, easing = LinearEasing), RepeatMode.Restart), label = "m")
+    } else null
     Box(
         Modifier
             .fillMaxSize()
             .graphicsLayer {
-                if (moving) when (motion) {
+                val t = phase?.value ?: 0f
+                val cycle = sin(t * 2 * PI).toFloat()
+                if (phase != null) when (motion) {
                     AlbumMotion.ROTATE -> { rotationZ = t * 360f; scaleX = 1.42f; scaleY = 1.42f }
                     AlbumMotion.ZOOM -> { val s = 1.05f + 0.10f * (0.5f + 0.5f * cycle); scaleX = s; scaleY = s }
                     AlbumMotion.PERSPECTIVE -> { rotationY = 9f * cycle; rotationX = 4f * cos(t * 2 * PI).toFloat(); cameraDistance = 10f * density; scaleX = 1.08f; scaleY = 1.08f }

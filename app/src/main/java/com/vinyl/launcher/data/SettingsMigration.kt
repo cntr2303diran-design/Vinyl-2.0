@@ -16,6 +16,13 @@ object SettingsMigration {
 
     const val RETRO_KEY = "retro"
 
+    /**
+     * Format JSON pengaturan yang tersimpan di perangkat. coerceInputValues: nilai enum yang tidak dikenal (mis. setelah
+     * memasang versi lebih lama) menjadi nilai bawaan properti itu saja, bukan membuang SEMUA pengaturan karena satu
+     * nilai. (Berkas cadangan sengaja lebih ketat: nilai tak dikenal ditolak, lihat SettingsBackup.)
+     */
+    val storeJson: Json = Json { ignoreUnknownKeys = true; encodeDefaults = true; coerceInputValues = true }
+
     /** Padanan tema TV tabung untuk gaya vinyl di [home]. */
     fun fromLegacy(home: HomeSettings): RetroSettings = RetroSettings(
         tvBody = if (home.vinylStyle == VinylStyle.COLORED) TvBody.SPACE_AGE else TvBody.CREAM,

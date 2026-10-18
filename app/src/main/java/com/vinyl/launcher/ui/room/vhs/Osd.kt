@@ -33,6 +33,8 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -45,6 +47,7 @@ import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -55,6 +58,7 @@ import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -131,12 +135,10 @@ fun VhsOsd(
     val capped = Density(density.density, fontScale = density.fontScale.coerceAtMost(MAX_FONT_SCALE))
     CompositionLocalProvider(LocalDensity provides capped) {
         Box(modifier.fillMaxSize()) {
-            // Peredam pita atas & bawah (latar teks), memudar ke tengah
+            // Peredam pita bawah (penghitung pita membentang selebar layar); teks atas memakai peredam sudutnya sendiri
             Canvas(Modifier.fillMaxSize().clearAndSetSemantics { }) {
-                val band = 92.dp.toPx()
                 val a = Tokens.Vhs.OSD_SCRIM_ALPHA.toFloat()
-                drawRect(Brush.verticalGradient(0f to Color.Black.copy(alpha = a), 0.55f to Color.Black.copy(alpha = a * 0.75f), 1f to Color.Transparent, endY = band), size = Size(size.width, band))
-                val bottomBand = (if (landscape) 96.dp else 136.dp).toPx()
+                val bottomBand = (if (landscape) 88.dp else 136.dp).toPx()
                 drawRect(
                     Brush.verticalGradient(0f to Color.Transparent, 0.45f to Color.Black.copy(alpha = a * 0.75f), 1f to Color.Black.copy(alpha = a), startY = size.height - bottomBand, endY = size.height),
                     topLeft = Offset(0f, size.height - bottomBand), size = Size(size.width, bottomBand),
@@ -148,7 +150,7 @@ fun VhsOsd(
 
             // ----- Kiri atas: mode pita
             Column(
-                top.align(Alignment.TopStart).padding(start = 18.dp, top = 12.dp).clearAndSetSemantics { },
+                top.align(Alignment.TopStart).padding(start = 18.dp, top = 12.dp).osdScrim().clearAndSetSemantics { },
             ) {
                 Text(StatusText.modeLine(state.transport), style = osdStyle(30.sp))
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -159,7 +161,7 @@ fun VhsOsd(
 
             // ----- Kanan atas: baterai & status
             Column(
-                top.align(Alignment.TopEnd).padding(end = 14.dp, top = 8.dp),
+                top.align(Alignment.TopEnd).padding(end = 14.dp, top = 8.dp).osdScrim(),
                 horizontalAlignment = Alignment.End,
             ) {
                 StatusCluster(state, actions)
@@ -176,12 +178,12 @@ fun VhsOsd(
                 if (landscape) {
                     Row(verticalAlignment = Alignment.Bottom) {
                         if (state.showClock) DateText(state, actions.onClock)
-                        if (state.hasTrack) TapeCounter(state, actions.onSeek, Modifier.weight(1f).padding(horizontal = 24.dp))
+                        if (state.hasTrack) LtrCounter(state, actions.onSeek, Modifier.weight(1f).padding(horizontal = 24.dp))
                         else Spacer(Modifier.weight(1f))
                         if (state.showClock) TimeText(state, actions.onClock)
                     }
                 } else {
-                    if (state.hasTrack) TapeCounter(state, actions.onSeek, Modifier.fillMaxWidth())
+                    if (state.hasTrack) LtrCounter(state, actions.onSeek, Modifier.fillMaxWidth())
                     // Tanggal & jam berbagi satu baris bila muat; dengan huruf besar jam turun ke baris berikutnya
                     if (state.showClock) FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         DateText(state, actions.onClock)
@@ -288,6 +290,15 @@ private fun NotificationRow(state: OsdState, actions: OsdActions) {
         }
         Text(if (count > 99) "99+" else "$count", style = osdStyle(24.sp))
     }
+}
+
+/**
+ * Garis waktu pita selalu kiri-ke-kanan, juga pada bahasa kanan-ke-kiri: ia menggambarkan arah pita berjalan, seperti
+ * tombol putar/maju/mundur (pedoman kontrol media).
+ */
+@Composable
+private fun LtrCounter(state: OsdState, onSeek: (Long) -> Unit, modifier: Modifier) {
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) { TapeCounter(state, onSeek, modifier) }
 }
 
 /** Penghitung pita VCR + garis posisi. Geser/ketuk untuk pindah posisi; pembaca layar: kontrol yang bisa diatur. */
@@ -400,5 +411,22 @@ private fun DrawScope.drawGlyph(g: Glyph, level: Int, dim: Boolean) {
         val grp = g.groupOf(y)
         val lit = !dim && (grp < 0 || grp < level)
         drawRect(if (lit) OsdWhite else OsdWhite.copy(alpha = 0.3f), Offset(x * p, y * p), Size(p, p))
+    }
+}
+
+/**
+ * Peredam lembut di belakang satu blok OSD sudut: inti di bawah teks berlapis hingga alpha ≥ [Tokens.Vhs.OSD_SCRIM_ALPHA]
+ * (teks putih tetap ≥ 4,5:1 di atas proyeksi putih), tepinya memudar 24 dp sehingga tidak tampak seperti kotak.
+ */
+private fun Modifier.osdScrim(): Modifier = drawBehind {
+    val layers = Tokens.Vhs.SCRIM_LAYERS
+    val feather = 24.dp.toPx()
+    val c = Color.Black.copy(alpha = Tokens.Vhs.SCRIM_LAYER_ALPHA.toFloat())
+    for (i in 0 until layers) {
+        val grow = feather * (layers - 1 - i) / (layers - 1)
+        drawRoundRect(
+            c, topLeft = Offset(-grow, -grow), size = Size(size.width + 2 * grow, size.height + 2 * grow),
+            cornerRadius = CornerRadius(grow + 8.dp.toPx()),
+        )
     }
 }

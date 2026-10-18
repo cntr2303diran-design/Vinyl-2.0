@@ -1,12 +1,12 @@
 package com.vinyl.launcher.system
 
 import android.content.Context
-import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.drawable.Icon
 import android.util.LruCache
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.core.graphics.createBitmap
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -51,7 +51,7 @@ object NotificationIcons {
 
     private fun render(context: Context, icon: Icon): ImageBitmap? = runCatching {
         val d = icon.loadDrawable(context) ?: return null
-        val b = Bitmap.createBitmap(ICON_PX, ICON_PX, Bitmap.Config.ARGB_8888)
+        val b = createBitmap(ICON_PX, ICON_PX)
         d.setBounds(0, 0, ICON_PX, ICON_PX)
         d.draw(Canvas(b))
         b.asImageBitmap()

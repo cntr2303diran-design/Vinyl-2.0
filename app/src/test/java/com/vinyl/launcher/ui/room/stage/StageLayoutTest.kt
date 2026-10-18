@@ -32,6 +32,23 @@ class StageLayoutTest {
     }
 
     @Test
+    fun onShortLandscapeScreensTheTvMayRiseOnlyBetweenTheOsdCornerColumns() {
+        var relaxedSeen = false
+        for ((w, h) in screens) for (s in sizes) {
+            val f = StageLayout.compute(w, h, s)
+            if (f.tvFront.top < StageLayout.OSD_TOP - 0.5f) {
+                relaxedSeen = true
+                val tag = "w=$w h=$h s=$s"
+                assertTrue(tag, f.landscape && h < 560f)
+                val tvLeft = minOf(f.tvFront.left, SRect.around(f.tv.corners().map(f.camera::project)).left)
+                assertTrue(tag, tvLeft >= StageLayout.OSD_CORNER_W)
+                assertTrue(tag, f.cassetteBounds.right <= w - StageLayout.OSD_CORNER_W)
+            }
+        }
+        assertTrue("ponsel mendatar seharusnya memakai ruang pita atas", relaxedSeen)
+    }
+
+    @Test
     fun deckIsBigEnoughForFourTouchTargetsAndSitsInsideTheStand() {
         for ((w, h) in screens) {
             val f = StageLayout.compute(w, h)
@@ -68,13 +85,41 @@ class StageLayoutTest {
     }
 
     @Test
-    fun projectionHangsBehindAndAboveTheTv() {
+    fun projectionHangsBehindAndAboveTheTvWithItsTopEdgeOnScreen() {
+        for ((w, h) in screens) for (p in listOf(0.6f, 1f, 1.2f, Float.NaN)) {
+            val f = StageLayout.compute(w, h, projectorSize = p)
+            val tag = "w=$w h=$h p=$p proj=${f.projection} tv=${f.tvFront}"
+            assertTrue(tag, f.projection.top < f.tvFront.top)
+            assertTrue(tag, abs(f.projection.centerX - f.tvFront.centerX) < f.tvFront.width * 0.2f)
+            // Bingkai cahaya terbaca utuh di atas: tepi atas & samping di dalam layar
+            assertTrue(tag, f.projection.top >= 0f && f.projection.left >= 0f && f.projection.right <= w)
+            // Lebih lebar dari TV sehingga cahayanya terlihat di kedua sisi
+            assertTrue(tag, f.projection.width > f.tvFront.width)
+            assertTrue(tag, f.floorLine > f.tvFront.bottom - f.tvFront.height)
+        }
+    }
+
+    @Test
+    fun projectorSizeSettingGrowsAndShrinksThePicture() {
+        val small = StageLayout.compute(411f, 891f, projectorSize = 0.6f).projection
+        val big = StageLayout.compute(411f, 891f, projectorSize = 1.2f).projection
+        assertTrue(small.width < big.width)
+    }
+
+    @Test
+    fun consoleHasASlabAnOpenShelfAndSpeakerGrillesThatDoNotOverlap() {
         for ((w, h) in screens) {
             val f = StageLayout.compute(w, h)
-            assertTrue(f.projection.top < f.tvFront.top)
-            assertTrue(abs(f.projection.centerX - f.tvFront.centerX) < f.tvFront.width * 0.2f)
-            assertTrue(f.floorLine > f.tvFront.bottom - f.tvFront.height)
+            val tag = "w=$w h=$h"
+            assertTrue(tag, f.slabEdge.bottom <= f.shelf.top + 0.5f)
+            assertTrue(tag, f.shelf.bottom <= f.plinth.top + 0.5f)
+            f.grilleLeft?.let { assertTrue(tag, it.right <= f.shelf.left && it.top >= f.slabEdge.bottom) }
+            f.grilleRight?.let { assertTrue(tag, it.left >= f.shelf.right && it.top >= f.slabEdge.bottom) }
+            assertTrue(tag, f.baseboardTop < f.floorLine)
         }
+        // Di tablet mendatar kedua kisi speaker muat
+        val t = StageLayout.compute(1280f, 800f)
+        assertTrue(t.grilleLeft != null && t.grilleRight != null)
     }
 
     @Test
@@ -120,13 +165,22 @@ class StageLayoutTest {
         assertTrue(inset.tvFront.top >= inset.osdTop - 0.5f)
     }
 
+    @Test
+    fun unprojectIsTheInverseOfProjectOnAPlane() {
+        val f = StageLayout.compute(1280f, 800f)
+        val p = V3(12.5f, 33f, StageLayout.STAND_FRONT_Z)
+        val s = f.camera.project(p)
+        assertEquals(p.x, f.camera.unprojectX(s.x, p.z), 0.001f)
+        assertEquals(p.y, f.camera.unprojectY(s.y, p.z), 0.001f)
+    }
+
     /** Bukan pengujian: cetak geometri untuk diperiksa visual saat merancang (dijalankan bersama tes lain, murah). */
     @Test
     fun dumpForDesignReview() {
-        for ((w, h) in listOf(1312f to 816f, 411f to 891f, 360f to 780f, 915f to 412f, 673f to 841f)) {
+        for ((w, h) in listOf(1312f to 816f, 411f to 891f, 360f to 780f, 915f to 412f, 673f to 841f, 640f to 360f, 852f to 393f)) {
             val f = StageLayout.compute(w, h)
             val c = f.cassette.corners().map(f.camera::project)
-            println("STAGE w=$w h=$h tv=${f.tvFront} deck=${f.deck} shelf=${f.shelf} stand=${f.standFront} cas=${f.cassetteBounds} proj=${f.projection} floor=${f.floorLine} f=${f.camera.focal} cx=${f.camera.cx} cy=${f.camera.cy}")
+            println("STAGE w=$w h=$h tv=${f.tvFront} deck=${f.deck} shelf=${f.shelf} stand=${f.standFront} slab=${f.slabEdge} gl=${f.grilleLeft} gr=${f.grilleRight} cas=${f.cassetteBounds} proj=${f.projection} floor=${f.floorLine} f=${f.camera.focal} cx=${f.camera.cx} cy=${f.camera.cy}")
             println("CAS " + c.joinToString(" ") { "%.1f,%.1f".format(it.x, it.y) })
         }
     }

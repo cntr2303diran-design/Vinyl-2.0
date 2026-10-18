@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -18,6 +19,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -25,6 +27,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.vinyl.launcher.data.RetroSettings
 import com.vinyl.launcher.data.RoomTone
@@ -89,6 +92,8 @@ fun RoomStage(
     showCover: Boolean = true,
     showTitle: Boolean = true,
     tvOff: Boolean = false,
+    /** Video milik pengguna di layar TV (menggantikan cover setelah frame pertamanya tampil). */
+    screenVideo: (@Composable () -> Unit)? = null,
     /** Lapisan di depan dinding & proyeksi, di belakang meja dan TV (mis. debu melayang). */
     atmosphere: @Composable () -> Unit = {},
     /** Isi tambahan di layar TV (subtitel lirik). Lambda terakhir. */
@@ -104,14 +109,25 @@ fun RoomStage(
         c.copy(alpha = 0.30f * retro.projector.brightness.coerceIn(0.1f, 1f))
     } else Color.Transparent
 
+    val weave = remember { weaveBrush() }
+    val carpet = remember { carpetBrush() }
+    // Panggung adalah benda fisik: tidak dicerminkan pada bahasa kanan-ke-kiri (tombol pita & knob juga tidak, seperti
+    // pedoman kontrol media); teks di dalamnya tetap mengikuti arah tulisannya sendiri
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
     BoxWithConstraints(modifier.fillMaxSize()) {
         val w = maxWidth.value
         val h = maxHeight.value
-        val f = remember(w, h, tvSize, topInset, bottomInset) { StageLayout.compute(w, h, tvSize, topInset, bottomInset) }
+        val projectorSize = retro.projector.size
+        val f = remember(w, h, tvSize, topInset, bottomInset, projectorSize) {
+            StageLayout.compute(w, h, tvSize, topInset, bottomInset, projectorSize)
+        }
 
         // ---------- Dinding & lantai
         Canvas(Modifier.fillMaxSize().clearAndSetSemantics { }) {
-            drawStageBackdrop(f, pal, projectionGlow, screenGlow, retro.glowIntensity * if (screenOn) 1f else 0.2f, wallGradient)
+            drawStageBackdrop(
+                f, pal, projectionGlow, screenGlow, retro.glowIntensity * if (screenOn) 1f else 0.2f, wallGradient,
+                paneling = tone == RoomTone.DIM, carpet = carpet,
+            )
         }
         // Gambar dinding pilihan pengguna (samar, di belakang proyeksi)
         if (wallPicture != null) {
@@ -134,7 +150,7 @@ fun RoomStage(
                 .clearAndSetSemantics { }
                 .drawWithCache {
                     val grain = standGrain(f, density)
-                    onDrawBehind { drawStageFurniture(f, pal, material, screenGlow, retro.glowIntensity, screenOn, grain) }
+                    onDrawBehind { drawStageFurniture(f, pal, material, screenGlow, retro.glowIntensity, screenOn, grain, weave) }
                 },
         )
 
@@ -158,7 +174,7 @@ fun RoomStage(
                 body = retro.tvBody, knob = retro.knobStyle, vfdColor = retro.vfdColor, vfdLines = listOf(info.tvVfd),
                 crtStrength = retro.crtStrength, motion = retro.albumMotion, reduceMotion = !motionAllowed,
                 titleScrimAlpha = titleScrimAlpha, knobTurns = seek.turns, knobHighlight = seek.touching,
-                modifier = Modifier.fillMaxSize(), poweredOff = tvOff,
+                modifier = Modifier.fillMaxSize(), poweredOff = tvOff, screenVideo = screenVideo,
                 screenOverlay = {
                     screenExtra()
                     SeekOsd(seek, np.durationMs, tv.width.dp)
@@ -192,5 +208,6 @@ fun RoomStage(
             enabled = !editing, onPrevious = actions.onPrevious, onRewind = actions.onRewind,
             onPlayPause = actions.onPlayPause, onNext = actions.onNext,
         )
+    }
     }
 }

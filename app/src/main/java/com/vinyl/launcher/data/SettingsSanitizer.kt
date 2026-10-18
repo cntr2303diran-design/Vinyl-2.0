@@ -142,7 +142,7 @@ object SettingsSanitizer {
         projector = r.projector.copy(
             brightness = r.projector.brightness.fix(0.1f, 1f, 0.6f),
             size = r.projector.size.fix(0.6f, 1.2f, 1f),
-            focus = r.projector.focus.fix(0f, 1f, 0.75f),
+            focus = r.projector.focus.fix(0f, 1f, 0.85f),
         ),
     )
 

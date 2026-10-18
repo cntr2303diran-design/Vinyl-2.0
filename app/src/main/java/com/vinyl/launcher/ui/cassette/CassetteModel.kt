@@ -1,5 +1,6 @@
 package com.vinyl.launcher.ui.cassette
 
+import java.util.Locale
 import com.vinyl.launcher.data.ReelSpeed
 import com.vinyl.launcher.ui.theme.Tokens
 import kotlin.math.PI
@@ -59,7 +60,7 @@ object KnobSeek {
         val h = s / 3600
         val m = (s % 3600) / 60
         val sec = s % 60
-        return if (h > 0) "%d:%02d:%02d".format(h, m, sec) else "%02d:%02d".format(m, sec)
+        return if (h > 0) "%d:%02d:%02d".format(Locale.ROOT, h, m, sec) else "%02d:%02d".format(Locale.ROOT, m, sec)
     }
 }
 

@@ -168,7 +168,7 @@ class SettingsMigrationTest {
         assertEquals(ProjectorSettings(), back.retro.projector)
         assertEquals(OsdSettings(), back.retro.osd)
         assertTrue(back.retro.osd.hideStatusBar)
-        assertEquals(ProjectorSource.AUTO, back.retro.projector.source)
+        assertEquals(ProjectorSource.COVER, back.retro.projector.source)
     }
 
     @Test
@@ -179,5 +179,18 @@ class SettingsMigrationTest {
         assertEquals(0.1f, s.retro.projector.brightness)
         assertEquals(1f, s.retro.projector.size)
         assertEquals(1f, s.retro.projector.focus)
+    }
+
+    @Test
+    fun anUnknownValueResetsOnlyThatSettingNotEverything() {
+        // Mis. setelah memasang versi lebih lama yang belum mengenal suatu pilihan
+        val mine = AppSettings(retro = RetroSettings(tvBody = TvBody.WALNUT, projector = ProjectorSettings(source = ProjectorSource.OFF, brightness = 0.3f)))
+        val raw = SettingsMigration.storeJson.encodeToString(AppSettings.serializer(), mine)
+            .replace("\"source\":\"OFF\"", "\"source\":\"HOLOGRAM\"")
+        assertTrue(raw.contains("HOLOGRAM"))
+        val back = SettingsMigration.decode(SettingsMigration.storeJson, raw)
+        assertEquals(ProjectorSource.COVER, back.retro.projector.source)
+        assertEquals(0.3f, back.retro.projector.brightness)
+        assertEquals(TvBody.WALNUT, back.retro.tvBody)
     }
 }

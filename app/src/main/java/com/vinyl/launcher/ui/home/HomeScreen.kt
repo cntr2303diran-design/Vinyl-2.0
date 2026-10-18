@@ -285,15 +285,15 @@ fun HomeScreen(vm: HomeViewModel) {
     val look = rememberRoomLook(settings.retro.room, home.background, projected)
     // Knob SEEK: dibagi panggung (jarum & layar TV) dan OSD (mode FF/REW, penghitung pita)
     val seekState = remember { SeekState() }
-    // Proyektor: video milik pengguna (sumber Otomatis), cover, atau visualizer; mati = dinding gelap
+    // Proyektor: cover atau visualizer; mati = dinding gelap. Video milik pengguna diputar di layar TV.
     val projector = settings.retro.projector
     val showBars = (fxPlan.visualizer == VisualizerPlan.REAL && visualizerState != VisualizerStatus.State.UNAVAILABLE) ||
         fxPlan.visualizer == VisualizerPlan.DECORATIVE
+    val screenVideo: (@Composable () -> Unit)? = videoUri?.let { uri ->
+        { ScreenVideo(uri, np.isPlaying, onError = { failedVideo = videoMatch?.file?.documentId }, Modifier.fillMaxSize()) }
+    }
     val projection: ProjectionContent? = when {
         !np.hasTrack || projector.source == ProjectorSource.OFF -> null
-        projector.source == ProjectorSource.AUTO && videoUri != null -> ProjectionContent.Video {
-            ScreenVideo(videoUri, np.isPlaying, onError = { failedVideo = videoMatch?.file?.documentId }, Modifier.fillMaxSize())
-        }
         projector.source == ProjectorSource.VISUALIZER && showBars -> ProjectionContent.Visualizer {
             SpectrumBars(fx, accent, Modifier.fillMaxSize().padding(horizontal = 24.dp, vertical = 18.dp).clearAndSetSemantics { })
         }
@@ -404,6 +404,7 @@ fun HomeScreen(vm: HomeViewModel) {
                 tvOff = tvOff,
                 seek = seekState,
                 projection = projection,
+                screenVideo = screenVideo,
                 dock = settings.dock,
                 onWidgetChange = { updated -> vm.updateDraft { h -> h.copy(widgets = h.widgets.map { if (it.id == updated.id) updated else it }) } },
                 vm = vm,
@@ -563,6 +564,7 @@ private fun HomeContent(
     tvOff: Boolean,
     seek: SeekState,
     projection: ProjectionContent?,
+    screenVideo: (@Composable () -> Unit)?,
     dock: DockSettings,
     onWidgetChange: (WidgetConfig) -> Unit,
     vm: HomeViewModel,
@@ -623,6 +625,7 @@ private fun HomeContent(
             // Saat subtitel lirik tampil, judul tidak ditulis di atasnya
             showTitle = home.trackInfoVisible && lyrics == null,
             tvOff = tvOff,
+            screenVideo = screenVideo,
             atmosphere = {
                 // Debu halus melayang di cahaya proyeksi (di depan dinding, di belakang TV)
                 if (fxPlan.particles) {

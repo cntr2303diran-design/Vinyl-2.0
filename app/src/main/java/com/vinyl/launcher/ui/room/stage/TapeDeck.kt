@@ -40,6 +40,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -99,21 +100,23 @@ fun TapeDeck(
                 drawLine(Color.Black, Offset(x - 1.6.dp.toPx(), yy), Offset(x + 1.6.dp.toPx(), yy), strokeWidth = 0.8.dp.toPx())
             }
         }
-        val keyH = (h * 0.62f).coerceIn(48.dp, 72.dp)
-        val keyW = keyH * 1.12f
+        // Tombol ≥ 48 dp; jendela VFD mendapat sisa lebar (paling sedikit ±38%) agar dua barisnya terbaca
+        val inner = maxWidth - 28.dp - 10.dp
+        val keyH = (h * 0.58f).coerceIn(48.dp, 58.dp)
+        val keyW = (keyH * 1.05f).coerceAtMost(((inner * 0.62f) - 15.dp) / 4.25f).coerceAtLeast(48.dp)
         Row(
-            Modifier.fillMaxSize().padding(horizontal = 14.dp, vertical = 8.dp),
+            Modifier.fillMaxSize().padding(horizontal = 14.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             DeckVfd(display, vfdColor, Modifier.weight(1f).fillMaxHeight().padding(vertical = 4.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
                 DeckKey(Icons.Rounded.SkipPrevious, "Lagu sebelumnya", enabled && hasSession, keyW, keyH, onClick = onPrevious)
                 DeckKey(Icons.Rounded.FastRewind, "Mundur 10 detik", enabled && hasSession && canSeek, keyW, keyH, onClick = onRewind)
                 DeckKey(
                     if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
                     if (!hasSession) "Buka aplikasi musik" else if (playing) "Jeda" else "Putar",
-                    enabled, keyW * 1.2f, keyH, latched = playing, onClick = onPlayPause,
+                    enabled, keyW * 1.25f, keyH, latched = playing, onClick = onPlayPause,
                 )
                 DeckKey(Icons.Rounded.SkipNext, "Lagu berikutnya", enabled && hasSession, keyW, keyH, onClick = onNext)
             }
@@ -130,7 +133,10 @@ private fun DeckVfd(display: DeckDisplay, vfdColor: VfdColor, modifier: Modifier
             .background(RetroColors.VfdGlass)
             .clearAndSetSemantics { },
     ) {
-        val textSize = (maxHeight.value * 0.26f).coerceIn(9f, 18f).sp
+        // Ukuran huruf mengikuti tinggi jendela; skala huruf sistem ikut sampai 1,3× (lebih dari itu teks keluar jendela)
+        val density = LocalDensity.current
+        val scale = density.fontScale.coerceAtMost(1.3f) / density.fontScale
+        val textSize = ((maxHeight.value * 0.27f).coerceIn(9f, 17f) * scale).sp
         // Kilau kaca & ruas mati samar (VFD sungguhan tetap memperlihatkan segmen yang tidak menyala)
         Canvas(Modifier.fillMaxSize()) {
             drawRect(Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.06f), Color.Transparent), endY = size.height * 0.5f))

@@ -22,6 +22,12 @@ class VhsPaletteTest {
     }
 
     @Test
+    fun stackedCornerScrimReachesTheReadableAlphaUnderTheText() {
+        val core = 1.0 - Math.pow(1.0 - Vhs.SCRIM_LAYER_ALPHA, Vhs.SCRIM_LAYERS.toDouble())
+        assertTrue("inti peredam sudut %.3f".format(core), core >= Vhs.OSD_SCRIM_ALPHA)
+    }
+
+    @Test
     fun lowBatteryWarningUsesWhiteOnRed() {
         assertReadable("OSD_TEXT/OSD_WARN_FILL", Vhs.OSD_TEXT, Vhs.OSD_WARN_FILL)
     }

@@ -18,7 +18,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.Json
 import java.io.File
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "vinyl_settings")
@@ -31,7 +30,7 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 class SettingsRepository private constructor(private val context: Context) {
 
     private val key = stringPreferencesKey("settings_json")
-    private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
+    private val json = SettingsMigration.storeJson
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     /** Folder gambar yang boleh dirujuk pengaturan (hasil salinan dari galeri). */

@@ -69,11 +69,11 @@ object StatusText {
         return "$day ${date.dayOfMonth} $month ${date.year}"
     }
 
-    /** "19:21:07" atau "7:21:07 PM" (12 jam); detik opsional. */
+    /** "19:21:07" atau "7:21:07 PM" (12 jam); detik opsional. Angka Latin seperti layar VCR, di bahasa apa pun. */
     fun timeLine(time: LocalTime, use24h: Boolean, seconds: Boolean): String {
-        val m = "%02d".format(time.minute)
-        val s = if (seconds) ":%02d".format(time.second) else ""
-        return if (use24h) "%02d:%s%s".format(time.hour, m, s)
+        val m = "%02d".format(Locale.ROOT, time.minute)
+        val s = if (seconds) ":%02d".format(Locale.ROOT, time.second) else ""
+        return if (use24h) "%02d:%s%s".format(Locale.ROOT, time.hour, m, s)
         else {
             val h12 = (time.hour % 12).let { if (it == 0) 12 else it }
             "$h12:$m$s ${if (time.hour < 12) "AM" else "PM"}"
@@ -103,14 +103,14 @@ object StatusText {
     /** Penghitung pita "0:02:35" (selalu jam:menit:detik, seperti VCR). */
     fun counter(ms: Long): String {
         val s = (ms.coerceAtLeast(0L) / 1000L)
-        return "%d:%02d:%02d".format(s / 3600, (s % 3600) / 60, s % 60)
+        return "%d:%02d:%02d".format(Locale.ROOT, s / 3600, (s % 3600) / 60, s % 60)
     }
 
     /** Sisa timer tidur "SLEEP 25:00"; null bila tidak aktif. */
     fun sleepLine(remainingMs: Long?): String? {
         if (remainingMs == null || remainingMs <= 0L) return null
         val s = (remainingMs + 999L) / 1000L
-        return "SLEEP %d:%02d".format(s / 60, s % 60)
+        return "SLEEP %d:%02d".format(Locale.ROOT, s / 60, s % 60)
     }
 
     /** Kalimat lengkap untuk pembaca layar (bagian yang tidak terbaca dilewati, tidak ditebak). */
@@ -140,7 +140,7 @@ object StatusText {
             Ringer.NORMAL -> Unit
         }
         if (s.doNotDisturb) add("Jangan Ganggu aktif")
-        s.nextAlarm?.let { add("Alarm %02d:%02d".format(it.hour, it.minute)) }
+        s.nextAlarm?.let { add("Alarm %02d:%02d".format(Locale.ROOT, it.hour, it.minute)) }
         if (s.notifications > 0) add("${s.notifications} notifikasi")
     }.joinToString(". ")
 }

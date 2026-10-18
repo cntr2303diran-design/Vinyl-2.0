@@ -79,6 +79,11 @@ data class StageCamera(val eye: V3, val focal: Float, val cx: Float, val cy: Flo
         return P2(cx + focal * (p.x - eye.x) / d, cy - focal * (p.y - eye.y) / d)
     }
 
+    /** Kebalikan [project] pada kedalaman [z]: x dunia untuk x layar [sx] (dan [unprojectY] untuk y). */
+    fun unprojectX(sx: Float, z: Float): Float = eye.x + (sx - cx) * (z - eye.z).coerceAtLeast(1e-3f) / focal
+
+    fun unprojectY(sy: Float, z: Float): Float = eye.y - (sy - cy) * (z - eye.z).coerceAtLeast(1e-3f) / focal
+
     /** Skala (dp per cm) pada bidang sejajar layar di kedalaman [z]. */
     fun scaleAt(z: Float): Float = focal / (z - eye.z).coerceAtLeast(1e-3f)
 

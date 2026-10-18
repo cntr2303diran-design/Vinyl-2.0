@@ -53,24 +53,17 @@ object DeviceStatusMonitor {
     val state: StateFlow<DeviceStatus> = _state.asStateFlow()
 
     private var users = 0
-    private var app: Context? = null
     private val main = Handler(Looper.getMainLooper())
-    private val receivers = mutableListOf<BroadcastReceiver>()
-    private var netCallback: ConnectivityManager.NetworkCallback? = null
-    private var audioCallback: AudioDeviceCallback? = null
-
-    private val cellPoll = object : Runnable {
-        override fun run() {
-            readCellular()
-            main.postDelayed(this, CELL_POLL_MS)
-        }
-    }
+    /**
+     * Langkah pembatalan untuk setiap pendaftaran (penerima siaran, callback jaringan & audio, polling sinyal). Hanya
+     * konteks aplikasi yang ditangkap (hidup selama proses), bukan Activity.
+     */
+    private val undo = mutableListOf<() -> Unit>()
 
     fun acquire(context: Context) {
         users++
         if (users > 1) return
         val c = context.applicationContext
-        app = c
         runCatching { start(c) }.onFailure { Log.w(TAG, "Status perangkat tidak bisa dipantau: ${it.javaClass.simpleName}") }
     }
 
@@ -78,15 +71,8 @@ object DeviceStatusMonitor {
         if (users == 0) return
         users--
         if (users > 0) return
-        val c = app ?: return
-        receivers.forEach { r -> runCatching { c.unregisterReceiver(r) } }
-        receivers.clear()
-        netCallback?.let { cb -> runCatching { c.getSystemService(ConnectivityManager::class.java)?.unregisterNetworkCallback(cb) } }
-        netCallback = null
-        audioCallback?.let { cb -> runCatching { c.getSystemService(AudioManager::class.java)?.unregisterAudioDeviceCallback(cb) } }
-        audioCallback = null
-        main.removeCallbacks(cellPoll)
-        app = null
+        undo.forEach { runCatching { it() } }
+        undo.clear()
     }
 
     private fun start(c: Context) {
@@ -119,7 +105,7 @@ object DeviceStatusMonitor {
                 override fun onAudioDevicesRemoved(removedDevices: Array<out AudioDeviceInfo>?) = readBluetooth(c)
             }
             am.registerAudioDeviceCallback(cb, main)
-            audioCallback = cb
+            undo += { am.unregisterAudioDeviceCallback(cb) }
         }
         readBluetooth(c)
 
@@ -131,22 +117,33 @@ object DeviceStatusMonitor {
                 override fun onLost(network: Network) = readNetwork(null)
             }
             cm.registerDefaultNetworkCallback(cb, main)
-            netCallback = cb
+            undo += { cm.unregisterNetworkCallback(cb) }
             readNetwork(cm.getNetworkCapabilities(cm.activeNetwork))
         }
         val hasCell = c.packageManager.hasSystemFeature(PackageManager.FEATURE_TELEPHONY)
         _state.update { it.copy(hasCellular = hasCell) }
-        if (hasCell) main.post(cellPoll)
+        val tm = c.getSystemService(TelephonyManager::class.java)
+        if (hasCell && tm != null) {
+            val poll = object : Runnable {
+                override fun run() {
+                    readCellular(tm)
+                    main.postDelayed(this, CELL_POLL_MS)
+                }
+            }
+            main.post(poll)
+            undo += { main.removeCallbacks(poll) }
+        }
     }
 
     private fun register(c: Context, filter: IntentFilter, exported: Boolean = false, onReceive: (Intent) -> Unit): Intent? {
         val r = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) = onReceive(intent)
         }
-        receivers += r
-        return ContextCompat.registerReceiver(
+        val sticky = ContextCompat.registerReceiver(
             c, r, filter, if (exported) ContextCompat.RECEIVER_EXPORTED else ContextCompat.RECEIVER_NOT_EXPORTED,
         )
+        undo += { c.unregisterReceiver(r) }
+        return sticky
     }
 
     private fun readBattery(i: Intent) {
@@ -212,9 +209,7 @@ object DeviceStatusMonitor {
         _state.update { it.copy(wifi = wifi, wifiLevel = StatusText.wifiLevel(rssi), mobileData = cellTransport) }
     }
 
-    private fun readCellular() {
-        val c = app ?: return
-        val tm = c.getSystemService(TelephonyManager::class.java) ?: return
+    private fun readCellular(tm: TelephonyManager) {
         val absent = runCatching { tm.simState == TelephonyManager.SIM_STATE_ABSENT }.getOrDefault(false)
         val level = try {
             tm.signalStrength?.level ?: -1

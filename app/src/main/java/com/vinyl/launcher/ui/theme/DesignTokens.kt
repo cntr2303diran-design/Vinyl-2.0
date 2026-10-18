@@ -124,6 +124,12 @@ object Tokens {
          * proyeksi putih penuh (dibuktikan VhsPaletteTest).
          */
         const val OSD_SCRIM_ALPHA = 0.66
+        /**
+         * Peredam sudut OSD dibuat dari lapisan bertumpuk yang makin kecil (tepi memudar); di inti, di bawah teks, semua
+         * lapisan menumpuk: 1 − (1 − 0,17)^6 ≈ 0,67 ≥ [OSD_SCRIM_ALPHA] (dibuktikan VhsPaletteTest).
+         */
+        const val SCRIM_LAYERS = 6
+        const val SCRIM_LAYER_ALPHA = 0.17
         // Label kaset kertas
         const val LABEL_PAPER = 0xFFE9E0CCL
         const val LABEL_INK = 0xFF1C1A2EL       // spidol biru-hitam

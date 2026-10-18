@@ -519,9 +519,8 @@ private fun ProjectorControls(p: ProjectorSettings, onChange: (ProjectorSettings
         }
         Text(
             when (p.source) {
-                ProjectorSource.AUTO -> "Video milik Anda yang cocok dengan lagu (atur di Pengaturan → Video), selain itu cover album."
-                ProjectorSource.COVER -> "Cover album diproyeksikan besar di dinding, bergerak pelan saat lagu berjalan."
-                ProjectorSource.VISUALIZER -> "Batang spektrum suara. Mode audio asli butuh izin mikrofon (Pengaturan → Gambar & efek); tanpa itu cover yang tampil."
+                ProjectorSource.COVER -> "Cover album diproyeksikan besar di dinding dan bergerak pelan saat lagu berjalan. Video milik Anda (Pengaturan → Gambar & efek) tetap diputar di layar TV."
+                ProjectorSource.VISUALIZER -> "Batang spektrum mengikuti mode visualizer di Pengaturan → Gambar & efek (Asli butuh izin mikrofon, Dekoratif tidak). Saat visualizer mati, lagu dijeda, atau izin belum ada, cover yang tampil."
                 ProjectorSource.OFF -> "Dinding tetap gelap; hanya cahaya layar TV."
             },
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -531,7 +530,6 @@ private fun ProjectorControls(p: ProjectorSettings, onChange: (ProjectorSettings
 }
 
 fun ProjectorSource.label() = when (this) {
-    ProjectorSource.AUTO -> "Otomatis"
     ProjectorSource.COVER -> "Cover"
     ProjectorSource.VISUALIZER -> "Visualizer"
     ProjectorSource.OFF -> "Mati"

@@ -14,7 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.State
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.BlendMode
@@ -35,7 +35,6 @@ import kotlin.math.sin
 /** Isi proyeksi yang sudah diputuskan pemanggil. */
 sealed interface ProjectionContent {
     data class Picture(val image: ImageBitmap) : ProjectionContent
-    class Video(val content: @Composable () -> Unit) : ProjectionContent
     class Visualizer(val content: @Composable () -> Unit) : ProjectionContent
     /** Lagu tanpa cover: bidang warna aksen. */
     data class Tint(val color: Color) : ProjectionContent
@@ -56,17 +55,17 @@ fun WallProjection(
     animate: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    val k = settings.size.coerceIn(0.6f, 1.2f)
-    val w = rect.width * k
-    val h = rect.height * k
-    val left = rect.centerX - w / 2f
-    val top = rect.bottom - h          // ukuran berubah dari tepi bawah (bagian bawah tertutup TV)
-    val wobble = if (animate) {
-        val t = rememberInfiniteTransition(label = "proj")
-        val v by t.animateFloat(0f, 1f, infiniteRepeatable(tween(24_000, easing = LinearEasing), RepeatMode.Restart), label = "kenburns")
-        v
-    } else 0f
-    val blurDp = ((1f - settings.focus.coerceIn(0f, 1f)) * 14f).dp
+    // Ukuran pilihan pengguna sudah diterapkan di [StageLayout] (tepi atas gambar selalu di dalam layar)
+    val w = rect.width
+    val h = rect.height
+    val left = rect.left
+    val top = rect.top
+    // Nilai animasi dibaca di dalam graphicsLayer (fase gambar), bukan saat komposisi: tidak ada rekomposisi tiap frame
+    val phase: State<Float>? = if (animate) {
+        rememberInfiniteTransition(label = "proj")
+            .animateFloat(0f, 1f, infiniteRepeatable(tween(24_000, easing = LinearEasing), RepeatMode.Restart), label = "kenburns")
+    } else null
+    val blurDp = ((1f - settings.focus.coerceIn(0f, 1f)) * 10f).dp
     Box(
         modifier
             .offset(left.dp, top.dp)
@@ -75,14 +74,15 @@ fun WallProjection(
             .graphicsLayer {
                 alpha = settings.brightness.coerceIn(0.1f, 1f)
                 // Trapesium halus: proyektor di bawah gambar
-                rotationX = -7f
+                rotationX = -4f
                 cameraDistance = 9f * density
                 if (blurDp.value > 0.5f && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                     val r = blurDp.toPx()
                     renderEffect = BlurEffect(r, r, TileMode.Decal)
                 }
-                if (settings.vhs && animate) {
+                if (settings.vhs && phase != null) {
                     // Goyang horizontal pita (beberapa piksel), seperti gambar VHS yang tidak stabil
+                    val wobble = phase.value
                     translationX = (sin(wobble * 2 * PI * 37) * 0.6 + sin(wobble * 2 * PI * 113) * 0.4).toFloat() * 1.5f.dp.toPx()
                 }
                 compositingStrategy = CompositingStrategy.Offscreen
@@ -105,16 +105,16 @@ fun WallProjection(
         when (content) {
             is ProjectionContent.Picture -> {
                 // Ken Burns pelan saat musik berjalan
-                val s = 1.06f + 0.06f * sin(wobble * 2 * PI).toFloat()
                 Image(
                     content.image, null, contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize().graphicsLayer {
+                        val wobble = phase?.value ?: 0f
+                        val s = 1.06f + 0.06f * sin(wobble * 2 * PI).toFloat()
                         scaleX = s; scaleY = s
                         translationX = size.width * 0.02f * sin(wobble * 2 * PI + 1.3).toFloat()
                     },
                 )
             }
-            is ProjectionContent.Video -> content.content()
             is ProjectionContent.Visualizer -> Box(Modifier.fillMaxSize().background(Color(0xFF05060A))) { content.content() }
             is ProjectionContent.Tint -> Box(Modifier.fillMaxSize().background(Brush.radialGradient(listOf(content.color, Color(0xFF0B0C10)))))
         }
