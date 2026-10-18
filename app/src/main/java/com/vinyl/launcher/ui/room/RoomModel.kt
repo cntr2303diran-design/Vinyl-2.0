@@ -38,86 +38,41 @@ data class FracRect(val left: Float, val top: Float, val width: Float, val heigh
 }
 
 /**
- * Geometri bodi TV dalam pecahan kotak TV. Klasik: layar di kiri, panel kontrol di kanan (knob, VFD, kisi speaker).
+ * Geometri bodi TV dalam pecahan kotak TV, diukur dari gambar referensi (TV 547 x 407 px): layar cembung lebar di
+ * kiri, panel kontrol di kanan berisi knob penala (atas), knob seek (tengah), panel kayu dengan VFD, dan tombol daya.
  * Dipakai bersama oleh gambar TV (Canvas) dan area sentuh knob agar keduanya selalu sejajar.
  */
 object TvGeometry {
-    /** Rasio lebar : tinggi bodi TV. */
-    const val ASPECT = 1.36f
-    val SCREEN = FracRect(0.065f, 0.095f, 0.63f, 0.80f)
+    /** Rasio lebar : tinggi bodi TV (referensi 547 : 407). */
+    const val ASPECT = 547f / 407f
+    /** Kaca layar. */
+    val SCREEN = FracRect(0.077f, 0.108f, 0.707f, 0.749f)
+    /** Ceruk gelap di sekeliling kaca. */
+    val BEZEL = FracRect(0.058f, 0.083f, 0.745f, 0.80f)
     /** Panel kontrol di kanan layar. */
-    val PANEL = FracRect(0.735f, 0.095f, 0.20f, 0.80f)
-    /** Knob seek (lingkaran di dalam panel); pusat & jari-jari dalam pecahan LEBAR TV. */
-    const val KNOB_CX = 0.835f
-    const val KNOB_CY = 0.30f
-    const val KNOB_R = 0.062f
-    /** VFD kecil di panel, di bawah knob. */
-    val VFD = FracRect(0.748f, 0.50f, 0.174f, 0.11f)
-    /** Lampu standby. */
-    const val LED_CX = 0.90f
-    const val LED_CY = 0.82f
+    val PANEL = FracRect(0.828f, 0.049f, 0.144f, 0.79f)
+    /** Strip kayu di atas panel. */
+    val WOOD_TOP = FracRect(0.828f, 0.049f, 0.144f, 0.049f)
+    /** Knob penala (dekoratif, atas). Pusat dalam pecahan lebar (x) / tinggi (y); jari-jari dalam pecahan LEBAR. */
+    const val TUNER_CX = 0.901f
+    const val TUNER_CY = 0.204f
+    const val TUNER_R = 0.051f
+    /** Knob seek (tengah). */
+    const val KNOB_CX = 0.901f
+    const val KNOB_CY = 0.459f
+    const val KNOB_R = 0.053f
+    /** Panel kayu bawah yang menampung VFD. */
+    val WOOD_VFD = FracRect(0.832f, 0.58f, 0.138f, 0.24f)
+    /** VFD kecil (tiga baris). */
+    val VFD = FracRect(0.842f, 0.663f, 0.117f, 0.127f)
+    /** Tombol daya kecil / lampu. */
+    const val LED_CX = 0.940f
+    const val LED_CY = 0.876f
+    /** Alas bodi (pita lebih gelap) dan kaki. */
+    const val BASE_TOP = 0.915f
     /** Jari-jari sudut bodi dan layar (pecahan lebar TV / lebar layar). */
-    const val BODY_CORNER = 0.07f
-    const val SCREEN_CORNER = 0.14f
-}
-
-/**
- * Tata letak panggung ruang TV: TV dan kaset berdiri di lantai. Landscape: berdampingan (TV kiri, kaset kanan).
- * Portrait: TV di atas, kaset di bawah (dekat jempol). Ukuran TV dari pengaturan (turntableSize, artinya kini
- * "ukuran objek utama"), posisi kiri/tengah/kanan dari turntablePosition.
- */
-object RoomLayout {
-    data class Stage(val tv: FracRect, val cassette: FracRect, val floorY: Float)
-
-    /** Rasio lebar : tinggi kaset (cangkang kaset kompak ~ 10 x 6,4 cm). */
-    const val CASSETTE_ASPECT = 1.56f
-
-    /**
-     * @param aspect lebar / tinggi area panggung
-     * @param size skala TV 0,3..1,2 (dibatasi)
-     * @param align -1 kiri, 0 tengah, 1 kanan
-     */
-    fun stage(aspect: Float, landscape: Boolean, size: Float, align: Int): Stage {
-        val s = size.coerceIn(0.3f, 1.2f)
-        val a = aspect.coerceIn(0.3f, 4f)
-        return if (landscape) {
-            // Lebar total = TV + jarak + kaset; dibatasi agar muat tinggi
-            val gap = 0.03f
-            var tvW = 0.58f * s
-            var tvH = tvW * a / TvGeometry.ASPECT
-            if (tvH > 0.86f) { tvH = 0.86f; tvW = tvH * TvGeometry.ASPECT / a }
-            var casW = (tvW * 0.48f).coerceAtMost(0.30f)
-            if (tvW + gap + casW > 0.98f) casW = 0.98f - gap - tvW
-            val casH = casW * a / CASSETTE_ASPECT
-            val total = tvW + gap + casW
-            val left = when { align < 0 -> 0.01f; align > 0 -> 0.99f - total; else -> (1f - total) / 2f }
-            val floorY = ((1f + tvH) / 2f).coerceAtMost(0.97f)
-            Stage(
-                tv = FracRect(left, floorY - tvH, tvW, tvH),
-                cassette = FracRect(left + tvW + gap, floorY - casH, casW, casH),
-                floorY = floorY,
-            )
-        } else {
-            var tvW = (0.88f * s).coerceAtMost(0.96f)
-            var tvH = tvW * a / TvGeometry.ASPECT
-            val gap = 0.04f
-            var casW = (tvW * 0.72f).coerceAtMost(0.80f)
-            var casH = casW * a / CASSETTE_ASPECT
-            val maxH = 0.96f
-            if (tvH + gap + casH > maxH) {
-                val k = maxH / (tvH + gap + casH)
-                tvW *= k; tvH *= k; casW *= k; casH *= k
-            }
-            val tvLeft = when { align < 0 -> 0.02f; align > 0 -> 0.98f - tvW; else -> (1f - tvW) / 2f }
-            val top = (1f - (tvH + gap + casH)) / 2f
-            val floorY = top + tvH
-            Stage(
-                tv = FracRect(tvLeft, top, tvW, tvH),
-                cassette = FracRect((1f - casW) / 2f, floorY + gap, casW, casH),
-                floorY = floorY,
-            )
-        }
-    }
+    const val BODY_CORNER = 0.055f
+    const val SCREEN_CORNER = 0.16f
 }
 
 /** Warna teks di ruang TV dan perlindungan kontrasnya terhadap proyeksi. */

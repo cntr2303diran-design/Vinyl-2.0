@@ -72,7 +72,6 @@ import com.vinyl.launcher.data.WidgetConfig
 import com.vinyl.launcher.data.WidgetType
 import com.vinyl.launcher.media.NowPlaying
 import com.vinyl.launcher.ui.components.BatteryIndicator
-import com.vinyl.launcher.ui.components.ClockView
 import com.vinyl.launcher.ui.components.TwoMonthCalendar
 import com.vinyl.launcher.ui.components.LyricsLines
 import com.vinyl.launcher.ui.components.PhotoWidget
@@ -137,17 +136,17 @@ import com.vinyl.launcher.fx.FxOverlay
 import com.vinyl.launcher.fx.fxBackdrop
 import com.vinyl.launcher.fx.rememberPowerSave
 import com.vinyl.launcher.ui.components.rememberFileImage
-import com.vinyl.launcher.ui.room.RoomBackdrop
-import com.vinyl.launcher.ui.room.RoomFloor
-import com.vinyl.launcher.ui.room.RoomStage
-import com.vinyl.launcher.ui.room.VfdTicker
 import com.vinyl.launcher.ui.room.RoomInk
-import com.vinyl.launcher.ui.room.KNOB_ZOOM
-import com.vinyl.launcher.ui.room.KnobLayer
 import com.vinyl.launcher.ui.room.KnobState
-import com.vinyl.launcher.ui.cassette.Cassette
-import com.vinyl.launcher.ui.cassette.CassetteLabel
-import com.vinyl.launcher.ui.cassette.KnobSeek
+import com.vinyl.launcher.ui.room.RoomScene
+import com.vinyl.launcher.ui.room.SceneStatus
+import com.vinyl.launcher.ui.room.SceneTheme
+import com.vinyl.launcher.ui.room.rememberWorstCoverPixel
+import com.vinyl.launcher.audio.AudioMonitor
+import com.vinyl.launcher.data.RoomTone
+import com.vinyl.launcher.ui.theme.BackdropDim
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.unit.sp
 import com.vinyl.launcher.ui.library.LibraryCatalog
 import com.vinyl.launcher.ui.library.rememberLibraryState
 
@@ -225,9 +224,14 @@ fun HomeScreen(vm: HomeViewModel) {
     }
     fun indexOf(p: RoomPage) = PageNav.indexOf(p, swapPages, rtl)
 
+    // Pemantau perangkat audio (indikator Output & VFD) hanya aktif saat beranda tampil
+    LifecycleResumeEffect(Unit) {
+        AudioMonitor.acquire(context)
+        onPauseOrDispose { AudioMonitor.release() }
+    }
+
     // ----- Ruang TV: dinding, proyeksi, nada teks -----
     val motionAllowed = !reduceMotion && !rememberPowerSave()
-    var roomFloor by remember { mutableStateOf(RoomFloor.UNKNOWN) }
     val picture = if (home.background.type == BackgroundType.IMAGE) rememberFileImage(home.background.imagePath) else null
     val cover = np.art.takeIf { np.hasTrack }
     val projected = if (home.background.type == BackgroundType.IMAGE) picture else if (home.background.type == BackgroundType.ALBUM) cover else null
@@ -247,19 +251,8 @@ fun HomeScreen(vm: HomeViewModel) {
                 }
             }
     ) {
-        RoomBackdrop(
-            tone = settings.retro.room,
-            floor = roomFloor,
-            source = wallSource(home.background, cover, picture),
-            animate = np.isPlaying && motionAllowed && !editing,
-            // Warna sinematik mati = cahaya layar netral (putih hangat), bukan warna cover
-            glow = if (settings.music.cinematicColors) accent else Color(0xFFFFF1DC),
-            glowAlpha = if (np.hasTrack) settings.retro.glowIntensity * 0.18f else 0f,
-            wallColor = if (home.background.type == BackgroundType.SOLID) home.background.solidColor.toColor() else null,
-            wallGradient = if (home.background.type == BackgroundType.GRADIENT)
-                home.background.gradientStart.toColor() to home.background.gradientEnd.toColor() else null,
-            projectionModifier = Modifier.fxBackdrop(fx, fxPlan, settings.visual.parallax, settings.visual.parallaxStrength),
-        )
+        // Dasar ruangan (juga di bawah bilah sistem); dinding, lantai, dan cahaya digambar RoomScene
+        Box(Modifier.fillMaxSize().background(SceneTheme.of(look.tone).wallEdge))
         // Debu halus (partikel) di atas dinding, di bawah konten; cahaya reaktif sudah digambar ruang (bukan lapisan putih)
         if (fxPlan.particles) {
             FxOverlay(fx, fxPlan.copy(glow = false), accent, settings.visual.parallax, settings.visual.parallaxStrength, particleColor = dustColor(look.tone))
@@ -354,9 +347,9 @@ fun HomeScreen(vm: HomeViewModel) {
                 visualizerUnavailable = visualizerState == VisualizerStatus.State.UNAVAILABLE,
                 retro = settings.retro,
                 look = look,
-                landscape = landscape,
                 motionAllowed = motionAllowed,
-                onFloor = { roomFloor = it },
+                wallPicture = picture,
+                lyricsVisible = home.lyricsVisible,
                 onWidgetChange = { updated -> vm.updateDraft { h -> h.copy(widgets = h.widgets.map { if (it.id == updated.id) updated else it }) } },
                 vm = vm,
             )
@@ -487,114 +480,76 @@ private fun HomeContent(
     visualizerUnavailable: Boolean,
     retro: RetroSettings,
     look: RoomLook,
-    landscape: Boolean,
     motionAllowed: Boolean,
-    onFloor: (RoomFloor) -> Unit,
+    wallPicture: ImageBitmap?,
+    lyricsVisible: Boolean,
     onWidgetChange: (WidgetConfig) -> Unit,
     vm: HomeViewModel,
 ) {
     val now by rememberNow()
     BoxWithConstraints(Modifier.fillMaxSize()) {
-        val maxW = maxWidth
 
-        // ----- Ruang TV: TV tabung (+ kaset, Tahap 4) di lantai, info lagu di bawahnya -----
-        val showInfo = home.trackInfoVisible
-        val clockText = "%02d:%02d".format(now.hour, now.minute)
-        val vfdLines = remember(clockText, np.hasTrack, np.isPlaying) {
-            listOf(
-                VfdTicker.line("clock", clockText),
-                VfdTicker.line("state", VfdTicker.playback(np.hasTrack, np.isPlaying)),
-            )
-        }
-        // Knob TV (seek) dan kaset (kontrol putar)
-        val knobState = remember { KnobState() }
-        LaunchedEffect(editing, np.hasTrack) { if (editing || !np.hasTrack) knobState.exit() }
-        val zoom by animateFloatAsState(
-            if (knobState.active) KNOB_ZOOM else 1f,
-            tween(
-                if (!motionAllowed) 0 else if (knobState.active) Tokens.Motion.KNOB_ZOOM_IN_MS else Tokens.Motion.KNOB_ZOOM_OUT_MS,
-                easing = Ease.standard,
-            ),
-            label = "knobZoom",
-        )
+        // ----- Ruang TV (komposisi gambar referensi): TV, kaset, tombol, progres, volume, TIME / Output -----
         var clockTick by remember { mutableIntStateOf(0) }
         LaunchedEffect(np) {
             while (np.isPlaying) { delay(500); clockTick++ }
         }
         val posMs = remember(np, clockTick) { np.positionAt() }
-        val cassetteLabel = remember(np.hasTrack, np.title, np.artist, np.art) {
-            CassetteLabel(if (np.hasTrack) "${np.title}\u0000${np.artist}" else null, np.title, np.artist, np.art)
+        val knobState = remember { KnobState() }
+        LaunchedEffect(editing, np.hasTrack) { if (editing || !np.hasTrack) knobState.exit() }
+        val audio by AudioMonitor.state.collectAsStateWithLifecycle()
+        val (volume, setVolume) = rememberMediaVolume()
+        val brightest = rememberWorstCoverPixel(np.art, RoomTone.DIM)
+        val scrim = remember(brightest) {
+            // Judul putih di atas cover: peredam terkecil agar >= 4,5:1 di piksel cover paling terang
+            brightest?.let { BackdropDim.minOverlayAlpha(it, listOf(0xFFFFFFFFL), effects = false).toFloat() } ?: 0.25f
         }
-        Column(
-            Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            RoomStage(
-                np = np,
-                retro = retro,
-                tvSize = home.turntableSize,
-                position = home.turntablePosition,
-                landscape = landscape,
-                accent = accent,
-                motionAllowed = motionAllowed && !editing,
-                vfdLines = vfdLines,
-                onScreenTap = { if (editing) Unit else if (np.hasTrack) vm.togglePlay() else vm.openMusic() },
-                onFloor = onFloor,
-                zoom = zoom,
-                knobTurns = knobState.turns,
-                knobHighlight = knobState.active,
-                knob = { l, t, w, h ->
-                    KnobLayer(
-                        knobState, np, l, t, w, h, zoom = zoom, enabled = !editing,
-                        onSeek = vm::seek, onTick = vm::tick,
+        val lyrics = rememberLyrics(np, lyricsVisible, lyricsOnline)
+        RoomScene(
+            np = np,
+            retro = retro,
+            tone = look.tone,
+            tvSize = home.turntableSize,
+            accent = accent,
+            motionAllowed = motionAllowed && !editing,
+            editing = editing,
+            status = SceneStatus(
+                timeText = if (home.clock.visible) clockText(now, home.clock.use24h) else null,
+                outputText = outputText(audio),
+                vfdLines = vfdLines(np, audio),
+            ),
+            positionMs = posMs,
+            titleScrimAlpha = scrim,
+            knobState = knobState,
+            volume = volume,
+            onVolume = setVolume,
+            onPrevious = vm::previous,
+            onRewind = { vm.seek((np.positionAt() - 10_000L).coerceAtLeast(0L)) },
+            onPlayPause = { if (np.hasTrack) vm.togglePlay() else vm.openMusic() },
+            onNext = vm::next,
+            onSeek = vm::seek,
+            onTick = vm::tick,
+            onOpenLyrics = vm::openLyrics,
+            wallColor = if (home.background.type == BackgroundType.SOLID) home.background.solidColor.toColor() else null,
+            wallGradient = if (home.background.type == BackgroundType.GRADIENT)
+                home.background.gradientStart.toColor() to home.background.gradientEnd.toColor() else null,
+            wallPicture = wallPicture,
+            modifier = Modifier.fxForeground(fx, fxPlan, visual.parallax, visual.parallaxStrength),
+        ) { zoomed ->
+            // Di layar TV: batang visualizer (atau keterangan jujurnya) di bawah, lirik saat TV didekatkan
+            Box(Modifier.fillMaxSize().padding(horizontal = 18.dp, vertical = 10.dp)) {
+                if (zoomed && lyrics != null) {
+                    LyricsLines(
+                        np, lyrics, primary = Color.White, secondary = Color.White.copy(alpha = 0.85f), fontSize = 18.sp,
+                        modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth(),
                     )
-                },
-                cassette = { _, _ ->
-                    Cassette(
-                        label = cassetteLabel,
-                        hasSession = np.hasSession,
-                        playing = np.isPlaying,
-                        progress = if (np.durationMs > 0) posMs.toFloat() / np.durationMs else 0f,
-                        timeText = if (np.durationMs > 0) KnobSeek.bubble(posMs, np.durationMs) else KnobSeek.clock(posMs),
-                        shell = retro.cassetteShell,
-                        speed = retro.reelSpeed,
-                        accent = accent,
-                        motionAllowed = motionAllowed && !editing,
-                        onPrevious = { if (!editing) vm.previous() },
-                        onPlayPause = { if (!editing) { if (np.hasTrack) vm.togglePlay() else vm.openMusic() } },
-                        onNext = { if (!editing) vm.next() },
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .padding(horizontal = 16.dp)
-                    .fxForeground(fx, fxPlan, visual.parallax, visual.parallaxStrength),
-            )
-            if (showInfo) {
-                TrackInfo(
-                    np, home.lyricsVisible, lyricsOnline, onOpenCrate = vm::openCrate, onOpenLyrics = vm::openLyrics,
-                    fx = fx, visualizer = fxPlan.visualizer, visualizerMode = visual.visualizer,
-                    visualizerUnavailable = visualizerUnavailable, barColor = accent, look = look,
-                    modifier = Modifier
-                        .padding(top = 12.dp, bottom = 12.dp)
-                        .width(minOf(maxW * 0.86f, 560.dp))
-                        .roomPlate(look)
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                )
+                }
+                if (np.hasTrack) {
+                    Box(Modifier.align(Alignment.BottomCenter).padding(bottom = if (zoomed) 36.dp else 0.dp)) {
+                        VisualizerStrip(fx, fxPlan.visualizer, visual.visualizer, visualizerUnavailable, Color.White.copy(alpha = 0.7f), Color.White)
+                    }
+                }
             }
-        }
-
-        // ----- Jam & tanggal (kecil, default pojok kiri atas) -----
-        if (home.clock.visible) {
-            ClockView(
-                // Warna jam tersimpan dipakai bila terbaca di dinding; krem bawaan tema vinyl diganti tinta ruang
-                settings = home.clock.copy(color = RoomInk.readable(home.clock.color, look.tone)),
-                now = now,
-                horizontalAlignment = home.clock.anchor.horizontal(),
-                modifier = Modifier.align(home.clock.anchor.toAlignment()).padding(20.dp).roomPlate(look).padding(8.dp),
-            )
         }
 
         // ----- Widget tambahan -----
@@ -691,112 +646,6 @@ private fun HomeWidget(
 /** Lebar panel editor di landscape & tinggi di portrait. */
 val EDITOR_WIDTH = 400.dp
 val EDITOR_HEIGHT_PORTRAIT = 440.dp
-
-/**
- * Info lagu di bawah turntable: judul tebal, artis redup, progress tipis + waktu
- * (hierarki Now Playing Apple Music). Kontrol ada di turntable; dua kapsul di bawahnya membuka lirik layar penuh
- * dan rak piringan.
- */
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun TrackInfo(
-    np: NowPlaying,
-    showLyrics: Boolean,
-    lyricsOnline: Boolean,
-    onOpenCrate: () -> Unit,
-    onOpenLyrics: () -> Unit,
-    fx: FxState,
-    visualizer: VisualizerPlan,
-    visualizerMode: VisualizerMode,
-    visualizerUnavailable: Boolean,
-    barColor: Color,
-    look: RoomLook,
-    modifier: Modifier = Modifier,
-) {
-    val lyrics = rememberLyrics(np, showLyrics, lyricsOnline)
-    var progress by remember { mutableFloatStateOf(np.progress) }
-    var posText by remember { mutableStateOf(formatMs(np.positionAt())) }
-    LaunchedEffect(np) {
-        while (true) {
-            progress = np.progress
-            posText = formatMs(np.positionAt())
-            if (!np.isPlaying) break
-            delay(500)
-        }
-    }
-    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        AnimatedContent(
-            targetState = np.title to np.artist,
-            transitionSpec = { (fadeIn(tween(400)) + slideInVertically { it / 3 }) togetherWith fadeOut(tween(250)) },
-            label = "track",
-        ) { (title, artist) ->
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    if (np.hasTrack) title else "Tidak ada yang diputar",
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = look.primary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    if (np.hasTrack) artist else "Ketuk TV untuk membuka aplikasi musik",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = look.secondary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 2.dp),
-                )
-            }
-        }
-        if (np.hasTrack && np.durationMs > 0) {
-            Box(
-                Modifier.padding(top = 18.dp).fillMaxWidth().height(4.dp)
-                    .clip(RoundedCornerShape(50)).background(look.primary.copy(alpha = 0.16f))
-            ) {
-                Box(Modifier.fillMaxWidth(progress.coerceIn(0f, 1f)).fillMaxHeight().background(look.primary.copy(alpha = 0.78f)))
-            }
-            Row(Modifier.fillMaxWidth().padding(top = 6.dp)) {
-                Text(posText, style = MaterialTheme.typography.labelSmall.copy(fontFeatureSettings = "tnum"), color = look.secondary)
-                Spacer(Modifier.weight(1f))
-                Text(formatMs(np.durationMs), style = MaterialTheme.typography.labelSmall.copy(fontFeatureSettings = "tnum"), color = look.secondary)
-            }
-        }
-        if (np.hasTrack) VisualizerStrip(fx, visualizer, visualizerMode, visualizerUnavailable, barColor, look.secondary)
-        if (np.hasTrack && showLyrics) {
-            LyricsLines(
-                np, lyrics,
-                primary = look.primary,
-                secondary = look.secondary,
-                modifier = Modifier.padding(top = 20.dp).fillMaxWidth()
-                    .clip(Corner.s)
-                    .clickable(onClickLabel = "Buka lirik layar penuh", role = Role.Button, onClick = onOpenLyrics),
-            )
-        }
-        if (np.hasTrack) {
-            FlowRow(
-                Modifier.padding(top = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
-            ) {
-                for ((label, clickLabel, action) in listOf(
-                    Triple("Lirik", "Buka lirik layar penuh", onOpenLyrics),
-                    Triple("Kaset  ›", "Buka perpustakaan kaset", onOpenCrate),
-                )) {
-                    Text(
-                        label,
-                        style = MaterialTheme.typography.labelLarge,
-                        color = look.primary,
-                        modifier = Modifier
-                            .minimumInteractiveComponentSize()
-                            .clip(RoundedCornerShape(50))
-                            .border(1.dp, look.secondary.copy(alpha = 0.5f), RoundedCornerShape(50))
-                            .clickable(onClickLabel = clickLabel, role = Role.Button, onClick = action)
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                    )
-                }
-            }
-        }
-    }
-}
 
 /**
  * Batang spektrum di bawah progress lagu, atau keterangan jujur mengapa tidak ada. Mode "Audio asli" yang gagal TIDAK

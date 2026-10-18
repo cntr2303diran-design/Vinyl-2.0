@@ -93,6 +93,8 @@ fun Cassette(
     onPlayPause: () -> Unit,
     onNext: () -> Unit,
     modifier: Modifier = Modifier,
+    /** false = kaset saja (tombol ada di tempat lain, mis. mengapit kaset di beranda referensi). */
+    showKeys: Boolean = true,
 ) {
     // --- Ganti kaset
     val swap = remember { CassetteSwap(label.key) }
@@ -133,8 +135,8 @@ fun Cassette(
     }
 
     BoxWithConstraints(modifier) {
-        val keysH = maxOf(maxHeight * 0.30f, 48.dp)
-        Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        val keysH = if (showKeys) maxOf(maxHeight * 0.30f, 48.dp) else 0.dp
+        Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(if (showKeys) 6.dp else 0.dp)) {
             // Cangkang kaset (yang keluar/masuk)
             Box(
                 Modifier
@@ -156,7 +158,7 @@ fun Cassette(
                 Shell(shown, shell, accent, rl, rr, angleL, angleR, timeText)
             }
             // Tombol mekanis ala deck kaset
-            Row(
+            if (showKeys) Row(
                 Modifier.fillMaxWidth().height(keysH),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {

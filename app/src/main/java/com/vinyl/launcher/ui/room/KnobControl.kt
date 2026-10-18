@@ -27,6 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -90,6 +91,10 @@ fun KnobLayer(
     enabled: Boolean,
     onSeek: (Long) -> Unit,
     onTick: () -> Unit,
+    /** Lebar panggung (px) untuk menaruh gelembung di sisi yang muat. */
+    stageWidthPx: Int = Int.MAX_VALUE,
+    /** Tampilkan gelembung waktu juga di luar mode putar (referensi menampilkannya terus di samping knob). */
+    alwaysShowBubble: Boolean = false,
 ) {
     val density = LocalDensity.current
     val haptics = LocalHapticFeedback.current
@@ -185,16 +190,17 @@ fun KnobLayer(
             ) { state.active = true },
     )
 
-    // Gelembung waktu di atas knob
+    // Gelembung waktu di samping kanan knob (seperti referensi); pindah ke kiri bila tidak muat
     var bubbleSize by remember { mutableStateOf(IntSize.Zero) }
     AnimatedVisibility(
-        visible = state.active,
+        visible = state.active || (alwaysShowBubble && np.hasTrack && np.durationMs > 0),
         enter = fadeIn(tween(Tokens.Motion.FAST_MS)),
         exit = fadeOut(tween(Tokens.Motion.FAST_MS)),
         modifier = Modifier.offset {
-            val x = cx.roundToPx() - bubbleSize.width / 2
-            val y = (cy - knobR * zoom - 28.dp).roundToPx() - bubbleSize.height
-            IntOffset(x.coerceAtLeast(0), y.coerceAtLeast(0))
+            val right = (cx + knobR * zoom + 14.dp).roundToPx()
+            val left = (cx - knobR * zoom - 14.dp).roundToPx() - bubbleSize.width
+            val x = if (right + bubbleSize.width <= stageWidthPx) right else left
+            IntOffset(x.coerceAtLeast(0), (cy.roundToPx() - bubbleSize.height / 2).coerceAtLeast(0))
         },
     ) {
         val text = when {
@@ -203,15 +209,14 @@ fun KnobLayer(
         }
         Text(
             text,
-            color = RetroColors.VfdAmber,
-            fontFamily = MonoFamily,
-            fontSize = if (np.canSeek) 18.sp else 13.sp,
+            color = Color(0xFF1C1D1F),
+            fontSize = if (np.canSeek) 14.sp else 12.sp,
             textAlign = TextAlign.Center,
             modifier = Modifier
                 .onSizeChanged { bubbleSize = it }
-                .widthIn(max = 280.dp)
-                .background(RetroColors.VfdGlass, RoundedCornerShape(12.dp))
-                .padding(horizontal = 14.dp, vertical = 8.dp),
+                .widthIn(max = 260.dp)
+                .background(Color(0xFFE9E9E6), RoundedCornerShape(50))
+                .padding(horizontal = 12.dp, vertical = 6.dp),
         )
     }
 }

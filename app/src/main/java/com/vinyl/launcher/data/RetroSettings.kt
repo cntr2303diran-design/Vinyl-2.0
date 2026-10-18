@@ -46,16 +46,17 @@ enum class VfdColor { AMBER, GREEN }
 @Serializable
 data class RetroSettings(
     val tvBody: TvBody = TvBody.CREAM,
-    val cassetteShell: CassetteShell = CassetteShell.BLACK,
-    val knobStyle: KnobStyle = KnobStyle.BAKELITE,
+    // Bawaan pengguna baru mengikuti gambar referensi: kaset transparan, knob logam, VFD hijau, ruang gelap
+    val cassetteShell: CassetteShell = CassetteShell.TRANSPARENT,
+    val knobStyle: KnobStyle = KnobStyle.CHROME,
     val reelSpeed: ReelSpeed = ReelSpeed.NORMAL,
     val albumMotion: AlbumMotion = AlbumMotion.OFF,
     /** Kekuatan efek layar CRT (scanline, lengkung, aberasi), 0 = mati. */
     val crtStrength: Float = 0.6f,
     /** Intensitas cahaya layar TV & pantulan proyeksi, 0 = mati. */
     val glowIntensity: Float = 0.7f,
-    val room: RoomTone = RoomTone.LIGHT,
-    val vfdColor: VfdColor = VfdColor.AMBER,
+    val room: RoomTone = RoomTone.DIM,
+    val vfdColor: VfdColor = VfdColor.GREEN,
     /**
      * Tata letak tiga halaman: false (bawaan) = perpustakaan kaset di KIRI beranda dan Audio Console di KANAN.
      * true = ditukar. Pada bahasa RTL arah dicerminkan otomatis.

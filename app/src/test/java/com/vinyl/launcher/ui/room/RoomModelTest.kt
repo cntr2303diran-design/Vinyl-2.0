@@ -28,51 +28,7 @@ class RoomModelTest {
         assertEquals(TvScreenMode.DISPLAY, TvScreen.mode(true, true, AlbumMotion.OFF, true))
     }
 
-    // ---------- Tata letak
-    private val aspects = listOf(0.42f, 0.5f, 0.56f, 0.75f, 1f, 1.33f, 1.6f, 1.78f, 2.1f, 2.4f)
-    private val sizes = listOf(0.3f, 0.6f, 0.85f, 1f, 1.2f, 5f, -1f)
-
-    @Test
-    fun theTvAndCassetteStayOnScreenAndNeverOverlap() {
-        for (a in aspects) for (s in sizes) for (align in -1..1) for (land in listOf(true, false)) {
-            val st = RoomLayout.stage(a, land, s, align)
-            val tag = "a=$a s=$s align=$align land=$land $st"
-            assertTrue(tag, st.tv.inside())
-            assertTrue(tag, st.cassette.inside())
-            assertTrue(tag, !st.tv.overlaps(st.cassette))
-            assertTrue(tag, st.tv.width > 0f && st.cassette.width > 0f)
-        }
-    }
-
-    @Test
-    fun bothObjectsStandOnTheFloor() {
-        for (a in aspects) for (s in sizes) {
-            val land = RoomLayout.stage(a, true, s, 0)
-            assertEquals(land.floorY, land.tv.bottom, 1e-4f)
-            assertEquals(land.floorY, land.cassette.bottom, 1e-4f)
-            val port = RoomLayout.stage(a, false, s, 0)
-            assertEquals(port.floorY, port.tv.bottom, 1e-4f)
-            assertTrue("kaset di bawah TV (dekat jempol)", port.cassette.top >= port.tv.bottom)
-        }
-    }
-
-    @Test
-    fun theTvKeepsItsProportions() {
-        for (a in aspects) for (land in listOf(true, false)) {
-            val tv = RoomLayout.stage(a, land, 1f, 0).tv
-            // lebar/tinggi dalam piksel = (w * a) / h
-            assertEquals(TvGeometry.ASPECT, tv.width * a / tv.height, 0.01f)
-        }
-    }
-
-    @Test
-    fun alignmentMovesTheTv() {
-        val l = RoomLayout.stage(1.78f, true, 0.7f, -1).tv.left
-        val c = RoomLayout.stage(1.78f, true, 0.7f, 0).tv.left
-        val r = RoomLayout.stage(1.78f, true, 0.7f, 1).tv.left
-        assertTrue(l < c && c < r)
-    }
-
+    // ---------- Geometri TV (tata letak adegan diuji di SceneLayoutTest)
     @Test
     fun tvPartsDoNotOverlap() {
         assertTrue(!TvGeometry.SCREEN.overlaps(TvGeometry.PANEL))
