@@ -55,7 +55,11 @@ object AdvancedAccess {
     private val _state = MutableStateFlow(State())
     val state: StateFlow<State> = _state.asStateFlow()
 
-    private lateinit var app: Context
+    // Tidak menyimpan Context di objek statis: cukup PackageManager & data paket yang dibutuhkan
+    private var pm: PackageManager? = null
+    private var pkg: String = ShellService.APP_ID
+    private var debuggable = false
+    private var version = 1
     private var started = false
     private var pendingGrant = false
     private var timeoutJob: Job? = null
@@ -75,7 +79,11 @@ object AdvancedAccess {
     fun start(context: Context) {
         if (started) return
         started = true
-        app = context.applicationContext
+        val packageManager = context.applicationContext.packageManager
+        pm = packageManager
+        pkg = context.packageName
+        debuggable = (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        version = runCatching { packageManager.getPackageInfo(pkg, 0).longVersionCode.toInt() }.getOrDefault(1)
         Shizuku.addBinderReceivedListenerSticky(binderListener)
         Shizuku.addBinderDeadListener(deadListener)
         Shizuku.addRequestPermissionResultListener(permissionListener)
@@ -85,11 +93,12 @@ object AdvancedAccess {
     /** Baca ulang status izin DUMP dan Shizuku (mis. setelah pengguna menjalankan perintah ADB). */
     fun refresh() {
         if (!started) return
-        _state.update { it.copy(dumpGranted = DumpReader.granted(app), shizuku = shizukuState()) }
+        val granted = pm?.checkPermission(ShellService.DUMP, pkg) == PackageManager.PERMISSION_GRANTED
+        _state.update { it.copy(dumpGranted = granted, shizuku = shizukuState()) }
     }
 
     private fun shizukuState(): ShizukuState {
-        val installed = runCatching { app.packageManager.getPackageInfo(SHIZUKU_PACKAGE, 0) }.isSuccess
+        val installed = runCatching { pm?.getPackageInfo(SHIZUKU_PACKAGE, 0) != null }.getOrDefault(false)
         val alive = runCatching { Shizuku.pingBinder() }.getOrDefault(false)
         return when {
             !alive && !installed -> ShizukuState.NOT_INSTALLED
@@ -122,16 +131,13 @@ object AdvancedAccess {
         }
     }
 
-    private fun args(): Shizuku.UserServiceArgs {
-        val debuggable = (app.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
-        val version = runCatching { app.packageManager.getPackageInfo(app.packageName, 0).longVersionCode.toInt() }.getOrDefault(1)
-        return Shizuku.UserServiceArgs(ComponentName(app.packageName, ShellService::class.java.name))
+    private fun args(): Shizuku.UserServiceArgs =
+        Shizuku.UserServiceArgs(ComponentName(pkg, ShellService::class.java.name))
             .daemon(false)
             .processNameSuffix("shell")
             .tag("vinyl-shell")
             .debuggable(debuggable)
             .version(version)
-    }
 
     private fun bindAndGrant() {
         pendingGrant = false
