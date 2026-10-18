@@ -135,7 +135,7 @@ object AudioMonitor {
     private fun capability(d: AudioDeviceInfo?): Reading {
         if (d == null) return Reading.unavailable("Tidak ada keluaran aktif yang diketahui")
         val rates = d.sampleRates.filter { it > 0 }.sorted()
-        val depths = d.encodings.mapNotNull(::depthOf).distinct()
+        val depths = d.encodings.toList().mapNotNull(::depthOf).distinct()
         if (rates.isEmpty() && depths.isEmpty()) {
             return Reading.reported("Format apa saja", "Perangkat tidak membatasi daftar format (biasanya di-mix sistem)")
         }
