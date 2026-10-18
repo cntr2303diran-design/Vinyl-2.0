@@ -663,10 +663,10 @@ private fun HomeWidget(
     ) {
         when (config.type) {
             // Widget bertema ruang TV: masing-masing membawa permukaannya sendiri (kontras tidak bergantung dinding)
-            WidgetType.CALENDAR -> TearCalendarWidget(java.time.LocalDate.now(), config.scale)
-            WidgetType.WEATHER -> VfdWeatherWidget(weather, config.scale)
-            WidgetType.PHOTO -> PolaroidWidget(config.images, config.scale)
-            WidgetType.BATTERY -> NeedleBatteryWidget(config.scale)
+            WidgetType.CALENDAR -> TearCalendarWidget(java.time.LocalDate.now(), scale = config.scale)
+            WidgetType.WEATHER -> VfdWeatherWidget(weather, scale = config.scale)
+            WidgetType.PHOTO -> PolaroidWidget(config.images, scale = config.scale)
+            WidgetType.BATTERY -> NeedleBatteryWidget(scale = config.scale)
         }
         if (editing) {
             // Pegangan ubah ukuran di sudut kanan bawah

@@ -29,6 +29,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -87,12 +88,15 @@ import com.vinyl.launcher.data.PlayRecord
 import com.vinyl.launcher.drawer.AlphaIndex
 import com.vinyl.launcher.drawer.AppCategory
 import com.vinyl.launcher.drawer.BadgeCounter
+import com.vinyl.launcher.drawer.DrawerLayout
 import com.vinyl.launcher.drawer.SystemSetting
 import com.vinyl.launcher.ui.theme.Accent
 import com.vinyl.launcher.ui.theme.AccentOn
 import com.vinyl.launcher.ui.theme.Corner
 import com.vinyl.launcher.ui.theme.Dimen
 import com.vinyl.launcher.ui.theme.Hairline
+import com.vinyl.launcher.ui.theme.MonoFamily
+import com.vinyl.launcher.ui.theme.RetroColors
 import com.vinyl.launcher.ui.theme.TextPrimary
 import com.vinyl.launcher.ui.theme.TextSecondary
 import kotlin.math.roundToInt
@@ -119,7 +123,7 @@ internal fun SearchField(value: String, onChange: (String) -> Unit, onSearch: ()
         Icon(Icons.Rounded.Search, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(10.dp))
         Box(Modifier.weight(1f).padding(vertical = 10.dp), contentAlignment = Alignment.CenterStart) {
-            if (value.isEmpty()) Text(SEARCH_HINT, color = TextSecondary, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (value.isEmpty()) Text(SEARCH_HINT_VISIBLE, color = TextSecondary, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             BasicTextField(
                 value = value,
                 onValueChange = { if (it.length <= MAX_QUERY) onChange(it) },
@@ -145,6 +149,8 @@ internal fun SearchField(value: String, onChange: (String) -> Unit, onSearch: ()
 }
 
 internal const val MAX_QUERY = 80
+// Teks yang terlihat bergaya "mencari siaran"; pembaca layar tetap mendengar kalimat yang lugas
+private const val SEARCH_HINT_VISIBLE = "Tuning… cari aplikasi, lagu, pengaturan"
 private const val SEARCH_HINT = "Cari aplikasi, lagu, dan pengaturan"
 
 // ------------------------------------------------------------------------------------------ kategori
@@ -218,6 +224,7 @@ private enum class TileMenu { NONE, MAIN, CATEGORY }
 @Composable
 internal fun AppTile(
     app: AppInfo,
+    channel: Int?,
     badge: Int,
     canAddToDock: Boolean,
     actions: DrawerActions,
@@ -260,6 +267,7 @@ internal fun AppTile(
         ) {
             Box {
                 Image(app.icon, contentDescription = null, modifier = Modifier.size(64.dp))
+                if (channel != null) ChannelPlate(channel, Modifier.align(Alignment.TopStart).offset(x = (-10).dp, y = (-6).dp))
                 if (badge > 0) {
                     BadgeDot(badge, Modifier.align(Alignment.TopEnd).offset(x = 8.dp, y = (-4).dp))
                 }
@@ -309,6 +317,56 @@ internal fun AppTile(
             }
         }
     }
+}
+
+/**
+ * Pelat nomor channel di pojok ikon, seperti nomor channel di sudut layar TV. Hiasan: tidak dibacakan pembaca layar
+ * (nama aplikasi sudah cukup) dan ukurannya tidak ikut skala font agar tidak menutupi ikon. Amber VFD di atas kaca VFD
+ * gelap, pasangan yang kontrasnya diuji RetroPaletteTest, jadi tetap terbaca di atas cover apa pun.
+ */
+@Composable
+private fun ChannelPlate(number: Int, modifier: Modifier = Modifier) {
+    val size = with(LocalDensity.current) { 10.dp.toSp() }
+    val shape = RoundedCornerShape(3.dp)
+    Text(
+        remember(number) { DrawerLayout.channelLabel(number) },
+        color = RetroColors.VfdAmber,
+        fontFamily = MonoFamily,
+        fontWeight = FontWeight.Medium,
+        fontSize = size,
+        lineHeight = size,
+        maxLines = 1,
+        softWrap = false,
+        modifier = modifier
+            .clearAndSetSemantics { }
+            .clip(shape)
+            .background(RetroColors.VfdGlass, shape)
+            .border(0.6.dp, RetroColors.VfdAmber.copy(alpha = 0.35f), shape)
+            .padding(horizontal = 4.dp, vertical = 2.dp),
+    )
+}
+
+/**
+ * Penghitung channel di samping judul drawer, bergaya layar VFD. Dibacakan sebagai "N aplikasi".
+ */
+@Composable
+internal fun ChannelCounter(count: Int, modifier: Modifier = Modifier) {
+    val shape = RoundedCornerShape(4.dp)
+    Text(
+        "$count CH",
+        color = RetroColors.VfdAmber,
+        fontFamily = MonoFamily,
+        fontWeight = FontWeight.Medium,
+        fontSize = 13.sp,
+        maxLines = 1,
+        softWrap = false,
+        modifier = modifier
+            .clearAndSetSemantics { contentDescription = "$count aplikasi" }
+            .clip(shape)
+            .background(RetroColors.VfdGlass, shape)
+            .border(0.6.dp, RetroColors.VfdAmber.copy(alpha = 0.35f), shape)
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+    )
 }
 
 /** Lencana jumlah notifikasi. Teks di atas aksen memakai pasangan ACCENT/ACCENT_ON yang kontrasnya dibuktikan ContrastTest. */

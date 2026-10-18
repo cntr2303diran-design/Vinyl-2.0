@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -43,6 +44,8 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.vinyl.launcher.data.AppInfo
 import com.vinyl.launcher.data.ContactHit
@@ -83,7 +86,8 @@ private const val MAX_SONG_RESULTS = 4
 private const val MIN_LETTERS_FOR_JUMP_BAR = 4
 
 /**
- * App drawer: aplikasi dikelompokkan per huruf, "Sering dipakai" di atas, chip kategori, bilah lompat A–Z,
+ * App drawer bergaya "Panduan Channel": setiap aplikasi punya nomor channel tetap (urutan abjad), pencarian = tuning.
+ * Aplikasi dikelompokkan per huruf, "Sering dipakai" di atas, chip kategori, bilah lompat A–Z,
  * lencana notifikasi, menu pintasan, dan pencarian ke aplikasi / lagu / kontak / pengaturan sistem.
  * Ditutup dengan tombol back, tombol home, atau menarik ke bawah saat daftar di posisi paling atas.
  */
@@ -132,6 +136,8 @@ fun AppDrawer(
     val category = selectedCategory?.takeIf { sel -> showChips && categories.any { it.first == sel } }
 
     val appKeys = remember(data.apps) { data.apps.mapTo(HashSet()) { it.key } }
+    // Nomor channel = urutan pada daftar abjad lengkap, sama di semua kategori dan di hasil pencarian
+    val channels = remember(data.apps) { DrawerLayout.channels(data.apps, { it.key }, { it.label }) }
     val frequentKeys = remember(data.usage, appKeys, settings.showFrequent, settings.frequentCount) {
         if (!settings.showFrequent) emptyList()
         else UsageRanking.top(data.usage, System.currentTimeMillis(), settings.frequentCount) { it in appKeys }
@@ -209,12 +215,18 @@ fun AppDrawer(
                     Modifier.padding(top = 10.dp).size(width = 40.dp, height = 5.dp)
                         .background(PaperCream.copy(alpha = 0.3f), Corner.pill),
                 )
-                Text(
-                    "Aplikasi",
-                    style = MaterialTheme.typography.displaySmall,
-                    color = PaperCream,
-                    modifier = Modifier.widthIn(max = 640.dp).fillMaxWidth().padding(start = 36.dp, end = 36.dp, top = 22.dp),
-                )
+                Row(
+                    Modifier.widthIn(max = 640.dp).fillMaxWidth().padding(start = 36.dp, end = 36.dp, top = 22.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        "Panduan Channel",
+                        style = MaterialTheme.typography.displaySmall,
+                        color = PaperCream,
+                        modifier = Modifier.weight(1f).semantics { heading() },
+                    )
+                    if (data.apps.isNotEmpty()) ChannelCounter(data.apps.size, Modifier.padding(start = Dimen.m))
+                }
                 SearchField(
                     value = query,
                     onChange = { query = it },
@@ -235,7 +247,7 @@ fun AppDrawer(
                     modifier = Modifier.fillMaxSize().nestedScroll(closeOnPull),
                 ) {
                     if (searching) {
-                        searchItems(query.trim(), results, data, actions) { focus.clearFocus() }
+                        searchItems(query.trim(), results, data, channels, actions) { focus.clearFocus() }
                     } else {
                         items(
                             layout.rows,
@@ -247,6 +259,7 @@ fun AppDrawer(
                                 is DrawerRow.Header -> SectionHeader(row.title)
                                 is DrawerRow.App -> AppTile(
                                     app = row.item,
+                                    channel = channels[row.item.key],
                                     badge = badgeFor(data, row.item),
                                     canAddToDock = data.dockEnabled && row.item.key !in data.dockKeys,
                                     actions = actions,
@@ -289,6 +302,7 @@ private fun LazyGridScope.searchItems(
     query: String,
     results: SearchResults,
     data: DrawerData,
+    channels: Map<String, Int>,
     actions: DrawerActions,
     onBeforeOpen: () -> Unit,
 ) {
@@ -299,6 +313,7 @@ private fun LazyGridScope.searchItems(
         items(results.apps, key = { "r:app:${it.key}" }) { app ->
             AppTile(
                 app = app,
+                channel = channels[app.key],
                 badge = badgeFor(data, app),
                 canAddToDock = data.dockEnabled && app.key !in data.dockKeys,
                 actions = actions,

@@ -32,6 +32,21 @@ object DrawerLayout {
         val lettersPresent: Set<Char> get() = sections.map { it.letter }.toSet()
     }
 
+    /**
+     * Nomor channel tiap aplikasi untuk "Panduan Channel": urutan aplikasi pada daftar abjad lengkap (1, 2, 3, …).
+     * Dihitung dari SEMUA aplikasi, sehingga nomor sebuah aplikasi tetap sama saat memilih kategori, di "Sering dipakai",
+     * dan di hasil pencarian. Kunci ganda hanya memakai nomor pertamanya.
+     */
+    fun <T> channels(apps: List<T>, key: (T) -> String, label: (T) -> String): Map<String, Int> {
+        val out = HashMap<String, Int>(apps.size * 2)
+        var n = 0
+        AlphaIndex.group(apps, label).forEach { s -> s.items.forEach { out.putIfAbsent(key(it), ++n) } }
+        return out
+    }
+
+    /** Label nomor channel: minimal dua digit ("CH 07"), tanpa batas atas ("CH 128"). */
+    fun channelLabel(number: Int): String = "CH " + number.toString().padStart(2, '0')
+
     /** Kategori efektif: pilihan pengguna bila ada dan sah, selain itu kategori otomatis. */
     fun effectiveCategory(auto: AppCategory, key: String, overrides: Map<String, String>): AppCategory =
         AppCategorizer.parse(overrides[key]) ?: auto

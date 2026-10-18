@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -24,9 +25,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -39,11 +43,14 @@ import com.vinyl.launcher.data.SettingsRepository
 import com.vinyl.launcher.service.TaskbarState
 import com.vinyl.launcher.ui.theme.Tokens
 import com.vinyl.launcher.ui.theme.Corner
+import com.vinyl.launcher.ui.theme.MonoFamily
+import com.vinyl.launcher.ui.theme.RetroColors
 
-private val PanelShape = Corner.l
+private val PanelShape = RoundedCornerShape(12.dp)
 
 /**
- * Panel kecil berisi semua aplikasi, muncul di dekat taskbar saat tombol 9 titik ditekan.
+ * Panel kecil berisi semua aplikasi (bergaya panel arang yang sama dengan taskbar VCR), muncul di dekat taskbar saat
+ * tombol semua aplikasi ditekan.
  * Ketuk di luar panel untuk menutup; ketuk aplikasi untuk membukanya.
  */
 @Composable
@@ -83,18 +90,19 @@ fun AppPanel(onClose: () -> Unit) {
                 .width(400.dp)
                 .heightIn(max = 480.dp)
                 .clip(PanelShape)
-                .background(Color(Tokens.Argb.PANEL))
-                .border(0.8.dp, Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.22f), Color.White.copy(alpha = 0.06f))), PanelShape)
+                .background(PanelBody, PanelShape)
+                .border(0.8.dp, PanelEdge, PanelShape)
                 // Ketukan di dalam panel tidak ikut menutup
                 .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}
                 .padding(14.dp),
         ) {
             Text(
-                "Semua aplikasi",
-                color = Color.White.copy(alpha = 0.7f),
-                fontSize = 13.sp,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(start = 6.dp, bottom = 10.dp),
+                "SEMUA CHANNEL",
+                color = RetroColors.Amber,
+                fontFamily = MonoFamily,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.padding(start = 6.dp, bottom = 10.dp).semantics { contentDescription = "Semua aplikasi"; heading() },
             )
             LazyVerticalGrid(
                 columns = GridCells.Adaptive(80.dp),
@@ -106,17 +114,18 @@ fun AppPanel(onClose: () -> Unit) {
                     Column(
                         Modifier
                             .clip(Corner.m)
-                            .clickable {
+                            .clickable(onClickLabel = "Buka", role = Role.Button) {
                                 onClose()
                                 AppsRepository.get(context).open(app, dock.windowed)
                             }
                             .padding(vertical = 8.dp, horizontal = 2.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
-                        Image(app.icon, app.label, Modifier.size(46.dp))
+                        // Nama dibacakan dari teks di bawahnya (deskripsi ikon akan membuatnya dibaca dua kali)
+                        Image(app.icon, null, Modifier.size(46.dp))
                         Text(
                             app.label,
-                            color = Color.White.copy(alpha = 0.9f),
+                            color = RetroColors.CreamText,
                             fontSize = 11.sp,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,

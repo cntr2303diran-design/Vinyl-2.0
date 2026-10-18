@@ -10,6 +10,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,7 +25,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -46,7 +47,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -78,14 +80,17 @@ import com.vinyl.launcher.ui.home.HomeActivity
 import com.vinyl.launcher.ui.settings.SettingsActivity
 import com.vinyl.launcher.util.SystemActions
 import kotlinx.coroutines.flow.StateFlow
-import com.vinyl.launcher.ui.theme.Corner
+import com.vinyl.launcher.ui.theme.MonoFamily
+import com.vinyl.launcher.ui.theme.RetroColors
 
-private val BarShape = Corner.l
-private val BarColor = Color(0xF2151517)
+private val BarShape = RoundedCornerShape(12.dp)
+private val KeyShape = RoundedCornerShape(8.dp)
+private val VfdShape = RoundedCornerShape(6.dp)
+private val SymbolColor = RetroColors.CreamText
 
 /**
- * Isi Taskbar Vinyl: kapsul kaca gelap berisi Home, semua aplikasi, favorit,
- * aplikasi terakhir, dan kartu kecil lagu yang sedang diputar.
+ * Isi taskbar bergaya panel depan VCR: badan arang, tombol mekanis (Home, semua aplikasi, ciutkan), favorit,
+ * aplikasi terakhir, jendela VFD untuk lagu yang sedang diputar, dan jam VFD.
  *
  * Susunan dan ukuran diputuskan oleh [TaskbarPlanner] (lihat penjelasan di sana): jam dan tombol
  * ciutkan selalu terlihat; bila layar sempit, aplikasi terakhir/teks lagu/tanggal dibuang dan
@@ -142,15 +147,15 @@ private fun Bar(model: TaskbarModel) {
             SystemTray(plan)
         }
         Divider(vertical)
-        BarIcon(Icons.Rounded.ExpandMore, "Ciutkan taskbar", iconSize = 22) { TaskbarState.setCollapsed(true) }
+        BarIcon(Icons.Rounded.ExpandMore, "Ciutkan taskbar", iconSize = 20) { TaskbarState.setCollapsed(true) }
     }
 
     // Sumbu melintang dikunci ke rencana (tebal bar konsisten); sumbu searah bar mengikuti isi.
     val capsule = Modifier
         .then(if (vertical) Modifier.width(plan.barCrossDp.dp) else Modifier.height(plan.barCrossDp.dp))
         .clip(BarShape)
-        .background(BarColor)
-        .border(0.8.dp, Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.22f), Color.White.copy(alpha = 0.06f))), BarShape)
+        .background(PanelBody, BarShape)
+        .border(0.8.dp, PanelEdge, BarShape)
         .padding(horizontal = 10.dp, vertical = 8.dp)
     if (vertical) {
         Column(capsule, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(TaskbarMetrics.GAP.dp)) { content() }
@@ -211,8 +216,10 @@ private fun SystemTray(plan: TaskbarPlan) {
     val now by rememberNow()
     val battery = rememberBattery()
     val time = remember(now.hour, now.minute) { "%02d:%02d".format(now.hour, now.minute) }
+    // Huruf kapital tanpa koma, seperti layar VFD (lebar huruf mono tetap; muat di TRAY_DATE_W, lihat TaskbarPlanner)
     val date = remember(now.dayOfYear) {
-        java.time.format.DateTimeFormatter.ofPattern("EEE, d MMM", java.util.Locale.forLanguageTag("id-ID")).format(now)
+        java.time.format.DateTimeFormatter.ofPattern("EEE d MMM", java.util.Locale.forLanguageTag("id-ID")).format(now)
+            .replace(".", "").uppercase(java.util.Locale.forLanguageTag("id-ID"))
     }
     // Skala font di dalam bar dibatasi (TaskbarMetrics.MAX_FONT_SCALE) agar ukuran yang direncanakan selalu cukup
     val density = LocalDensity.current
@@ -221,7 +228,9 @@ private fun SystemTray(plan: TaskbarPlan) {
         Column(
             Modifier
                 .then(if (vertical) Modifier.height(plan.trayMainDp.dp) else Modifier.width(plan.trayMainDp.dp).heightIn(min = TaskbarMetrics.TRAY_H.dp))
-                .clip(RoundedCornerShape(14.dp))
+                .clip(VfdShape)
+                .background(RetroColors.VfdGlass, VfdShape)
+                .border(0.8.dp, Color.Black.copy(alpha = 0.6f), VfdShape)
                 .clickable(onClickLabel = "Buka panel notifikasi", role = Role.Button) { SystemActions.expandNotifications(context) }
                 .padding(horizontal = 8.dp, vertical = 4.dp)
                 .semantics(mergeDescendants = true) {
@@ -230,10 +239,14 @@ private fun SystemTray(plan: TaskbarPlan) {
             horizontalAlignment = if (vertical) Alignment.CenterHorizontally else Alignment.End,
             verticalArrangement = Arrangement.Center,
         ) {
-            Text(time, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false)
             Text(
-                if (vertical || !plan.showDate) "${battery.level}%" else "$date  ·  ${battery.level}%",
-                color = Color.White.copy(alpha = 0.72f),
+                time, color = RetroColors.VfdAmber, fontFamily = MonoFamily, fontSize = 15.sp, fontWeight = FontWeight.Medium,
+                maxLines = 1, softWrap = false,
+            )
+            Text(
+                if (vertical || !plan.showDate) "${battery.level}%" else "$date · ${battery.level}%",
+                color = RetroColors.VfdAmber,
+                fontFamily = MonoFamily,
                 fontSize = 11.sp,
                 maxLines = 1,
                 softWrap = false,
@@ -249,19 +262,30 @@ private fun Divider(vertical: Boolean) {
         Modifier
             .padding(if (vertical) PaddingValues(vertical = 4.dp) else PaddingValues(horizontal = 4.dp))
             .size(width = if (vertical) 28.dp else 1.dp, height = if (vertical) 1.dp else 28.dp)
-            .background(Color.White.copy(alpha = 0.14f)),
+            // Alur terukir di panel: garis gelap; sorotnya digambar setengah piksel di sisi bawah/kanan
+            .background(Color.Black.copy(alpha = 0.55f))
+            .drawBehind {
+                val o = if (vertical) Offset(0f, size.height) else Offset(size.width, 0f)
+                drawLine(Color.White.copy(alpha = 0.10f), o, Offset(size.width, size.height), strokeWidth = 1f)
+            },
     )
 }
 
+/** Tombol mekanis panel: area sentuh 48dp penuh, muka tombol 40×34dp yang turun saat ditekan. */
 @Composable
-private fun BarIcon(icon: ImageVector, desc: String, iconSize: Int = 26, onClick: () -> Unit) {
+private fun BarIcon(icon: ImageVector, desc: String, iconSize: Int = 22, onClick: () -> Unit) {
+    val source = remember { MutableInteractionSource() }
+    val pressed by source.collectIsPressedAsState()
     Box(
         Modifier
             .size(TaskbarMetrics.ICON.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .clickable(onClickLabel = desc, role = Role.Button, onClick = onClick),
+            .clickable(interactionSource = source, indication = null, onClickLabel = desc, role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center,
-    ) { Icon(icon, desc, tint = Color.White.copy(alpha = 0.9f), modifier = Modifier.size(iconSize.dp)) }
+    ) {
+        Box(Modifier.size(width = 40.dp, height = 34.dp).keyFace(pressed, KeyShape), contentAlignment = Alignment.Center) {
+            Icon(icon, desc, tint = SymbolColor, modifier = Modifier.size(iconSize.dp))
+        }
+    }
 }
 
 @Composable
@@ -302,27 +326,37 @@ private fun NowPlayingChip(context: Context, mode: ChipMode, vertical: Boolean, 
     val capped = Density(density.density, fontScale = density.fontScale.coerceAtMost(fontScale.coerceAtLeast(1f)))
     val label = "Sedang diputar ${np.title} oleh ${np.artist}. Buka aplikasi musik"
     val chipMod = Modifier
-        .clip(Corner.m)
-        .background(Color.White.copy(alpha = 0.07f))
+        .clip(VfdShape)
+        .background(RetroColors.VfdGlass, VfdShape)
+        .border(0.8.dp, Color.Black.copy(alpha = 0.6f), VfdShape)
         .clickable(onClickLabel = "Buka aplikasi musik", role = Role.Button) { MediaRepository.openMusicApp(context) }
         .semantics { contentDescription = label }
 
     val cover: @Composable () -> Unit = {
-        Box(Modifier.size(36.dp).clip(RoundedCornerShape(9.dp)).background(Color.White.copy(alpha = 0.08f)), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(36.dp).clip(RoundedCornerShape(4.dp)).background(RetroColors.CharcoalDeep), contentAlignment = Alignment.Center) {
             val art = np.art
             if (art != null) Image(art, null, contentScale = ContentScale.Crop, modifier = Modifier.size(36.dp))
-            else Icon(Icons.Rounded.MusicNote, null, tint = Color.White.copy(alpha = 0.5f), modifier = Modifier.size(18.dp))
+            else Icon(Icons.Rounded.MusicNote, null, tint = RetroColors.VfdAmber, modifier = Modifier.size(18.dp))
         }
     }
+    val playSource = remember { MutableInteractionSource() }
+    val playPressed by playSource.collectIsPressedAsState()
     val playButton: @Composable () -> Unit = {
         Box(
             Modifier
                 .size(48.dp)
-                .clip(CircleShape)
-                .clickable(onClickLabel = if (np.isPlaying) "Jeda" else "Putar", role = Role.Button) { MediaRepository.togglePlayPause("Taskbar") },
+                .clickable(
+                    interactionSource = playSource, indication = null,
+                    onClickLabel = if (np.isPlaying) "Jeda" else "Putar", role = Role.Button,
+                ) { MediaRepository.togglePlayPause("Taskbar") },
             contentAlignment = Alignment.Center,
         ) {
-            Icon(if (np.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (np.isPlaying) "Jeda" else "Putar", tint = Color.White, modifier = Modifier.size(24.dp))
+            Box(Modifier.size(width = 38.dp, height = 32.dp).keyFace(playPressed, KeyShape), contentAlignment = Alignment.Center) {
+                Icon(
+                    if (np.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (np.isPlaying) "Jeda" else "Putar",
+                    tint = SymbolColor, modifier = Modifier.size(22.dp),
+                )
+            }
         }
     }
 
@@ -342,8 +376,9 @@ private fun NowPlayingChip(context: Context, mode: ChipMode, vertical: Boolean, 
                 if (mode == ChipMode.FULL) {
                     Spacer(Modifier.width(10.dp))
                     Column(Modifier.width(TaskbarMetrics.NP_TEXT.dp)) {
-                        Text(np.title, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(np.artist, color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        // Amber VFD di atas kaca VFD (pasangan teruji); judul tetap huruf asli agar mudah dibaca
+                        Text(np.title, color = RetroColors.VfdAmber, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(np.artist, color = RetroColors.VfdAmber, fontFamily = MonoFamily, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     Spacer(Modifier.width(2.dp))
                 }

@@ -130,4 +130,27 @@ class DrawerLayoutTest {
         assertEquals(5, r.rows.count { it is DrawerRow.App })
         assertEquals(setOf('A', '#', 'E'), r.lettersPresent)   // "😀 emoji" memakai huruf pertamanya (E)
     }
+
+    @Test fun channelsFollowFullAlphabeticalList() {
+        val ch = DrawerLayout.channels(apps, { it.key }, { it.label })
+        // Sama dengan urutan bagian abjad pada daftar "Semua"; grup "#" (angka/simbol) paling akhir
+        assertEquals(mapOf("alarm" to 1, "asisten" to 2, "bank" to 3, "musik" to 4, "spotify" to 5, "satu" to 6), ch)
+    }
+
+    @Test fun channelOfAnAppIsTheSameInEveryCategory() {
+        val ch = DrawerLayout.channels(apps, { it.key }, { it.label })
+        val music = build(selected = AppCategory.MUSIC).rows.filterIsInstance<DrawerRow.App<A>>().map { ch[it.item.key] }
+        assertEquals(listOf(4, 5), music)
+    }
+
+    @Test fun duplicateKeysKeepFirstChannel() {
+        val ch = DrawerLayout.channels(listOf(A("x", "Alpha"), A("x", "Beta"), A("y", "Gamma")), { it.key }, { it.label })
+        assertEquals(mapOf("x" to 1, "y" to 3), ch)
+    }
+
+    @Test fun channelLabelIsAtLeastTwoDigits() {
+        assertEquals("CH 01", DrawerLayout.channelLabel(1))
+        assertEquals("CH 42", DrawerLayout.channelLabel(42))
+        assertEquals("CH 128", DrawerLayout.channelLabel(128))
+    }
 }

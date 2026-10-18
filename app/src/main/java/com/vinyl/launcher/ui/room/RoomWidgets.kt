@@ -77,7 +77,7 @@ private val CalendarRed = Color(0xFFA3322B)
 
 /** Kalender sobek: satu lembar per hari, tepi atas berlubang seperti blok kertas. */
 @Composable
-fun TearCalendarWidget(today: LocalDate, scale: Float = 1f, modifier: Modifier = Modifier) {
+fun TearCalendarWidget(today: LocalDate, modifier: Modifier = Modifier, scale: Float = 1f) {
     val locale = Locale.getDefault()
     val s = scale.coerceIn(0.5f, 2f)
     val month = today.month.getDisplayName(TextStyle.FULL_STANDALONE, locale)
@@ -134,18 +134,18 @@ fun TearCalendarWidget(today: LocalDate, scale: Float = 1f, modifier: Modifier =
 
 /** Cuaca di layar VFD (memuat data sendiri, diperbarui tiap 30 menit). */
 @Composable
-fun VfdWeatherWidget(settings: WeatherSettings, scale: Float = 1f, modifier: Modifier = Modifier) {
+fun VfdWeatherWidget(settings: WeatherSettings, modifier: Modifier = Modifier, scale: Float = 1f) {
     val weather by produceState<WeatherInfo?>(null, settings) {
         while (true) {
             value = WeatherRepository.current(settings) ?: value
             delay(30 * 60 * 1000L)
         }
     }
-    VfdWeather(weather, settings.cityName, scale, modifier)
+    VfdWeather(weather, settings.cityName, modifier, scale)
 }
 
 @Composable
-fun VfdWeather(weather: WeatherInfo?, cityFallback: String, scale: Float = 1f, modifier: Modifier = Modifier) {
+fun VfdWeather(weather: WeatherInfo?, cityFallback: String, modifier: Modifier = Modifier, scale: Float = 1f) {
     val s = scale.coerceIn(0.5f, 2f)
     val temp = weather?.let { "${it.temperatureC.toInt()}°C" } ?: "--°C"
     val desc = weather?.description?.uppercase() ?: "MENUNGGU DATA"
@@ -176,13 +176,13 @@ fun VfdWeather(weather: WeatherInfo?, cityFallback: String, scale: Float = 1f, m
 
 /** Baterai sebagai meter jarum analog (memuat status sendiri). */
 @Composable
-fun NeedleBatteryWidget(scale: Float = 1f, modifier: Modifier = Modifier) {
+fun NeedleBatteryWidget(modifier: Modifier = Modifier, scale: Float = 1f) {
     val b = rememberBattery()
-    NeedleBattery(b.level, b.charging, scale, modifier)
+    NeedleBattery(b.level, b.charging, modifier, scale)
 }
 
 @Composable
-fun NeedleBattery(level: Int, charging: Boolean, scale: Float = 1f, modifier: Modifier = Modifier) {
+fun NeedleBattery(level: Int, charging: Boolean, modifier: Modifier = Modifier, scale: Float = 1f) {
     val s = scale.coerceIn(0.5f, 2f)
     val lv = level.coerceIn(0, 100)
     Column(
@@ -229,7 +229,7 @@ fun NeedleBattery(level: Int, charging: Boolean, scale: Float = 1f, modifier: Mo
 
 /** Foto sebagai polaroid yang sedikit miring di dinding; beberapa foto berganti tiap 8 detik. */
 @Composable
-fun PolaroidWidget(images: List<String>, scale: Float = 1f, modifier: Modifier = Modifier) {
+fun PolaroidWidget(images: List<String>, modifier: Modifier = Modifier, scale: Float = 1f) {
     val s = scale.coerceIn(0.5f, 2f)
     var index by remember(images) { mutableIntStateOf(0) }
     LaunchedEffect(images) {
