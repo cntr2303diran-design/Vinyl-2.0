@@ -64,6 +64,7 @@ import androidx.compose.ui.unit.sp
 import com.vinyl.launcher.data.TonearmStyle
 import com.vinyl.launcher.data.VinylStyle
 import com.vinyl.launcher.media.NowPlaying
+import com.vinyl.launcher.ui.theme.Tokens
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlin.math.abs
@@ -153,7 +154,7 @@ fun Turntable(
     // Ala Apple Music: sampul sedikit mengecil saat pause, kembali penuh saat play
     val coverScale by animateFloatAsState(
         targetValue = if (playing || !hasTrack) 1f else 0.955f,
-        animationSpec = tween(500, easing = FastOutSlowInEasing),
+        animationSpec = tween(Tokens.Motion.SLOW_MS, easing = FastOutSlowInEasing),
         label = "coverScale",
     )
     // Posisi lengan: 0 = istirahat, 1 = jarum di piringan. Memakai Animatable agar bisa
@@ -339,7 +340,7 @@ fun Turntable(
                                 // Jika aplikasi musik menolak memutar, kembalikan lengan ke istirahat
                                 scope.launch {
                                     kotlinx.coroutines.delay(2500)
-                                    if (!np.isPlaying) engageAnim.animateTo(0f, tween(500))
+                                    if (!np.isPlaying) engageAnim.animateTo(0f, tween(Tokens.Motion.SLOW_MS))
                                 }
                             }
                         }

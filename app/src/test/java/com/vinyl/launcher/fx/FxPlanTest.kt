@@ -66,9 +66,12 @@ class FxPlanTest {
         assertTrue(p.particles)
         assertFalse(p.animateParticles)
         assertEquals(EnergySource.NONE, p.energy)
-        assertTrue("parallax tetap hidup saat jeda", p.parallax && p.animating)
+        assertTrue("parallax tetap hidup saat jeda (digerakkan sensor, bukan loop frame)", p.parallax)
+        assertFalse("jeda + hanya parallax: tidak ada loop frame yang berputar sia-sia", p.animating)
         val still = plan(all.copy(parallax = ParallaxMode.OFF), env.copy(playing = false))
         assertFalse("tanpa musik dan tanpa parallax tidak ada pekerjaan berulang", still.animating)
+        val parallaxOnly = VisualSettings(glassDistortion = false, reactiveGlow = false, particles = false, parallax = ParallaxMode.WINDOW, visualizer = VisualizerMode.OFF)
+        assertFalse(plan(parallaxOnly).animating)
     }
 
     @Test fun realVisualizerNeedsPermissionAndMusicAndNeverFakesIt() {

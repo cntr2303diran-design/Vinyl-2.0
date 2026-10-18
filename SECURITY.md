@@ -61,6 +61,11 @@ jadi aplikasi yang terpasang harus di-*uninstall* dulu (pengaturan hilang kecual
 **Status sekarang.** Build memakai kunci dari GitHub Secrets bila ada; bila tidak, kunci lama dipakai dan CI menampilkan peringatan
 (ringkasan run + log Gradle). Tidak ada yang berubah untuk pemasangan Anda yang sekarang.
 
+**Di repo Vinyl-2.0 (publik).** Berkas `app/vinyl.keystore` sengaja **tidak** disertakan, jadi tidak ada kunci di repo ini. Selama Secrets di
+atas belum diisi, CI menandatangani APK dengan kunci *debug* yang dibuat otomatis di mesin build, dan kunci itu **berbeda di setiap run**.
+Akibatnya APK dari CI bisa dipasang, tetapi **tidak bisa menimpa** APK lain (build sebelumnya atau Vinyl lama): copot dulu, lalu pasang.
+Mengisi Secrets (langkah di bawah) menyelesaikannya sekaligus: semua build berikutnya memakai satu kunci rahasia milik Anda.
+
 **Langkah rotasi (sekitar 10 menit):**
 
 1. Di Vinyl Launcher lama: Pengaturan → *Cadangan & privasi* → **Simpan cadangan** (simpan berkasnya di luar ponsel).
@@ -75,7 +80,8 @@ jadi aplikasi yang terpasang harus di-*uninstall* dulu (pengaturan hilang kecual
 5. **Simpan salinan `vinyl-release.jks` dan kata sandinya di tempat aman** (pengelola kata sandi). Bila hilang, aplikasi tidak bisa diperbarui lagi.
 6. Jalankan ulang workflow. Ringkasan run harus berbunyi *"Kunci tanda tangan rahasia dari Secrets dipakai"*.
 7. Di tablet: uninstall Vinyl Launcher lama, pasang APK baru, lalu Pengaturan → *Cadangan & privasi* → **Pulihkan dari berkas**.
-8. Setelah itu hapus kunci lama dari pohon kerja: `git rm app/vinyl.keystore` (riwayat Git tetap berisi kunci lama — itu sebabnya langkah 2–7 perlu).
+8. Hanya bila repo Anda masih menyimpan kunci lama (repo `vinyllauncher` yang lama): hapus dari pohon kerja dengan `git rm app/vinyl.keystore`
+   (riwayat Git tetap berisi kunci lama — itu sebabnya langkah 2–7 perlu). Di Vinyl-2.0 langkah ini tidak diperlukan.
 
 Alternatif tanpa uninstall adalah *rotasi kunci* APK Signature Scheme v3 lewat `apksigner rotate` (didukung Android 9+; minSdk proyek 29).
 Itu butuh langkah penandatanganan manual di luar build ini dan tidak diotomatiskan di sini; lihat dokumentasi resmi Android

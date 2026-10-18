@@ -27,7 +27,9 @@ Semua nilai ada di satu tempat: [`ui/theme/DesignTokens.kt`](app/src/main/java/c
 |---|---|
 | Warna (`Tokens.Argb`) | Seluruh aplikasi, lewat `Theme.kt` |
 | Spasi, radius, easing, durasi (`Dimen`, `Corner`, `Ease`, `Tokens.Motion`) | App drawer dan animasi buka/tutupnya |
-| Spasi, radius, gerak di layar lain | **Belum dimigrasikan**: masih angka langsung di kode (mis. pegas tonearm dan sampul). Nilai pegas bawaan `Tokens.Motion.SPRING_*` belum dipakai siapa pun |
+| Radius di layar lain | **Sebagian.** Semua `RoundedCornerShape` yang nilainya persis 12 / 16 / 26 dp kini memakai `Corner.s / m / l` (16 tempat, tampilan tidak berubah). Sisanya (6, 8, 9, 10, 13, 14, 20, 22, 24, 28 dp; 18 tempat) masih angka langsung: memetakannya ke token berarti mengubah tampilan, jadi menunggu keputusan desain |
+| Durasi gerak di layar lain | **Sebagian.** `tween(500)` pada turntable memakai `Tokens.Motion.SLOW_MS`. Durasi lain (260–800 ms, mis. 420 / 650 / 800) adalah koreografi khusus turntable, jam, dan lirik; pegas (`spring(...)`) per interaksi juga sengaja khusus. `Tokens.Motion.SPRING_*` belum dipakai siapa pun |
+| Spasi (padding) di layar lain | **Belum dimigrasikan** (±130 tempat dengan nilai campur) |
 
 ## Kontras (WCAG AA, ≥ 4,5 : 1) — dibuktikan oleh tes, bukan hanya dikira-kira
 

@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
@@ -44,6 +43,7 @@ import com.vinyl.launcher.data.GestureAction
 import com.vinyl.launcher.data.GestureBinding
 import com.vinyl.launcher.util.GestureRecognizer
 import java.util.UUID
+import com.vinyl.launcher.ui.theme.Corner
 
 private const val MAX_CUSTOM = 12
 
@@ -131,7 +131,7 @@ private fun GestureEditorDialog(
                     Modifier
                         .fillMaxWidth()
                         .height(220.dp)
-                        .clip(RoundedCornerShape(16.dp))
+                        .clip(Corner.m)
                         .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
                         .pointerInput(Unit) {
                             detectDragGestures(
@@ -182,7 +182,7 @@ fun GesturePreview(points: List<Float>, modifier: Modifier = Modifier) {
     val color = MaterialTheme.colorScheme.primary
     Canvas(
         modifier
-            .clip(RoundedCornerShape(12.dp))
+            .clip(Corner.s)
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
     ) {
         val n = points.size / 2

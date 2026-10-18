@@ -112,6 +112,7 @@ import com.vinyl.launcher.ui.theme.horizontal
 import com.vinyl.launcher.ui.theme.toAlignment
 import com.vinyl.launcher.ui.theme.toColor
 import com.vinyl.launcher.ui.theme.toComposeColor
+import com.vinyl.launcher.ui.theme.Corner
 import com.vinyl.launcher.util.SystemActions
 import com.vinyl.launcher.util.SoundFx
 import com.vinyl.launcher.data.DockPosition
@@ -530,7 +531,7 @@ private fun HomeWidget(
             )
             WidgetType.WEATHER -> WeatherWidget(
                 weather, textColor, scale = config.scale,
-                modifier = Modifier.glass(RoundedCornerShape(26.dp)).padding(horizontal = 20.dp, vertical = 14.dp),
+                modifier = Modifier.glass(Corner.l).padding(horizontal = 20.dp, vertical = 14.dp),
             )
             WidgetType.PHOTO -> PhotoWidget(config.images, scale = config.scale)
             WidgetType.BATTERY -> BatteryIndicator(
@@ -635,7 +636,7 @@ private fun TrackInfo(
             LyricsLines(
                 np, lyrics,
                 Modifier.padding(top = 20.dp).fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(Corner.s)
                     .clickable(onClickLabel = "Buka lirik layar penuh", role = Role.Button, onClick = onOpenLyrics),
             )
         }

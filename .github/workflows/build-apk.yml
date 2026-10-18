@@ -74,6 +74,14 @@ jobs:
           set -o pipefail
           ./gradlew lintDebug --stacktrace --no-daemon 2>&1 | tee -a build.log
 
+      # Laporan lint teks ikut ke build.log supaya bisa dibaca lewat branch "build-log" (log Actions tidak selalu terbuka)
+      - name: Sertakan laporan lint
+        if: always()
+        run: |
+          for f in app/build/reports/lint-results-debug.txt; do
+            if [ -f "$f" ]; then { echo; echo "===== LAPORAN LINT ($f) ====="; cat "$f"; } >> build.log; fi
+          done
+
       - name: Build debug APK
         run: |
           set -o pipefail
@@ -101,9 +109,9 @@ jobs:
             app/build/reports/
             app/build/test-results/
 
-      # Jika gagal: simpan log ke branch "build-log" agar mudah dibaca
-      - name: Simpan log error
-        if: failure()
+      # Simpan log (juga saat sukses, karena lint tidak memblokir) ke branch "build-log" agar mudah dibaca
+      - name: Simpan log
+        if: always()
         run: |
           mkdir -p /tmp/log && cp build.log /tmp/log/build.log || echo "build.log tidak ada" > /tmp/log/build.log
           cd /tmp/log

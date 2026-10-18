@@ -86,6 +86,7 @@ import com.vinyl.launcher.data.WidgetType
 import com.vinyl.launcher.ui.theme.label
 import com.vinyl.launcher.ui.theme.toColor
 import com.vinyl.launcher.ui.theme.toLongArgb
+import com.vinyl.launcher.ui.theme.Corner
 import kotlinx.coroutines.launch
 
 /*
@@ -111,7 +112,7 @@ fun ControlCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.
     Column(
         modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(26.dp))
+            .clip(Corner.l)
             .background(MaterialTheme.colorScheme.surfaceContainer)
             .padding(horizontal = 18.dp, vertical = 10.dp),
         content = content,
@@ -249,7 +250,7 @@ private fun HsvDialog(initial: Long, onDismiss: () -> Unit, onPick: (Long) -> Un
         title = { Text("Warna kustom") },
         text = {
             Column {
-                Box(Modifier.fillMaxWidth().height(48.dp).clip(RoundedCornerShape(12.dp)).background(current))
+                Box(Modifier.fillMaxWidth().height(48.dp).clip(Corner.s).background(current))
                 SliderRow("Rona", h / 360f, 0f..1f, { h = it * 360f }) { "${(it * 360).toInt()}°" }
                 SliderRow("Saturasi", s, 0f..1f, { s = it })
                 SliderRow("Kecerahan", v, 0f..1f, { v = it })

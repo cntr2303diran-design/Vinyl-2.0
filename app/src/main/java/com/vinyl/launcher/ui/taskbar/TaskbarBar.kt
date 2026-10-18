@@ -78,8 +78,9 @@ import com.vinyl.launcher.ui.home.HomeActivity
 import com.vinyl.launcher.ui.settings.SettingsActivity
 import com.vinyl.launcher.util.SystemActions
 import kotlinx.coroutines.flow.StateFlow
+import com.vinyl.launcher.ui.theme.Corner
 
-private val BarShape = RoundedCornerShape(26.dp)
+private val BarShape = Corner.l
 private val BarColor = Color(0xF2151517)
 
 /**
@@ -301,7 +302,7 @@ private fun NowPlayingChip(context: Context, mode: ChipMode, vertical: Boolean, 
     val capped = Density(density.density, fontScale = density.fontScale.coerceAtMost(fontScale.coerceAtLeast(1f)))
     val label = "Sedang diputar ${np.title} oleh ${np.artist}. Buka aplikasi musik"
     val chipMod = Modifier
-        .clip(RoundedCornerShape(16.dp))
+        .clip(Corner.m)
         .background(Color.White.copy(alpha = 0.07f))
         .clickable(onClickLabel = "Buka aplikasi musik", role = Role.Button) { MediaRepository.openMusicApp(context) }
         .semantics { contentDescription = label }

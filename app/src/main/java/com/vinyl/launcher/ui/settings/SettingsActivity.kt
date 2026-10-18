@@ -90,6 +90,7 @@ import com.vinyl.launcher.util.SystemActions
 import android.provider.Settings
 import com.vinyl.launcher.ui.onboarding.PermissionSteps
 import com.vinyl.launcher.ui.theme.VinylTheme
+import com.vinyl.launcher.ui.theme.Corner
 
 /** Halaman Pengaturan lengkap. Semua opsi disimpan langsung (DataStore). */
 class SettingsActivity : ComponentActivity() {
@@ -455,7 +456,7 @@ private fun Sidebar(selected: Page?, onSelect: (Page) -> Unit, onBack: () -> Uni
                 Modifier
                     .fillMaxWidth()
                     .padding(vertical = 2.dp)
-                    .clip(RoundedCornerShape(16.dp))
+                    .clip(Corner.m)
                     .background(if (sel) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent)
                     .clickable { onSelect(p) }
                     .padding(horizontal = 12.dp, vertical = 10.dp),
@@ -514,7 +515,7 @@ private fun AboutCard() {
     }
     ControlCard {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(56.dp).clip(RoundedCornerShape(16.dp)).background(Color(0xFF111113)), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(56.dp).clip(Corner.m).background(Color(0xFF111113)), contentAlignment = Alignment.Center) {
                 Icon(Icons.Rounded.Album, null, tint = Color(0xFFFF9F43), modifier = Modifier.size(36.dp))
             }
             Spacer(Modifier.width(16.dp))

@@ -78,6 +78,7 @@ import java.time.YearMonth
 import java.time.format.TextStyle
 import java.time.temporal.WeekFields
 import java.util.Locale
+import com.vinyl.launcher.ui.theme.Corner
 
 // ======================= Kalender =======================
 
@@ -196,7 +197,7 @@ fun TwoMonthCalendar(
         Spacer(Modifier.size(cell * 0.8f))
         MiniCalendar(nextMonth, today, events, color, accent, cell = cell)
     }
-    val m = if (card) modifier.glass(RoundedCornerShape(26.dp)).padding(horizontal = 18.dp, vertical = 16.dp) else modifier
+    val m = if (card) modifier.glass(Corner.l).padding(horizontal = 18.dp, vertical = 16.dp) else modifier
     if (vertical) Column(m) { content() } else Row(m) { content() }
 }
 

@@ -100,6 +100,7 @@ import com.vinyl.launcher.ui.theme.Accent
 import com.vinyl.launcher.ui.theme.TextPrimary
 import com.vinyl.launcher.ui.theme.TextSecondary
 import com.vinyl.launcher.ui.theme.TextTertiary
+import com.vinyl.launcher.ui.theme.Corner
 import com.vinyl.launcher.util.rememberImage
 import java.util.concurrent.TimeUnit
 
@@ -346,7 +347,7 @@ private fun RecordShelf(np: NowPlaying, queue: List<MediaRepository.QueueEntry>,
                     else -> "BERIKUTNYA" to TextTertiary
                 }
                 Row(
-                    Modifier.widthIn(max = 560.dp).glass(RoundedCornerShape(26.dp)).padding(horizontal = 22.dp, vertical = 14.dp),
+                    Modifier.widthIn(max = 560.dp).glass(Corner.l).padding(horizontal = 22.dp, vertical = 14.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(Modifier.weight(1f)) {
@@ -545,7 +546,7 @@ private fun Collection(history: List<PlayRecord>, onClear: () -> Unit) {
         // ---- Sampul-sampul ----
         items(history, key = { it.key }) { r ->
             val img = rememberImage(null, r.artFile)
-            Column(Modifier.clip(RoundedCornerShape(12.dp)).clickable { playFromSearch(context, r) }) {
+            Column(Modifier.clip(Corner.s).clickable { playFromSearch(context, r) }) {
                 Box {
                     Sleeve(img, null, highlight = false)
                     if (r.plays > 1) Text(

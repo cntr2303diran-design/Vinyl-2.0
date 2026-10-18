@@ -55,6 +55,7 @@ import com.vinyl.launcher.ui.settings.HomeSection
 import com.vinyl.launcher.ui.settings.HomeSectionControls
 import com.vinyl.launcher.ui.settings.SectionTitle
 import com.vinyl.launcher.ui.settings.SettingsActivity
+import com.vinyl.launcher.ui.theme.Corner
 
 /** Tab panel editor: bagian gaya + gestur + preset. */
 private val TABS = HomeSection.entries.map { it.title } + listOf("Gestur", "Preset")
@@ -182,7 +183,7 @@ fun HomeEditorPanel(vm: HomeViewModel, landscape: Boolean, apps: List<AppInfo>) 
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(26.dp))
+                    .clip(Corner.l)
                     .background(MaterialTheme.colorScheme.surfaceContainer)
                     .clickable { context.startActivity(Intent(context, SettingsActivity::class.java)) }
                     .padding(horizontal = 20.dp, vertical = 16.dp),

@@ -60,9 +60,12 @@ data class FxPlan(
     val visualizer: VisualizerPlan,
     val energy: EnergySource,
 ) {
-    /** Perlu loop frame (withFrameNanos) sekarang? Bila false tidak ada pekerjaan berulang sama sekali. */
+    /**
+     * Perlu loop frame (withFrameNanos) sekarang? Bila false tidak ada pekerjaan berulang sama sekali.
+     * Parallax TIDAK memerlukannya: kemiringan datang dari callback sensor dan dibaca langsung di fase gambar.
+     */
     val animating: Boolean
-        get() = parallax || visualizer == VisualizerPlan.REAL || visualizer == VisualizerPlan.DECORATIVE ||
+        get() = visualizer == VisualizerPlan.REAL || visualizer == VisualizerPlan.DECORATIVE ||
             (energy != EnergySource.NONE && (glow || animateParticles || distortion))
 
     val anything: Boolean get() = distortion || glow || particles || parallax || visualizer != VisualizerPlan.OFF

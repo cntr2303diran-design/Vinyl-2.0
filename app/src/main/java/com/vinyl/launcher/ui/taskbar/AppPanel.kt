@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -39,8 +38,9 @@ import com.vinyl.launcher.data.DockPosition
 import com.vinyl.launcher.data.SettingsRepository
 import com.vinyl.launcher.service.TaskbarState
 import com.vinyl.launcher.ui.theme.Tokens
+import com.vinyl.launcher.ui.theme.Corner
 
-private val PanelShape = RoundedCornerShape(26.dp)
+private val PanelShape = Corner.l
 
 /**
  * Panel kecil berisi semua aplikasi, muncul di dekat taskbar saat tombol 9 titik ditekan.
@@ -105,7 +105,7 @@ fun AppPanel(onClose: () -> Unit) {
                 items(shown, key = { it.key }) { app ->
                     Column(
                         Modifier
-                            .clip(RoundedCornerShape(16.dp))
+                            .clip(Corner.m)
                             .clickable {
                                 onClose()
                                 AppsRepository.get(context).open(app, dock.windowed)
