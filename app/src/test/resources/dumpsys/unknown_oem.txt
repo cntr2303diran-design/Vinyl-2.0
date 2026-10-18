@@ -1,0 +1,4 @@
+Some vendor dump without the expected markers
+A2DP active device: <hidden>
+codec = vendorcodec
+Output stream 3: rate 96000 format pcm24 device=usb

@@ -401,6 +401,7 @@ fun HomeScreen(vm: HomeViewModel) {
             if (pageVisible(indexOf(RoomPage.CONSOLE), pagePosition)) {
                 ConsoleRoute(
                     audio = settings.audio,
+                    musicPackage = np.packageName,
                     onSave = { a -> vm.updateSettings { it.copy(audio = a) } },
                     onBack = { vm.showPage(RoomPage.ROOM) },
                 ) {

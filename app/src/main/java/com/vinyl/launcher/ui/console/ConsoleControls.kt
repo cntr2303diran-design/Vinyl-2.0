@@ -142,12 +142,15 @@ internal fun ReadingRow(label: String, reading: Reading, modifier: Modifier = Mo
                 fontFamily = if (reading.source == Source.UNAVAILABLE) null else MonoFamily,
                 modifier = Modifier.weight(1f, fill = false),
             )
-            Text(
-                reading.sourceLabel,
-                color = sourceColor(reading.source),
-                style = MaterialTheme.typography.labelSmall,
-                modifier = Modifier.padding(start = 8.dp),
-            )
+            // "Tidak tersedia" sudah tertulis sebagai nilainya; label sumber hanya untuk nilai yang ada
+            if (reading.source != Source.UNAVAILABLE) {
+                Text(
+                    reading.sourceLabel,
+                    color = sourceColor(reading.source),
+                    style = MaterialTheme.typography.labelSmall,
+                    modifier = Modifier.padding(start = 8.dp),
+                )
+            }
         }
         if (showNote) {
             Text(reading.note, color = ConsoleColors.TextSecondary, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 2.dp))
@@ -240,7 +243,7 @@ internal fun Fader(
     val set by rememberUpdatedState(onChange)
     val span = range.endInclusive - range.start
     fun fromY(y: Float) = snap(range.endInclusive - (y / hPx).coerceIn(0f, 1f) * span, step, range)
-    Column(modifier.width(64.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(modifier.width(72.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Text(valueText(value), color = ConsoleColors.Text, style = MaterialTheme.typography.labelMedium, fontFamily = MonoFamily, maxLines = 1)
         Box(
             Modifier

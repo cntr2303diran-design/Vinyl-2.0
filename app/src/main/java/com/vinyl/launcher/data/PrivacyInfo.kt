@@ -16,6 +16,7 @@ object PrivacyInfo {
 
     const val ID_NOTIFICATION_LISTENER = "special:notification-listener"
     const val ID_ACCESSIBILITY = "special:accessibility"
+    const val ID_SHIZUKU = "moe.shizuku.manager.permission.API_V23"
 
     val summary: List<String> = listOf(
         "Semua pengaturan, riwayat lagu, dan kebiasaan memakai aplikasi disimpan hanya di perangkat ini. " +
@@ -67,6 +68,22 @@ object PrivacyInfo {
             "Syarat teknis Android untuk membuka Visualizer pada keluaran audio sistem dan untuk memasang equalizer Audio Console " +
                 "ke sesi audio yang dibuka aplikasi musik. Izin biasa yang diberikan saat pemasangan. Equalizer mati secara default; " +
                 "launcher tidak mengubah volume atau setelan suara sistem Anda.",
+        ),
+        Item(
+            "android.permission.DUMP", "Laporan diagnostik sistem (Akses lanjutan)",
+            "Opsional dan tidak pernah diberikan otomatis: hanya aktif bila Anda sendiri memberikannya lewat ADB atau Shizuku. " +
+                "Dipakai Audio Console untuk membaca codec Bluetooth aktif, format & sample rate keluaran, resampling, dan sesi audio " +
+                "aplikasi musik (untuk equalizer). Laporan dibaca di memori saat console terbuka atau EQ aktif; hanya nilai yang " +
+                "ditampilkan yang diambil. Isi laporan tidak disimpan, tidak dicatat ke log, dan tidak dikirim. Cabut kapan saja: " +
+                "adb shell pm revoke com.vinyl.launcher android.permission.DUMP.",
+            optional = true,
+        ),
+        Item(
+            ID_SHIZUKU, "Shizuku (opsional)",
+            "Izin API Shizuku (moe.shizuku.manager.permission.API_V23) ditambahkan library resmi Shizuku. Hanya dipakai bila Shizuku " +
+                "terpasang dan Anda menekan \"Berikan izin lewat Shizuku\": launcher menjalankan satu perintah tetap " +
+                "(pm grant com.vinyl.launcher android.permission.DUMP) lalu berhenti. Tidak ada perintah lain.",
+            optional = true,
         ),
         Item(ID_ACCESSIBILITY, "Layanan aksesibilitas", "Hanya untuk aksi global kunci layar dan buka notifikasi dari gestur. Tidak membaca isi layar.", optional = true),
     )

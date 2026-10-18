@@ -34,6 +34,13 @@
     -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <!--
+      Akses lanjutan Audio Console (opsional). DUMP TIDAK bisa diminta lewat dialog dan tidak diberikan saat pemasangan:
+      pengguna sendiri yang memberikannya lewat ADB ("adb shell pm grant com.vinyl.launcher android.permission.DUMP") atau
+      lewat Shizuku setelah menyetujui. Dipakai untuk membaca laporan diagnostik audio & Bluetooth (codec aktif, format
+      keluaran, resampling, sesi audio untuk equalizer). Isi laporan hanya dibaca di memori, tidak disimpan/dikirim.
+    -->
+    <uses-permission android:name="android.permission.DUMP" tools:ignore="ProtectedPermissions" />
     <!-- Mikrofon bukan syarat memasang Vinyl: tanpa ini tablet tanpa mikrofon akan disaring dari instalasi -->
     <uses-feature android:name="android.hardware.microphone" android:required="false" />
 
@@ -50,6 +57,8 @@
         <intent>
             <action android:name="android.intent.action.MEDIA_BUTTON" />
         </intent>
+        <!-- Akses lanjutan: memeriksa apakah aplikasi Shizuku terpasang (opsional) -->
+        <package android:name="moe.shizuku.privileged.api" />
         <!-- Audio Console: pintasan pengaturan audio, hanya ditampilkan bila ada aplikasi yang menanganinya -->
         <intent>
             <action android:name="android.settings.SOUND_SETTINGS" />
@@ -188,5 +197,16 @@
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
+        <!--
+          Penerima binder Shizuku (library resmi Shizuku-API). Dilindungi INTERACT_ACROSS_USERS_FULL sehingga hanya sistem /
+          Shizuku yang bisa memanggilnya, bukan aplikasi biasa. Tidak melakukan apa pun bila Shizuku tidak terpasang.
+        -->
+        <provider
+            android:name="rikka.shizuku.ShizukuProvider"
+            android:authorities="${applicationId}.shizuku"
+            android:multiprocess="false"
+            android:enabled="true"
+            android:exported="true"
+            android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
     </application>
 </manifest>

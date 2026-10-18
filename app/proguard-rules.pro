@@ -7,3 +7,13 @@
     *** Companion;
     kotlinx.serialization.KSerializer serializer(...);
 }
+
+# Serializer model Audio Console (EqValues) di paket audio
+-keep,includedescriptorclasses class com.vinyl.launcher.audio.**$$serializer { *; }
+-keepclassmembers class com.vinyl.launcher.audio.** {
+    *** Companion;
+    kotlinx.serialization.KSerializer serializer(...);
+}
+
+# Layanan Shizuku dibuat lewat refleksi di proses shell: konstruktornya harus tetap ada
+-keep class com.vinyl.launcher.advanced.ShellService { <init>(...); }

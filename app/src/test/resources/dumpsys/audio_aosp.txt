@@ -1,0 +1,12 @@
+AudioService dump:
+...
+PlaybackActivityMonitor dump time: 10:09:15.123
+
+ players:
+ AudioPlaybackConfiguration piid:15 deviceIds:[2] type:android.media.SoundPool u/pid:1000/1500 state:idle attr:AudioAttributes: usage=USAGE_ASSISTANCE_SONIFICATION content=CONTENT_TYPE_SONIFICATION flags=0x0 tags= bundle=null sessionId:9 mutedState:none  FormatInfo{isSpatialized=false, channelMask=0x0, sampleRate=0}
+ AudioPlaybackConfiguration piid:63 deviceIds:[27] type:android.media.AudioTrack u/pid:10234/8812 state:started attr:AudioAttributes: usage=USAGE_MEDIA content=CONTENT_TYPE_MUSIC flags=0x800 tags= bundle=null sessionId:4321 mutedState:none  FormatInfo{isSpatialized=false, channelMask=0x3, sampleRate=44100}
+ AudioPlaybackConfiguration piid:71 deviceIds:[27] type:android.media.MediaPlayer u/pid:10301/9020 state:paused attr:AudioAttributes: usage=USAGE_MEDIA content=CONTENT_TYPE_MOVIE flags=0x0 tags= bundle=null sessionId:5577 mutedState:none  FormatInfo{isSpatialized=false, channelMask=0x3, sampleRate=48000}
+ AudioPlaybackConfiguration piid:72 deviceIds:[] type:android.media.MediaPlayer u/pid:10301/9020 state:released attr:AudioAttributes: usage=USAGE_MEDIA content=CONTENT_TYPE_MOVIE flags=0x0 tags= bundle=null sessionId:5601 mutedState:none  FormatInfo{isSpatialized=false, channelMask=0x0, sampleRate=0}
+ AudioPlaybackConfiguration piid:80 deviceIds:[27] type:android.media.AudioTrack u/pid:10234/8812 state:started attr:AudioAttributes: usage=USAGE_MEDIA content=CONTENT_TYPE_MUSIC flags=0x800 tags= bundle=null sessionId:4321 mutedState:none  FormatInfo{isSpatialized=false, channelMask=0x3, sampleRate=44100}
+
+ ducked players piids:

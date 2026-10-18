@@ -1,0 +1,16 @@
+Profile: A2dpService
+ mActiveDevice: XX:XX:XX:XX:12:34
+ mMaxConnectedAudioDevices: 5
+=== A2dpStateMachine for XX:XX:XX:XX:56:78 ===
+ mConnectionState: Disconnected, mLastConnectionState: Connected
+ mIsPlaying: false
+ mCodecConfig: {codecName:SBC,mCodecType:0,mCodecPriority:0,mSampleRate:0x2(48000),mBitsPerSample:0x1(16),mChannelMode:0x2(STEREO),mCodecSpecific1:0,mCodecSpecific2:0,mCodecSpecific3:0,mCodecSpecific4:0}
+=== A2dpStateMachine for XX:XX:XX:XX:12:34 (Active) ===
+ mConnectionPolicy: 100
+ mConnectionState: Connected, mLastConnectionState: Connecting
+ mIsPlaying: true
+ mCodecConfig: {codecName:AAC,mCodecType:1,mCodecPriority:0,mSampleRate:0x1(44100),mBitsPerSample:0x1(16),mChannelMode:0x2(STEREO),mCodecSpecific1:0,mCodecSpecific2:0,mCodecSpecific3:0,mCodecSpecific4:0}
+ mCodecsSelectableCapabilities:
+   {codecName:AAC,mCodecType:1,mCodecPriority:0,mSampleRate:0x3(44100|48000),mBitsPerSample:0x1(16),mChannelMode:0x2(STEREO),mCodecSpecific1:0,mCodecSpecific2:0,mCodecSpecific3:0,mCodecSpecific4:0}
+ StateMachine: A2dpStateMachine:...
+Profile: HeadsetService

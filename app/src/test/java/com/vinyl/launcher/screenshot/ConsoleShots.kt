@@ -5,6 +5,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.captureRoboImage
+import com.vinyl.launcher.advanced.AdvancedAccess
 import com.vinyl.launcher.audio.ActiveOutput
 import com.vinyl.launcher.audio.AdvancedReadings
 import com.vinyl.launcher.audio.AudioSnapshot
@@ -21,6 +22,7 @@ import com.vinyl.launcher.data.AudioConsoleSettings
 import com.vinyl.launcher.ui.console.ConsoleActions
 import com.vinyl.launcher.ui.console.ConsoleScreen
 import com.vinyl.launcher.ui.console.ConsoleUi
+import com.vinyl.launcher.ui.theme.VinylTheme
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -31,7 +33,7 @@ private val buds = OutputDevice(7, DeviceKind.BLUETOOTH, "Buds Pro", address = "
 private val speaker = OutputDevice(1, DeviceKind.SPEAKER, "Speaker perangkat")
 
 /** Data rekaan untuk tangkapan layar (bukan hasil baca perangkat). */
-internal fun consoleUi(eqOn: Boolean = true): ConsoleUi {
+internal fun consoleUi(eqOn: Boolean = true, granted: Boolean = false): ConsoleUi {
     var audio = AudioConsoleRules.applyPreset(AudioConsoleSettings(eqEnabled = eqOn), "Bass hangat")
     audio = AudioConsoleRules.setProfile(audio, buds, "Bass hangat")
     return ConsoleUi(
@@ -44,10 +46,15 @@ internal fun consoleUi(eqOn: Boolean = true): ConsoleUi {
             capability = Reading.reported("Format apa saja", "Perangkat tidak membatasi daftar format (biasanya di-mix sistem)"),
             bitPerfect = Reading.unavailable("Hanya berlaku untuk perangkat USB"),
             spatial = Reading.reported("Tersedia, mati", "Nyalakan di pengaturan suara sistem"),
-            headTracking = Reading.reported("Tidak tersedia"),
+            headTracking = Reading.reported("Tidak didukung"),
             musicActive = true,
         ),
-        advanced = AdvancedReadings(),
+        advanced = if (!granted) AdvancedReadings() else AdvancedReadings(
+            codec = Reading.reported("AAC · 44,1 kHz · 16-bit", "Dari laporan diagnostik sistem (Bluetooth)"),
+            outputFormat = Reading.reported("48 kHz · PCM 16-bit", "Dari laporan diagnostik sistem (utas AudioOut_2D)"),
+            resampling = Reading.reported("Ya · 44,1 kHz → 48 kHz", "Dari laporan diagnostik sistem: pemutar dan keluaran berbeda sample rate"),
+            battery = Reading.unavailable("Laporan diagnostik sistem tidak memuat baterai perangkat Bluetooth"),
+        ),
         audio = audio,
         sessions = listOf(EqSession(4321, "com.contoh.musik", SessionOrigin.APP, SessionState.ACTIVE)),
         log = listOf(Automation.Result("Profil Buds Pro", Automation.Outcome.DONE, "Profil Buds Pro diterapkan: \"Bass hangat\"", 0L)),
@@ -59,7 +66,9 @@ internal fun consoleUi(eqOn: Boolean = true): ConsoleUi {
         ),
         tone = null,
         micGranted = false,
-        advancedAccess = Reading.unavailable("Belum diberikan"),
+        access = if (granted) AdvancedAccess.State(dumpGranted = true, shizuku = AdvancedAccess.ShizukuState.READY,
+            lastGrant = Reading.reported("Izin DUMP diberikan", "Lewat Shizuku"))
+        else AdvancedAccess.State(shizuku = AdvancedAccess.ShizukuState.NOT_RUNNING),
         isSamsung = true,
     )
 }
@@ -77,36 +86,44 @@ class ConsoleShots {
     @Test
     @Config(qualifiers = "w1280dp-h800dp-land-mdpi")
     fun tablet() {
-        compose.setContent { ConsoleScreen(consoleUi(), actions) }
+        compose.setContent { VinylTheme { ConsoleScreen(consoleUi(), actions) } }
         shot("tahap6_console_tablet")
     }
 
     @Test
     @Config(qualifiers = "w411dp-h891dp-xxhdpi")
     fun phone() {
-        compose.setContent { ConsoleScreen(consoleUi(eqOn = false), actions) }
+        compose.setContent { VinylTheme { ConsoleScreen(consoleUi(eqOn = false), actions) } }
         shot("tahap6_console_ponsel")
     }
 
     /** Seluruh isi halaman ponsel dalam satu gambar (layar sangat tinggi agar semua panel terlihat). */
     @Test
-    @Config(qualifiers = "w411dp-h3000dp-mdpi")
+    @Config(qualifiers = "w411dp-h4400dp-mdpi")
     fun phoneFullPage() {
-        compose.setContent { ConsoleScreen(consoleUi(), actions) }
+        compose.setContent { VinylTheme { ConsoleScreen(consoleUi(), actions) } }
         shot("tahap6_console_ponsel_penuh")
+    }
+
+    /** Akses lanjutan aktif: nilai codec/format/resampling terisi (data rekaan), layar tinggi agar semua panel terlihat. */
+    @Test
+    @Config(qualifiers = "w1280dp-h1900dp-mdpi")
+    fun tabletAdvancedFull() {
+        compose.setContent { VinylTheme { ConsoleScreen(consoleUi(granted = true), actions) } }
+        shot("tahap6_console_tablet_akses_lanjutan")
     }
 
     @Test
     @Config(qualifiers = "w411dp-h891dp-xxhdpi", fontScale = 2.0f)
     fun phoneLargeFont() {
-        compose.setContent { ConsoleScreen(consoleUi(), actions) }
+        compose.setContent { VinylTheme { ConsoleScreen(consoleUi(), actions) } }
         shot("tahap6_console_ponsel_font200")
     }
 
     @Test
     @Config(qualifiers = "ar-w1280dp-h800dp-land-mdpi")
     fun tabletRtl() {
-        compose.setContent { ConsoleScreen(consoleUi(), actions) }
+        compose.setContent { VinylTheme { ConsoleScreen(consoleUi(), actions) } }
         shot("tahap6_console_rtl")
     }
 }

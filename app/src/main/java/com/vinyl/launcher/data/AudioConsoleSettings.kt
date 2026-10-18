@@ -31,6 +31,11 @@ data class AudioConsoleSettings(
     val safeHeadroom: Boolean = true,
     /** Efek pada keluaran gabungan (sesi 0). Tidak dijamin di semua perangkat; mati secara default. */
     val globalExperimental: Boolean = false,
+    /**
+     * Dengan Akses lanjutan (izin DUMP): pasang EQ juga ke sesi musik yang terdeteksi dari laporan sistem, bukan hanya
+     * sesi yang dibuka aplikasi musik. Tidak berpengaruh tanpa izin DUMP atau saat EQ mati.
+     */
+    val detectSessions: Boolean = true,
 ) {
     companion object {
         const val BUILT_IN_DEFAULT = "Datar"

@@ -49,6 +49,22 @@ object EqEngine {
         _sessions.update { EqSessions.close(it, id) }
     }
 
+    /**
+     * Sesi yang terdeteksi lewat Akses lanjutan saat ini ([entries] = nomor sesi → paket). Sesi DETECTED yang tidak ada
+     * lagi ditutup; sesi dari sumber lain tidak disentuh. [entries] kosong = hapus semua sesi terdeteksi.
+     */
+    fun setDetected(entries: List<Pair<Int, String>>) = scope.launch {
+        val ids = entries.map { it.first }.toSet()
+        val gone = _sessions.value.filter { it.origin == SessionOrigin.DETECTED && it.id !in ids }.map { it.id }
+        gone.forEach(::release)
+        _sessions.update { list ->
+            var l = list.filterNot { it.id in gone }
+            entries.forEach { (id, pkg) -> l = EqSessions.open(l, id, pkg, SessionOrigin.DETECTED) }
+            l
+        }
+        sync()
+    }
+
     /** Terapkan pengaturan terbaru (dipanggil setiap pengaturan Audio Console berubah). */
     fun update(settings: AudioConsoleSettings) = scope.launch {
         config = settings

@@ -47,6 +47,9 @@ Setiap izin dan alasannya tampil di Pengaturan → *Cadangan & privasi*; daftarn
 | Respons jaringan | Dibaca berbatas (lirik 512 KB, cuaca 64 KB, gambar 12 MB), hanya status 200 |
 | Lirik dari internet | Dianggap tidak tepercaya: parser LRC dibatasi (5000 baris, 300 karakter per baris), jumlah kandidat pencarian dibatasi 20, lirik biasa 20.000 karakter; URL dibangun dengan penyandian parameter sehingga judul lagu tidak bisa menyisipkan parameter lain |
 | Volume | Sleep timer/pergantian lembut hanya menyentuh `STREAM_MUSIC`, berhenti bila pengguna menekan tombol volume, dan selalu memulihkan volume asli (termasuk setelah proses mati) |
+| Audio Console: siaran sesi efek | Penerima `OPEN/CLOSE_AUDIO_EFFECT_CONTROL_SESSION` harus diekspor (dikirim aplikasi musik), didaftarkan saat proses berjalan. Nomor sesi divalidasi (> 0), sesi 0 tidak bisa dibuka lewat siaran, jumlah sesi dibatasi 16, nama paket dipotong 200 karakter. EQ mati secara default |
+| Audio Console: Akses lanjutan | Izin `DUMP` hanya bisa diberikan pengguna sendiri (ADB/Shizuku). Laporan `dumpsys` dibaca lewat pipa di memori (maks 4 MB, batas waktu 4 detik), tidak pernah ditulis ke berkas, tidak dicatat ke log, tidak dikirim; pengurai murni dan toleran (`DumpParsers`, diuji dengan contoh sintetis dari format AOSP) |
+| Shizuku | `ShizukuProvider` dilindungi `INTERACT_ACROSS_USERS_FULL` (hanya sistem/Shizuku). `ShellService` (proses shell) hanya punya satu operasi tetap: `pm grant com.vinyl.launcher android.permission.DUMP`; AIDL-nya tidak menerima teks/perintah (dijaga `PrivacyInfoTest`). Dijalankan hanya setelah dialog yang menampilkan perintahnya disetujui |
 | Komponen | `BootReceiver` tidak diekspor (siaran boot/pembaruan dikirim sistem). Yang tetap diekspor memang harus: Home dan Onboarding (dipanggil sistem/peluncur), serta layanan notifikasi & aksesibilitas yang hanya bisa di-bind sistem lewat izin `BIND_*` |
 
 ## Kunci tanda tangan — perlu keputusan Anda
@@ -94,6 +97,11 @@ Itu butuh langkah penandatanganan manual di luar build ini dan tidak diotomatisk
 - Font diunduh saat build dari repositori `google/fonts` cabang `main` (isi dicek berupa berkas font, tetapi belum dikunci ke hash tertentu).
 - Visualizer *Audio asli* memakai sesi audio 0 (keluaran sistem). Beberapa versi Android/pabrikan membatasi atau menolak efek pada sesi ini;
   bila ditolak, Pengaturan dan layar utama menyatakannya. Belum diuji di perangkat nyata mana pun.
+- Equalizer Audio Console bekerja per sesi audio aplikasi lain (DynamicsProcessing). Aplikasi musik yang tidak membuka sesi efek
+  hanya terjangkau lewat Akses lanjutan; efek "semua audio" (sesi 0) sudah usang di Android dan diberi label eksperimental.
+  Bisa bentrok dengan efek pabrikan (Dolby/Samsung) atau aplikasi EQ lain; status sesi ditampilkan apa adanya. Belum diuji di perangkat nyata.
+- Format `dumpsys` milik OEM (mis. Samsung One UI) bisa berbeda dari AOSP; field yang tidak cocok tampil "Tidak tersedia". Belum diverifikasi
+  di perangkat Samsung nyata. Laporan sistem AOSP tidak memuat baterai perangkat Bluetooth, jadi baterai tidak ditampilkan.
 - Overlay (layar kunci, taskbar, tombol navigasi) memerlukan izin "tampil di atas aplikasi lain"; ini inheren pada fiturnya.
 
 ## Melapor kerentanan

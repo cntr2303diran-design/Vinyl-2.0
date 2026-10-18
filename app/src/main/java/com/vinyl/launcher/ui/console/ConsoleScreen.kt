@@ -33,6 +33,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -41,13 +42,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
+import com.vinyl.launcher.advanced.AdvancedAccess
 import com.vinyl.launcher.audio.AdvancedReadings
 import com.vinyl.launcher.audio.AudioSnapshot
 import com.vinyl.launcher.audio.Automation
@@ -78,8 +82,10 @@ data class ConsoleUi(
     val shortcuts: List<SystemAudioShortcuts.Shortcut>,
     val tone: ToneSynth.Side?,
     val micGranted: Boolean,
-    val advancedAccess: Reading,
+    val access: AdvancedAccess.State,
     val isSamsung: Boolean,
+    /** "Disalin" tampil sebentar setelah perintah ADB disalin. */
+    val copied: Boolean = false,
 )
 
 class ConsoleActions(
@@ -89,6 +95,10 @@ class ConsoleActions(
     val onTone: (ToneSynth.Side) -> Unit,
     val onStopTone: () -> Unit,
     val onShortcut: (SystemAudioShortcuts.Shortcut) -> Unit,
+    val onCopyCommand: () -> Unit = {},
+    val onCheckAccess: () -> Unit = {},
+    /** Dipanggil setelah pengguna menyetujui dialog yang menampilkan perintah Shizuku. */
+    val onGrantShizuku: () -> Unit = {},
 )
 
 /**
@@ -111,11 +121,12 @@ fun ConsoleScreen(ui: ConsoleUi, actions: ConsoleActions, modifier: Modifier = M
             { DiagnosticsPanel(ui, actions) },      // 4
             { AutomationPanel(ui, actions) },       // 5
             { DevicePanel(ui, actions) },           // 6
+            { AdvancedPanel(ui, actions) },         // 7
         )
         val layout = when (columns) {
-            3 -> listOf(listOf(0, 2, 3), listOf(1, 5), listOf(4, 6))
-            2 -> listOf(listOf(0, 1, 5), listOf(2, 3, 4, 6))
-            else -> listOf(listOf(0, 1, 2, 3, 4, 5, 6))
+            3 -> listOf(listOf(0, 2, 3), listOf(1, 5), listOf(4, 7, 6))
+            2 -> listOf(listOf(0, 1, 5), listOf(2, 3, 4, 7, 6))
+            else -> listOf(listOf(0, 1, 2, 3, 4, 5, 7, 6))
         }
         Column(
             Modifier
@@ -219,8 +230,9 @@ private fun SoundPanel(ui: ConsoleUi, actions: ConsoleActions) {
             detail = "Dipasang ke sesi audio aplikasi musik; launcher sendiri tidak memutar musik",
         )
         ReadingRow("Diproses", EqSessions.summary(a.eqEnabled, ui.sessions))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-            val subs = listOf("≤ 250 Hz", "250 Hz–4 kHz", "≥ 4 kHz")
+        // Sumbu frekuensi EQ selalu rendah → tinggi dari kiri, juga pada bahasa RTL (seperti equalizer fisik)
+        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+            val subs = listOf("≤ 250 Hz", "0,25–4 kHz", "≥ 4 kHz")
             val values = Eq.bands(a.values)
             Eq.BAND_NAMES.forEachIndexed { i, name ->
                 Fader(name, subs[i], values[i], Eq.MIN_DB..Eq.MAX_DB, Eq::dbText, { v ->
@@ -228,7 +240,7 @@ private fun SoundPanel(ui: ConsoleUi, actions: ConsoleActions) {
                 })
             }
             Fader("Preamp", "masukan", a.values.preampDb, Eq.PREAMP_MIN_DB..Eq.PREAMP_MAX_DB, Eq::dbText, { v -> edit { it.copy(preampDb = v) } })
-        }
+        } }
         LineSlider(
             "Balance", a.values.balance, -1f..1f, balanceText(a.values.balance), "Kiri", "Kanan",
             { v -> edit { it.copy(balance = v) } },
@@ -258,6 +270,12 @@ private fun SoundPanel(ui: ConsoleUi, actions: ConsoleActions) {
             "Semua audio (eksperimental)", a.globalExperimental, { on -> actions.onAudio { it.copy(globalExperimental = on) } },
             enabled = a.eqEnabled,
             detail = "Mencoba EQ pada keluaran gabungan (sesi 0). Cara ini sudah usang di Android dan di banyak perangkat tidak berpengaruh.",
+        )
+        ConsoleSwitch(
+            "Deteksi sesi lewat Akses lanjutan", a.detectSessions, { on -> actions.onAudio { it.copy(detectSessions = on) } },
+            enabled = ui.access.dumpGranted,
+            detail = if (ui.access.dumpGranted) "Juga memasang EQ ke sesi musik yang terlihat di laporan sistem, untuk aplikasi yang tidak membuka sesi efek"
+            else "Butuh Akses lanjutan (izin DUMP)",
         )
         ConsoleNote(
             "Bisa bentrok dengan efek suara bawaan perangkat (mis. Dolby atau efek pabrikan) dan aplikasi equalizer lain. Bila status menyebut " +
@@ -367,7 +385,7 @@ private fun DiagnosticsPanel(ui: ConsoleUi, actions: ConsoleActions) {
             if (ui.micGranted) Reading.reported("Izin diberikan", "Izin mikrofon (hanya spektrum, bukan rekaman)")
             else Reading.unavailable("Izin mikrofon belum diberikan; opsional, atur di Pengaturan → Efek visual"),
         )
-        ReadingRow("Akses lanjutan", ui.advancedAccess)
+        ReadingRow("Akses lanjutan", accessReading(ui.access))
     }
 }
 
@@ -448,6 +466,94 @@ private fun DevicePanel(ui: ConsoleUi, actions: ConsoleActions) {
                 )
             }
         }
-        ReadingRow("Akses lanjutan", ui.advancedAccess)
+        ReadingRow("Akses lanjutan", accessReading(ui.access))
+    }
+}
+
+private fun accessReading(s: AdvancedAccess.State): Reading =
+    if (s.dumpGranted) Reading.reported("Aktif (izin DUMP)", "Diberikan lewat ADB atau Shizuku")
+    else Reading.unavailable("Belum diberikan; lihat panduan di panel Akses lanjutan")
+
+private fun shizukuReading(s: AdvancedAccess.ShizukuState): Reading = when (s) {
+    AdvancedAccess.ShizukuState.NOT_INSTALLED -> Reading.unavailable("Tidak terpasang (opsional)")
+    AdvancedAccess.ShizukuState.NOT_RUNNING -> Reading.unavailable("Terpasang tetapi belum berjalan; nyalakan di aplikasi Shizuku")
+    AdvancedAccess.ShizukuState.UNSUPPORTED -> Reading.unavailable("Versi Shizuku terlalu lama; perbarui")
+    AdvancedAccess.ShizukuState.NEEDS_PERMISSION -> Reading.reported("Berjalan · belum mengizinkan launcher", "Shizuku akan meminta persetujuan Anda")
+    AdvancedAccess.ShizukuState.READY -> Reading.reported("Berjalan · launcher diizinkan", "Dilaporkan Shizuku")
+}
+
+/** Panduan & status Akses lanjutan (izin DUMP lewat ADB atau Shizuku). */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun AdvancedPanel(ui: ConsoleUi, actions: ConsoleActions) {
+    val s = ui.access
+    var confirming by rememberSaveable { mutableStateOf(false) }
+    ConsolePanel("Akses lanjutan", lit = s.dumpGranted) {
+        ReadingRow("Izin DUMP", accessReading(s))
+        ConsoleNote(
+            "Memberi console: codec Bluetooth aktif, format & sample rate keluaran, resampling, dan deteksi sesi musik untuk EQ. " +
+                "Tidak memberi: baterai perangkat Bluetooth (tidak dimuat laporan sistem) atau akses ke Audio HAL.",
+        )
+        ConsoleDivider()
+        Text("Lewat ADB · sekali, tetap ada setelah HP restart", color = ConsoleColors.TextSecondary, style = MaterialTheme.typography.labelMedium)
+        ConsoleNote(
+            "1. Aktifkan Opsi pengembang, lalu USB debugging atau Wireless debugging.\n" +
+                "2. Sambungkan HP ke komputer berisi ADB (atau pasangkan Wireless debugging).\n" +
+                "3. Jalankan perintah ini, lalu ketuk Periksa lagi:",
+        )
+        Text(
+            AdvancedAccess.ADB_COMMAND,
+            color = ConsoleColors.Green,
+            style = MaterialTheme.typography.bodySmall,
+            fontFamily = com.vinyl.launcher.ui.theme.MonoFamily,
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
+                .background(ConsoleColors.Page)
+                .padding(12.dp),
+        )
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            ConsoleButton(if (ui.copied) "Disalin" else "Salin perintah", actions.onCopyCommand, description = "Salin perintah ADB")
+            ConsoleButton("Periksa lagi", actions.onCheckAccess, description = "Periksa lagi status izin DUMP")
+        }
+        ConsoleNote(
+            "Di sebagian perangkat, sistem bisa mencabut lagi izin dari ADB. Bila status kembali \"Belum diberikan\", cari opsi " +
+                "\"Disable permission monitoring\" di Opsi pengembang (bila ada), lalu ulangi perintahnya.",
+        )
+        ConsoleDivider()
+        Text("Lewat Shizuku · opsional", color = ConsoleColors.TextSecondary, style = MaterialTheme.typography.labelMedium)
+        ReadingRow("Shizuku", shizukuReading(s.shizuku))
+        s.lastGrant?.let { ReadingRow("Hasil terakhir", it) }
+        val canGrant = !s.dumpGranted && !s.working &&
+            (s.shizuku == AdvancedAccess.ShizukuState.NEEDS_PERMISSION || s.shizuku == AdvancedAccess.ShizukuState.READY)
+        ConsoleButton(
+            if (s.working) "Menunggu Shizuku…" else "Berikan izin lewat Shizuku", { confirming = true }, enabled = canGrant,
+        )
+        ConsoleNote("Tanpa root, Shizuku perlu dinyalakan ulang lewat Wireless debugging setiap HP restart. Izin DUMP yang sudah diberikan tetap ada.")
+        ConsoleDivider()
+        ConsoleNote(
+            "Privasi: laporan sistem dibaca di memori hanya saat console terbuka atau saat EQ mendeteksi sesi, dan hanya nilai yang tampil " +
+                "yang diambil. Isinya tidak disimpan, tidak dicatat, dan tidak dikirim. Mencabut izin: ${AdvancedAccess.ADB_REVOKE}",
+        )
+    }
+    if (confirming) {
+        AlertDialog(
+            onDismissRequest = { confirming = false },
+            title = { Text("Jalankan lewat Shizuku?") },
+            text = {
+                Column {
+                    Text("Launcher akan meminta Shizuku menjalankan satu perintah dengan hak shell:")
+                    Text(
+                        "pm grant ${com.vinyl.launcher.advanced.ShellService.APP_ID} android.permission.DUMP",
+                        fontFamily = com.vinyl.launcher.ui.theme.MonoFamily,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(vertical = 10.dp),
+                    )
+                    Text("Tidak ada perintah lain. Izin bisa dicabut kapan saja dengan perintah revoke.")
+                }
+            },
+            confirmButton = { TextButton(onClick = { confirming = false; actions.onGrantShizuku() }) { Text("Jalankan") } },
+            dismissButton = { TextButton(onClick = { confirming = false }) { Text("Batal") } },
+        )
     }
 }

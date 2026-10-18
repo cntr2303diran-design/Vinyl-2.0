@@ -88,6 +88,8 @@ android {
     }
     buildFeatures {
         compose = true
+        // IShellService.aidl: layanan Shizuku satu-perintah untuk Akses lanjutan
+        aidl = true
     }
 
     // Robolectric (tangkapan layar Compose di JVM) butuh resource Android saat tes
@@ -164,6 +166,8 @@ dependencies {
     implementation(libs.androidx.palette)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.shizuku.api)
+    implementation(libs.shizuku.provider)
     debugImplementation(libs.androidx.ui.tooling)
 
     testImplementation(libs.junit)

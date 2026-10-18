@@ -5,11 +5,19 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.media.AudioManager
+import android.media.AudioPlaybackConfiguration
 import android.media.audiofx.AudioEffect
+import android.os.Handler
+import android.os.Looper
 import androidx.core.content.ContextCompat
+import com.vinyl.launcher.advanced.AdvancedAccess
 import com.vinyl.launcher.data.AudioConsoleRules
 import com.vinyl.launcher.data.SettingsRepository
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,7 +30,8 @@ import kotlinx.coroutines.launch
  * Bagian Audio Console yang hidup selama proses launcher hidup (bukan layanan latar baru):
  *  - menerima siaran sesi efek dari aplikasi musik dan meneruskannya ke [EqEngine];
  *  - menerapkan pengaturan EQ terbaru ke [EqEngine];
- *  - menjalankan aturan otomasi saat keluaran audio berganti, dan mencatat hasil terakhirnya di [log].
+ *  - menjalankan aturan otomasi saat keluaran audio berganti, dan mencatat hasil terakhirnya di [log];
+ *  - dengan Akses lanjutan, mendeteksi sesi musik aplikasi lain untuk EQ (dipicu callback pemutaran, bukan polling).
  * Pemantau perangkat audio hanya didaftarkan selama ada aturan yang membutuhkannya.
  */
 object AudioConsoleRuntime {
@@ -72,11 +81,49 @@ object AudioConsoleRuntime {
                 if (!need && monitoring) { AudioMonitor.release(); monitoring = false }
             }
         }
+        // EQ lapis kedua: sesi musik yang terdeteksi lewat Akses lanjutan. Pemicu = callback pemutaran publik Android,
+        // jadi laporan sistem hanya dibaca saat ada pemutar yang mulai/berhenti, bukan berkala.
+        scope.launch {
+            combine(
+                settings.map { it.audio.eqEnabled && it.audio.detectSessions },
+                AdvancedAccess.state.map { it.dumpGranted },
+            ) { wanted, granted -> wanted && granted }
+                .distinctUntilChanged()
+                .collect { on -> if (on) startDetection(app, scope) else stopDetection(app) }
+        }
         scope.launch {
             AudioMonitor.state.map { it.active.device }
                 .distinctUntilChanged { a, b -> a?.profileKey == b?.profileKey }
                 .collect { device -> onActiveChanged(app, device) }
         }
+    }
+
+    private var playbackCallback: AudioManager.AudioPlaybackCallback? = null
+    private var detectJob: Job? = null
+
+    private fun startDetection(app: Application, scope: CoroutineScope) {
+        if (playbackCallback != null) return
+        val am = app.getSystemService(AudioManager::class.java) ?: return
+        fun detectSoon() {
+            detectJob?.cancel()
+            detectJob = scope.launch {
+                delay(400) // gabungkan perubahan beruntun (mis. ganti lagu)
+                AdvancedAccess.detectedSessions(app)?.let { EqEngine.setDetected(it) }
+            }
+        }
+        val cb = object : AudioManager.AudioPlaybackCallback() {
+            override fun onPlaybackConfigChanged(configs: MutableList<AudioPlaybackConfiguration>?) = detectSoon()
+        }
+        am.registerAudioPlaybackCallback(cb, Handler(Looper.getMainLooper()))
+        playbackCallback = cb
+        detectSoon()
+    }
+
+    private fun stopDetection(app: Application) {
+        detectJob?.cancel()
+        playbackCallback?.let { cb -> app.getSystemService(AudioManager::class.java)?.unregisterAudioPlaybackCallback(cb) }
+        playbackCallback = null
+        EqEngine.setDetected(emptyList())
     }
 
     private suspend fun onActiveChanged(app: Application, after: OutputDevice?) {

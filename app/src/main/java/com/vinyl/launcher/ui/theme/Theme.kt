@@ -11,6 +11,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontVariation
@@ -124,7 +125,9 @@ private val DarkScheme = darkColorScheme(
     onErrorContainer = Color(Tokens.Argb.ON_ERROR_CONTAINER),
 )
 
-private val base = TextStyle(fontFamily = InterText, letterSpacing = 0.sp)
+// Arah teks mengikuti isinya: teks Latin (mis. "-4 dB", "≥ 5,0 ms") tetap terbaca benar saat tata letak RTL,
+// teks Arab/Ibrani tetap RTL.
+private val base = TextStyle(fontFamily = InterText, letterSpacing = 0.sp, textDirection = TextDirection.Content)
 
 private val VinylTypography = Typography(
     displayLarge = base.copy(fontFamily = InterDisplay, fontWeight = FontWeight.Bold, fontSize = 57.sp, letterSpacing = (-0.04).em),

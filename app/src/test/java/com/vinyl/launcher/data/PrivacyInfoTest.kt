@@ -55,4 +55,28 @@ class PrivacyInfoTest {
     @Test fun `lalu lintas jaringan hanya https tanpa cleartext`() {
         assertTrue(manifest.contains("""android:usesCleartextTraffic="false""""))
     }
+
+    @Test fun `akses lanjutan opsional dan shizuku hanya untuk paket ini`() {
+        val dump = PrivacyInfo.permissions.first { it.id == "android.permission.DUMP" }
+        assertTrue("DUMP harus opsional", dump.optional)
+        // Penyedia Shizuku hanya boleh dipanggil sistem/Shizuku
+        val provider = Regex("""<provider[^>]*ShizukuProvider[^>]*/>""", RegexOption.DOT_MATCHES_ALL).find(manifest)?.value.orEmpty()
+        assertTrue(provider.contains("""android:permission="android.permission.INTERACT_ACROSS_USERS_FULL""""))
+        assertTrue(PrivacyInfo.permissions.any { it.id == PrivacyInfo.ID_SHIZUKU })
+        // Perintah tetap di layanan Shizuku menunjuk applicationId aplikasi ini
+        fun read(vararg paths: String) = paths.map(::File).first { it.isFile }.readText()
+        val gradle = read("build.gradle.kts", "app/build.gradle.kts")
+        val appId = Regex("""applicationId\s*=\s*"([^"]+)"""").find(gradle)!!.groupValues[1]
+        val shell = read(
+            "src/main/java/com/vinyl/launcher/advanced/ShellService.kt",
+            "app/src/main/java/com/vinyl/launcher/advanced/ShellService.kt",
+        )
+        assertTrue("APP_ID harus $appId", shell.contains("""const val APP_ID = "$appId""""))
+        val aidl = read(
+            "src/main/aidl/com/vinyl/launcher/advanced/IShellService.aidl",
+            "app/src/main/aidl/com/vinyl/launcher/advanced/IShellService.aidl",
+        )
+        // Tidak ada metode yang menerima perintah/argumen bebas
+        assertFalse("AIDL tidak boleh menerima String", aidl.contains("String"))
+    }
 }

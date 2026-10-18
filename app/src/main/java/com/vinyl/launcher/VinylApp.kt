@@ -1,6 +1,7 @@
 package com.vinyl.launcher
 
 import android.app.Application
+import com.vinyl.launcher.advanced.AdvancedAccess
 import com.vinyl.launcher.audio.AudioConsoleRuntime
 import com.vinyl.launcher.data.AppsRepository
 import com.vinyl.launcher.data.HistoryRepository
@@ -32,6 +33,7 @@ class VinylApp : Application() {
 
         val settings = SettingsRepository.get(this).settings
         // Audio Console: sesi efek dari aplikasi musik, EQ, dan aturan otomasi (tanpa layanan latar tambahan)
+        AdvancedAccess.start(this)
         AudioConsoleRuntime.start(this, appScope)
         appScope.launch {
             settings.map { it.defaultMusicPackage }.distinctUntilChanged()

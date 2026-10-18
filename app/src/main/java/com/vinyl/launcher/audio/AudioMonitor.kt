@@ -158,6 +158,6 @@ object AudioMonitor {
     private fun headTracking(am: AudioManager): Reading {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return Reading.unavailable("Butuh Android 13")
         val s = runCatching { am.spatializer }.getOrNull() ?: return Reading.unavailable("Sistem tidak menyediakan spatializer")
-        return Reading.reported(if (s.isHeadTrackerAvailable) "Tersedia" else "Tidak tersedia")
+        return Reading.reported(if (s.isHeadTrackerAvailable) "Tersedia" else "Tidak didukung")
     }
 }

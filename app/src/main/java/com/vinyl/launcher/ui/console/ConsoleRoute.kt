@@ -1,6 +1,8 @@
 package com.vinyl.launcher.ui.console
 
 import android.Manifest
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -18,12 +20,12 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
+import com.vinyl.launcher.advanced.AdvancedAccess
 import com.vinyl.launcher.audio.AdvancedReadings
 import com.vinyl.launcher.audio.AudioConsoleRuntime
 import com.vinyl.launcher.audio.AudioMonitor
 import com.vinyl.launcher.audio.ChannelTest
 import com.vinyl.launcher.audio.EqEngine
-import com.vinyl.launcher.audio.Reading
 import com.vinyl.launcher.audio.SystemAudioShortcuts
 import com.vinyl.launcher.data.AudioConsoleSettings
 import kotlinx.coroutines.Dispatchers
@@ -40,6 +42,8 @@ import kotlinx.coroutines.withContext
 @Composable
 fun ConsoleRoute(
     audio: AudioConsoleSettings,
+    /** Paket aplikasi musik yang sesinya sedang tampil (untuk memilih pemutar yang benar di laporan sistem). */
+    musicPackage: String?,
     onSave: (AudioConsoleSettings) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
@@ -51,12 +55,16 @@ fun ConsoleRoute(
     val sessions by EqEngine.sessions.collectAsStateWithLifecycle()
     val log by AudioConsoleRuntime.log.collectAsStateWithLifecycle()
     val tone by ChannelTest.playing.collectAsStateWithLifecycle()
+    val access by AdvancedAccess.state.collectAsStateWithLifecycle()
+    var advanced by remember { mutableStateOf(AdvancedReadings()) }
+    var copied by remember { mutableStateOf(false) }
 
     var shortcuts by remember { mutableStateOf(emptyList<SystemAudioShortcuts.Shortcut>()) }
     LaunchedEffect(Unit) { shortcuts = withContext(Dispatchers.IO) { SystemAudioShortcuts.available(context) } }
 
     LifecycleResumeEffect(Unit) {
         AudioMonitor.acquire(context)
+        AdvancedAccess.refresh() // pengguna mungkin baru saja menjalankan perintah ADB
         onPauseOrDispose {
             AudioMonitor.release()
             ChannelTest.stop()
@@ -71,6 +79,19 @@ fun ConsoleRoute(
             }
         }
     }
+
+    // Laporan diagnostik dibaca hanya selama halaman ini tampil dan izin DUMP ada (di thread latar, lihat DumpReader)
+    val activeDevice = snapshot.active.device
+    LaunchedEffect(lifecycle, access.dumpGranted, activeDevice?.profileKey, musicPackage) {
+        if (!access.dumpGranted) { advanced = AdvancedReadings(); return@LaunchedEffect }
+        lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            while (true) {
+                advanced = AdvancedAccess.readings(context, activeDevice, musicPackage)
+                delay(5_000)
+            }
+        }
+    }
+    LaunchedEffect(copied) { if (copied) { delay(2_000); copied = false } }
 
     var draft by remember { mutableStateOf<AudioConsoleSettings?>(null) }
     LaunchedEffect(draft) {
@@ -89,15 +110,16 @@ fun ConsoleRoute(
     ConsoleScreen(
         ui = ConsoleUi(
             snapshot = snapshot,
-            advanced = AdvancedReadings(),
+            advanced = advanced,
             audio = draft ?: audio,
             sessions = sessions,
             log = log,
             shortcuts = shortcuts,
             tone = tone,
             micGranted = mic,
-            advancedAccess = Reading.unavailable("Belum diberikan"),
+            access = access,
             isSamsung = SystemAudioShortcuts.isSamsung,
+            copied = copied,
         ),
         actions = ConsoleActions(
             onBack = onBack,
@@ -107,6 +129,13 @@ fun ConsoleRoute(
             onShortcut = { s ->
                 runCatching { if (s.forResult) effectsPanel.launch(s.intent) else context.startActivity(s.intent) }
             },
+            onCopyCommand = {
+                context.getSystemService(ClipboardManager::class.java)
+                    ?.setPrimaryClip(ClipData.newPlainText("Perintah ADB", AdvancedAccess.ADB_COMMAND))
+                copied = true
+            },
+            onCheckAccess = AdvancedAccess::refresh,
+            onGrantShizuku = AdvancedAccess::grantViaShizuku,
         ),
         modifier = modifier,
         vu = vu,
