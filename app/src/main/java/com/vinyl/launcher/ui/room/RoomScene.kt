@@ -270,42 +270,46 @@ fun RoomScene(
             flat(Modifier.offset(w * cas.left, h * cas.bottom - upright).size(w * cas.width, upright))
         }
 
-        // ---------- Tombol yang mengapit kaset
-        val controls = listOf(
-            Triple(Icons.Rounded.SkipPrevious, "Lagu sebelumnya", onPrevious),
-            Triple(Icons.Rounded.Replay10, "Mundur 10 detik", onRewind),
-            Triple(if (np.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                if (!np.hasSession) "Buka aplikasi musik" else if (np.isPlaying) "Jeda" else "Putar", onPlayPause),
-            Triple(Icons.Rounded.SkipNext, "Lagu berikutnya", onNext),
-        )
-        controls.forEachIndexed { i, (icon, label, action) ->
-            val enabled = !editing && (i == 2 || np.hasSession) && (i != 1 || np.canSeek)
-            SceneButton(
-                icon, label, enabled,
-                tint = if (i == 2) colors.play else colors.icon,
-                modifier = Modifier.offset(w * sc.controlsX[i] - 24.dp, h * sc.controlsY - 24.dp),
-                onClick = action,
+        // Kontrol di luar kamera memudar saat kamera mendekat ke knob (agar tidak menumpuk di atas TV yang diperbesar)
+        val chromeAlpha = (1f - (knobZoom - 1f) / (KNOB_ZOOM - 1f)).coerceIn(0f, 1f)
+        if (chromeAlpha > 0f) Box(Modifier.fillMaxSize().graphicsLayer { alpha = chromeAlpha }) {
+            // ---------- Tombol yang mengapit kaset
+            val controls = listOf(
+                Triple(Icons.Rounded.SkipPrevious, "Lagu sebelumnya", onPrevious),
+                Triple(Icons.Rounded.Replay10, "Mundur 10 detik", onRewind),
+                Triple(if (np.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                    if (!np.hasSession) "Buka aplikasi musik" else if (np.isPlaying) "Jeda" else "Putar", onPlayPause),
+                Triple(Icons.Rounded.SkipNext, "Lagu berikutnya", onNext),
             )
-        }
+            controls.forEachIndexed { i, (icon, label, action) ->
+                val enabled = !editing && (i == 2 || np.hasSession) && (i != 1 || np.canSeek)
+                SceneButton(
+                    icon, label, enabled,
+                    tint = if (i == 2) colors.play else colors.icon,
+                    modifier = Modifier.offset(w * sc.controlsX[i] - 24.dp, h * sc.controlsY - 24.dp),
+                    onClick = action,
+                )
+            }
 
-        // ---------- Progres
-        ProgressLine(
-            np, positionMs, colors,
-            Modifier.offset(w * sc.progress.left, h * sc.progress.top - 24.dp).size(w * sc.progress.width, 48.dp),
-            enabled = !editing, onSeek = onSeek,
-        )
-        // ---------- Volume (hanya volume media perangkat; dibaca & diatur lewat API standar)
-        if (volume != null) {
-            VolumeLine(
-                volume, colors,
-                Modifier.offset(w * sc.volume.left, h * sc.volume.top - 24.dp).size(w * sc.volume.width, 48.dp),
-                enabled = !editing, onVolume = onVolume,
+            // ---------- Progres
+            ProgressLine(
+                np, positionMs, colors,
+                Modifier.offset(w * sc.progress.left, h * sc.progress.top - 24.dp).size(w * sc.progress.width, 48.dp),
+                enabled = !editing, onSeek = onSeek,
             )
-        }
+            // ---------- Volume (hanya volume media perangkat; dibaca & diatur lewat API standar)
+            if (volume != null) {
+                VolumeLine(
+                    volume, colors,
+                    Modifier.offset(w * sc.volume.left, h * sc.volume.top - 24.dp).size(w * sc.volume.width, 48.dp),
+                    enabled = !editing, onVolume = onVolume,
+                )
+            }
 
-        // ---------- Indikator sudut
-        if (status.timeText != null) Corner("TIME", status.timeText, colors, Modifier.padding(start = 28.dp, top = 22.dp), end = false)
-        Corner("Output", status.outputText, colors, Modifier.align(Alignment.TopEnd).padding(end = 28.dp, top = 22.dp), end = true)
+            // ---------- Indikator sudut
+            if (status.timeText != null) Corner("TIME", status.timeText, colors, Modifier.padding(start = 28.dp, top = 22.dp), end = false)
+            Corner("Output", status.outputText, colors, Modifier.align(Alignment.TopEnd).padding(end = 28.dp, top = 22.dp), end = true)
+        }
 
         // ---------- Knob seek (tidak ikut zoom kamera)
         KnobLayer(
