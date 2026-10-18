@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Kalender perangkat untuk titik acara (opsional) -->
+    <uses-permission android:name="android.permission.READ_CALENDAR" />
+    <!-- Layanan layar kunci vinyl -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Diperlukan agar layar kunci vinyl bisa dimunculkan dari latar belakang (Android 10+) -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <!-- Uninstall dari app drawer -->
+    <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
+    <!-- Gestur "buka notifikasi" (cadangan bila layanan aksesibilitas tidak aktif) -->
+    <uses-permission android:name="android.permission.EXPAND_STATUS_BAR" />
+    <!-- Getar halus saat jarum turun -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Taskbar Vinyl: daftar aplikasi terakhir dibuka (izin khusus, diberikan pengguna di Pengaturan) -->
+    <uses-permission
+        android:name="android.permission.PACKAGE_USAGE_STATS"
+        tools:ignore="ProtectedPermissions" />
+    <!-- Pencarian kontak di app drawer (opsional, mati secara default; diminta saat pengguna menyalakannya) -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <!-- Lirik (lrclib.net), widget cuaca (open-meteo.com), dan cover album https. Hanya HTTPS; lihat Pengaturan → Cadangan & privasi -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!--
+      Visualizer audio "Audio asli" (opsional, mati secara default). Android mewajibkan RECORD_AUDIO untuk android.media.audiofx.Visualizer
+      dan MODIFY_AUDIO_SETTINGS untuk Visualizer pada keluaran sistem (sesi 0). Hanya spektrum FFT yang dibaca, tanpa rekaman; izin
+      mikrofon baru diminta saat pengguna memilih mode itu di Pengaturan → Efek visual.
+    -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <!-- Mikrofon bukan syarat memasang Vinyl: tanpa ini tablet tanpa mikrofon akan disaring dari instalasi -->
+    <uses-feature android:name="android.hardware.microphone" android:required="false" />
+
+    <!-- Visibilitas paket: daftar aplikasi yang bisa diluncurkan & aplikasi musik -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.APP_MUSIC" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.MEDIA_BUTTON" />
+        </intent>
+    </queries>
+
+    <application
+        android:name=".VinylApp"
+        android:allowBackup="false"
+        android:usesCleartextTraffic="false"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.VinylLauncher"
+        android:enableOnBackInvokedCallback="true"
+        tools:targetApi="36">
+
+        <!-- HOME: layar utama turntable -->
+        <activity
+            android:name=".ui.home.HomeActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:clearTaskOnLaunch="true"
+            android:stateNotNeeded="true"
+            android:excludeFromRecents="true"
+            android:resizeableActivity="true"
+            android:screenOrientation="unspecified"
+            android:windowSoftInputMode="adjustResize"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|density|uiMode">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <!-- Titik masuk dari daftar aplikasi: onboarding lalu pengaturan -->
+        <activity
+            android:name=".ui.onboarding.OnboardingActivity"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|uiMode">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".ui.settings.SettingsActivity"
+            android:exported="false"
+            android:label="@string/settings_title"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|uiMode" />
+
+        <!-- Layar kunci vinyl: tampil di atas keyguard sistem -->
+        <activity
+            android:name=".ui.cover.CoverActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleInstance"
+            android:taskAffinity="com.vinyl.launcher.cover"
+            android:showWhenLocked="true"
+            android:noHistory="false"
+            android:theme="@style/Theme.VinylLauncher.Cover"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|uiMode" />
+
+        <!-- Membaca & mengontrol sesi media dari aplikasi musik apa pun -->
+        <service
+            android:name=".service.MediaListenerService"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+
+        <!-- Memantau layar mati untuk memunculkan layar kunci vinyl -->
+        <service
+            android:name=".service.CoverService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Menampilkan layar kunci kustom (cover screen) saat layar dimatikan" />
+        </service>
+
+        <!-- Taskbar Vinyl yang melayang di atas semua aplikasi -->
+        <service
+            android:name=".service.TaskbarService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Menampilkan taskbar pengganti di atas aplikasi lain" />
+        </service>
+
+        <service
+            android:name=".service.NavButtonsService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Menampilkan tombol navigasi Vinyl (Back, Home, Recents) di atas aplikasi lain" />
+        </service>
+
+        <!-- Opsional: aksi gestur kunci layar & buka notifikasi -->
+        <service
+            android:name=".service.VinylAccessibilityService"
+            android:exported="true"
+            android:label="@string/accessibility_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_service_config" />
+        </service>
+
+        <receiver
+            android:name=".service.BootReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>

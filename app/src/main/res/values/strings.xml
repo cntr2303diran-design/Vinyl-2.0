@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Vinyl Launcher</string>
+    <string name="settings_title">Pengaturan Vinyl</string>
+    <string name="accessibility_label">Vinyl Launcher – aksi gestur</string>
+    <string name="accessibility_description">Mengizinkan gestur Vinyl Launcher untuk mengunci layar dan membuka panel notifikasi. Layanan ini tidak membaca isi layar.</string>
+    <string name="cover_channel">Layar kunci vinyl</string>
+    <string name="cover_notification">Layar kunci vinyl aktif</string>
+</resources>

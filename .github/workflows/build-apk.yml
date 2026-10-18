@@ -1,0 +1,124 @@
+# Build APK otomatis di server GitHub (tanpa laptop).
+# Urutan: tes unit → lint → build APK. Hasilnya:
+#  - APK: tab Actions → run terbaru → Artifacts, atau halaman Releases (tag "latest")
+#  - Laporan tes & lint: artifact "VinylLauncher-reports"
+#  - Gagal? log lengkap disimpan di branch "build-log" (berkas build.log)
+#
+# Kunci tanda tangan: isi 4 GitHub Secrets (Settings → Secrets and variables → Actions) agar APK
+# ditandatangani dengan kunci rahasia. Tanpa itu, build memakai kunci lama di repo yang bersifat publik
+# (ada peringatan di ringkasan run). Langkah lengkap: SECURITY.md.
+#   VINYL_KEYSTORE_BASE64   isi berkas keystore dalam base64
+#   VINYL_KEYSTORE_PASSWORD password keystore
+#   VINYL_KEY_ALIAS         (opsional) alias kunci, default "vinyl"
+#   VINYL_KEY_PASSWORD      (opsional) password kunci, default sama dengan password keystore
+name: Build APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      # Runner GitHub sudah berisi Android SDK; pastikan platform 36 & build-tools tersedia
+      - name: Siapkan Android SDK
+        run: |
+          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKM" --licenses > /dev/null || true
+          "$SDKM" "platforms;android-36" "build-tools;36.0.0" > /dev/null
+
+      - name: Siapkan kunci tanda tangan
+        env:
+          KEYSTORE_B64: ${{ secrets.VINYL_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.VINYL_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.VINYL_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.VINYL_KEY_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ] && [ -n "$KEYSTORE_PASSWORD" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/vinyl.jks"
+            echo "VINYL_KEYSTORE_FILE=$RUNNER_TEMP/vinyl.jks" >> "$GITHUB_ENV"
+            echo "VINYL_KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+            if [ -n "$KEY_ALIAS" ]; then echo "VINYL_KEY_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"; fi
+            if [ -n "$KEY_PASSWORD" ]; then echo "VINYL_KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"; fi
+            echo "Kunci tanda tangan rahasia dari Secrets dipakai." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::warning title=Kunci tanda tangan publik::Secrets VINYL_KEYSTORE_* belum diisi; APK ditandatangani dengan kunci lama yang ada di repo (publik). Lihat SECURITY.md."
+            echo "⚠️ APK ditandatangani dengan kunci lama yang publik. Isi Secrets VINYL_KEYSTORE_* (lihat SECURITY.md)." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Tes unit
+        run: |
+          chmod +x gradlew
+          set -o pipefail
+          ./gradlew testDebugUnitTest --stacktrace --no-daemon 2>&1 | tee build.log
+
+      # Lint belum memblokir: laporan pertama perlu dibaca dulu. Hapus continue-on-error bila sudah bersih.
+      - name: Lint
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          ./gradlew lintDebug --stacktrace --no-daemon 2>&1 | tee -a build.log
+
+      - name: Build debug APK
+        run: |
+          set -o pipefail
+          ./gradlew assembleDebug --stacktrace --no-daemon 2>&1 | tee -a build.log
+
+      - name: Ringkas peringatan kompiler
+        if: always()
+        run: |
+          n=$(grep -c '^w: ' build.log 2>/dev/null || true)
+          {
+            echo "### Peringatan kompiler Kotlin: ${n:-0}"
+            if [ "${n:-0}" != "0" ]; then
+              echo '```'
+              grep '^w: ' build.log | sort -u | head -60
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: VinylLauncher-reports
+          if-no-files-found: ignore
+          path: |
+            app/build/reports/
+            app/build/test-results/
+
+      # Jika gagal: simpan log ke branch "build-log" agar mudah dibaca
+      - name: Simpan log error
+        if: failure()
+        run: |
+          mkdir -p /tmp/log && cp build.log /tmp/log/build.log || echo "build.log tidak ada" > /tmp/log/build.log
+          cd /tmp/log
+          git init -q && git checkout -q -b build-log
+          git add build.log
+          git -c user.name=ci -c user.email=ci@users.noreply.github.com commit -q -m "log ${GITHUB_SHA}"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" build-log
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: VinylLauncher-apk
+          path: app/build/outputs/apk/debug/*.apk
+
+      # APK juga dipasang di halaman Releases supaya bisa diunduh langsung dari tablet tanpa login
+      - name: Terbitkan rilis "latest"
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp app/build/outputs/apk/debug/app-debug.apk VinylLauncher.apk
+          gh release delete latest --yes --cleanup-tag || true
+          gh release create latest VinylLauncher.apk --title "Vinyl Launcher (build terbaru)" --notes "APK debug otomatis dari commit ${GITHUB_SHA::7}."

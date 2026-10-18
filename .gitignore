@@ -1,0 +1,19 @@
+*.iml
+.gradle/
+/local.properties
+/.idea/
+.DS_Store
+/build/
+/app/build/
+/captures/
+.externalNativeBuild/
+.cxx/
+/app/src/main/res/font/
+
+# Kunci tanda tangan: jangan pernah di-commit. (Kunci lama app/vinyl.keystore sudah terlanjur ada di repo;
+# pengecualian di bawah hanya supaya ia tetap terlacak sampai Anda merotasi kunci — lihat SECURITY.md.)
+*.jks
+*.keystore
+!/app/vinyl.keystore
+keystore.properties
+*.p12

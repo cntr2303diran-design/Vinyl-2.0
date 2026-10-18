@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Tema dasar gelap; seluruh UI digambar oleh Compose -->
+    <style name="Theme.VinylLauncher" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/vinyl_black</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:enforceNavigationBarContrast">false</item>
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+    </style>
+
+    <style name="Theme.VinylLauncher.Cover">
+        <item name="android:windowShowWallpaper">false</item>
+        <item name="android:windowAnimationStyle">@null</item>
+    </style>
+
+    <color name="vinyl_black">#FF0E0E10</color>
+    <color name="ic_launcher_background">#FF151518</color>
+</resources>
