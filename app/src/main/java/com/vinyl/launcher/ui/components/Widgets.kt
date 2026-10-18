@@ -15,10 +15,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Image
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.ui.draw.shadow
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.SkipNext
@@ -37,10 +33,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Cloud
-import androidx.compose.material.icons.rounded.Thunderstorm
-import androidx.compose.material.icons.rounded.WaterDrop
-import androidx.compose.material.icons.rounded.WbSunny
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -68,9 +60,6 @@ import androidx.compose.ui.unit.em
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.core.content.ContextCompat
 import com.vinyl.launcher.data.CalendarRepository
-import com.vinyl.launcher.data.WeatherInfo
-import com.vinyl.launcher.data.WeatherRepository
-import com.vinyl.launcher.data.WeatherSettings
 import kotlinx.coroutines.delay
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -83,8 +72,7 @@ import com.vinyl.launcher.ui.theme.Corner
 // ======================= Kalender =======================
 
 /**
- * Kalender mini satu bulan. Hari ini ditandai lingkaran kecil bergaya vinyl
- * (piringan hitam beralur dengan label berwarna [accent]).
+ * Kalender mini satu bulan (layar kunci). Hari ini ditandai lampu indikator berwarna [accent].
  */
 @Composable
 fun MiniCalendar(
@@ -135,7 +123,7 @@ fun MiniCalendar(
                         if (dayNum in 1..total) {
                             val date = month.atDay(dayNum)
                             val isToday = date == today
-                            if (isToday) VinylDot(accent, Modifier.size(cell * 0.92f))
+                            if (isToday) com.vinyl.launcher.ui.room.TodayLamp(accent, Modifier.size(cell * 0.92f))
                             Text(
                                 dayNum.toString(),
                                 color = when {
@@ -161,18 +149,6 @@ fun MiniCalendar(
     }
 }
 
-/** Lingkaran kecil bergaya vinyl untuk menandai hari ini. */
-@Composable
-fun VinylDot(accent: Color, modifier: Modifier = Modifier) {
-    Canvas(modifier) {
-        val r = size.minDimension / 2f
-        // Piringan mini: badan hitam beralur, label aksen penuh di tengah
-        drawCircle(Color(0xFF0B0B0D), r)
-        for (i in 0..3) drawCircle(Color.White.copy(alpha = 0.09f), r * (0.70f + i * 0.08f), style = Stroke(1f))
-        drawCircle(accent, r * 0.62f)
-        drawCircle(Color.Black.copy(alpha = 0.18f), r * 0.62f, style = Stroke(r * 0.04f))
-    }
-}
 
 /** Dua kalender mini berdampingan: bulan ini & bulan depan (otomatis bergeser tiap awal bulan). */
 @Composable
@@ -259,39 +235,6 @@ fun BatteryIndicator(color: Color, modifier: Modifier = Modifier, scale: Float =
                 topLeft = Offset(inset, inset),
                 size = Size(((bodyW - inset * 2) * b.level / 100f).coerceAtLeast(2f), size.height - inset * 2),
                 cornerRadius = CornerRadius(size.height * 0.18f),
-            )
-        }
-    }
-}
-
-// ======================= Cuaca =======================
-
-@Composable
-fun WeatherWidget(settings: WeatherSettings, color: Color, modifier: Modifier = Modifier, scale: Float = 1f) {
-    val weather by produceState<WeatherInfo?>(null, settings) {
-        while (true) {
-            value = WeatherRepository.current(settings) ?: value
-            delay(30 * 60 * 1000L)
-        }
-    }
-    Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp * scale)) {
-        val icon = when (weather?.code ?: -1) {
-            -1 -> Icons.Rounded.Cloud
-            0, 1 -> Icons.Rounded.WbSunny
-            in 51..67, in 80..82 -> Icons.Rounded.WaterDrop
-            in 95..99 -> Icons.Rounded.Thunderstorm
-            else -> Icons.Rounded.Cloud
-        }
-        Icon(icon, null, tint = color, modifier = Modifier.size(34.dp * scale))
-        Column {
-            Text(
-                weather?.let { "${it.temperatureC.toInt()}°" } ?: "--°",
-                color = color, fontSize = (34 * scale).sp, fontWeight = FontWeight.Light, letterSpacing = (-0.03).em,
-            )
-            Text(
-                weather?.let { "${it.city} · ${it.description}" } ?: settings.cityName,
-                color = color.copy(alpha = 0.65f), fontSize = (13 * scale).sp, fontWeight = FontWeight.Medium,
-                maxLines = 1, overflow = TextOverflow.Ellipsis,
             )
         }
     }
@@ -391,41 +334,4 @@ private fun ControlButton(icon: androidx.compose.ui.graphics.vector.ImageVector,
         Modifier.size(size + 18.dp).clip(CircleShape).clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) { Icon(icon, desc, tint = Color.White, modifier = Modifier.size(size)) }
-}
-
-// ======================= Foto =======================
-
-/**
- * Bingkai foto: sudut membulat, bayangan lembut, dan slideshow crossfade
- * (berganti setiap 8 detik) bila lebih dari satu foto.
- */
-@Composable
-fun PhotoWidget(images: List<String>, modifier: Modifier = Modifier, scale: Float = 1f) {
-    var index by remember(images) { mutableIntStateOf(0) }
-    LaunchedEffect(images) {
-        if (images.size < 2) return@LaunchedEffect
-        while (true) {
-            delay(8000)
-            index = (index + 1) % images.size
-        }
-    }
-    val shape = RoundedCornerShape(24.dp * scale)
-    Box(
-        modifier
-            .size(width = 220.dp * scale, height = 270.dp * scale)
-            .shadow(24.dp, shape, ambientColor = Color.Black, spotColor = Color.Black)
-            .clip(shape)
-            .background(Color.White.copy(alpha = 0.06f))
-            .border(0.8.dp, Color.White.copy(alpha = 0.14f), shape),
-        contentAlignment = Alignment.Center,
-    ) {
-        if (images.isEmpty()) {
-            Icon(Icons.Rounded.Image, null, tint = Color.White.copy(alpha = 0.4f), modifier = Modifier.size(40.dp))
-        } else {
-            androidx.compose.animation.Crossfade(targetState = images[index % images.size], animationSpec = androidx.compose.animation.core.tween(1200), label = "photo") { path ->
-                val img = rememberFileImage(path)
-                if (img != null) Image(img, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
-            }
-        }
-    }
 }

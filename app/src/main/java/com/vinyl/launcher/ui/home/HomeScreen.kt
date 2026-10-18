@@ -3,23 +3,13 @@ package com.vinyl.launcher.ui.home
 import android.content.res.Configuration
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.text.style.TextOverflow
-import com.vinyl.launcher.ui.components.formatMs
-import com.vinyl.launcher.ui.components.glass
 import kotlinx.coroutines.delay
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -32,7 +22,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.WindowInsets
@@ -71,26 +60,15 @@ import com.vinyl.launcher.data.WeatherSettings
 import com.vinyl.launcher.data.WidgetConfig
 import com.vinyl.launcher.data.WidgetType
 import com.vinyl.launcher.media.NowPlaying
-import com.vinyl.launcher.ui.components.BatteryIndicator
-import com.vinyl.launcher.ui.components.TwoMonthCalendar
 import com.vinyl.launcher.ui.components.LyricsLines
-import com.vinyl.launcher.ui.components.PhotoWidget
 import com.vinyl.launcher.ui.components.rememberLyrics
 import com.vinyl.launcher.ui.crate.CrateSheet
 import com.vinyl.launcher.ui.lyrics.LyricsActions
 import com.vinyl.launcher.ui.lyrics.LyricsScreen
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.clickable
-import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.ui.semantics.CustomAccessibilityAction
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import com.vinyl.launcher.ui.components.WeatherWidget
 import com.vinyl.launcher.ui.components.rememberNow
 import com.vinyl.launcher.ui.drawer.AppDrawer
 import com.vinyl.launcher.ui.drawer.DrawerActions
@@ -98,13 +76,10 @@ import com.vinyl.launcher.ui.drawer.DrawerData
 import com.vinyl.launcher.ui.theme.Ease
 import com.vinyl.launcher.ui.theme.Tokens
 import com.vinyl.launcher.ui.theme.RetroColors
-import com.vinyl.launcher.ui.settings.AppPickerDialog
 import com.vinyl.launcher.ui.theme.darken
 import com.vinyl.launcher.ui.theme.horizontal
-import com.vinyl.launcher.ui.theme.toAlignment
 import com.vinyl.launcher.ui.theme.toColor
 import com.vinyl.launcher.ui.theme.toComposeColor
-import com.vinyl.launcher.ui.theme.Corner
 import com.vinyl.launcher.util.SystemActions
 import com.vinyl.launcher.util.SoundFx
 import com.vinyl.launcher.data.DockPosition
@@ -136,15 +111,17 @@ import com.vinyl.launcher.media.VideoLibrary
 import com.vinyl.launcher.media.SleepTimer
 import com.vinyl.launcher.media.VideoMatch
 import com.vinyl.launcher.ui.room.ScreenVideo
+import com.vinyl.launcher.ui.room.TearCalendarWidget
+import com.vinyl.launcher.ui.room.VfdWeatherWidget
+import com.vinyl.launcher.ui.room.PolaroidWidget
+import com.vinyl.launcher.ui.room.NeedleBatteryWidget
 import com.vinyl.launcher.audio.AudioConsoleRuntime
 import com.vinyl.launcher.ui.theme.rememberReduceMotion
 import com.vinyl.launcher.data.BackgroundType
 import com.vinyl.launcher.data.RetroSettings
 import com.vinyl.launcher.fx.FxOverlay
-import com.vinyl.launcher.fx.fxBackdrop
 import com.vinyl.launcher.fx.rememberPowerSave
 import com.vinyl.launcher.ui.components.rememberFileImage
-import com.vinyl.launcher.ui.room.RoomInk
 import com.vinyl.launcher.ui.room.KnobState
 import com.vinyl.launcher.ui.room.RoomScene
 import com.vinyl.launcher.ui.room.SceneStatus
@@ -638,7 +615,7 @@ private fun HomeContent(
         val wPx = constraints.maxWidth
         val hPx = constraints.maxHeight
         home.widgets.forEach { w ->
-            HomeWidget(w, wPx, hPx, editing, accent, weather, Color(RoomInk.readable(home.clock.color, look.tone)), onWidgetChange)
+            HomeWidget(w, wPx, hPx, editing, weather, onWidgetChange)
         }
     }
 }
@@ -653,9 +630,7 @@ private fun HomeWidget(
     areaW: Int,
     areaH: Int,
     editing: Boolean,
-    accent: Color,
     weather: WeatherSettings,
-    textColor: Color,
     onChange: (WidgetConfig) -> Unit,
 ) {
     val cfg by rememberUpdatedState(config)
@@ -687,23 +662,11 @@ private fun HomeWidget(
             .padding(12.dp)
     ) {
         when (config.type) {
-            WidgetType.CALENDAR -> TwoMonthCalendar(
-                today = java.time.LocalDate.now(),
-                showEvents = false,
-                color = textColor,
-                accent = accent,
-                card = true,
-                cell = (22 * config.scale).dp,
-            )
-            WidgetType.WEATHER -> WeatherWidget(
-                weather, textColor, scale = config.scale,
-                modifier = Modifier.glass(Corner.l).padding(horizontal = 20.dp, vertical = 14.dp),
-            )
-            WidgetType.PHOTO -> PhotoWidget(config.images, scale = config.scale)
-            WidgetType.BATTERY -> BatteryIndicator(
-                textColor, scale = config.scale,
-                modifier = Modifier.glass(RoundedCornerShape(50)).padding(horizontal = 16.dp, vertical = 10.dp),
-            )
+            // Widget bertema ruang TV: masing-masing membawa permukaannya sendiri (kontras tidak bergantung dinding)
+            WidgetType.CALENDAR -> TearCalendarWidget(java.time.LocalDate.now(), config.scale)
+            WidgetType.WEATHER -> VfdWeatherWidget(weather, config.scale)
+            WidgetType.PHOTO -> PolaroidWidget(config.images, config.scale)
+            WidgetType.BATTERY -> NeedleBatteryWidget(config.scale)
         }
         if (editing) {
             // Pegangan ubah ukuran di sudut kanan bawah

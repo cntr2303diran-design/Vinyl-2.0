@@ -450,7 +450,10 @@ fun HomeSectionControls(
             SectionTitle("Widget tambahan")
             ControlCard {
                 WidgetControls(home.widgets) { onChange(home.copy(widgets = it)) }
-                ColorRow("Warna teks widget", home.clock.color) { onChange(home.copy(clock = home.clock.copy(color = it))) }
+                Text(
+                    "Kalender sobek, cuaca di layar VFD, baterai sebagai meter jarum, dan foto polaroid. Setiap widget punya latarnya sendiri agar selalu terbaca di dinding gelap maupun terang.",
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }

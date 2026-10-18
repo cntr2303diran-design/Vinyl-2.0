@@ -29,7 +29,8 @@ class LyricsShots {
     @Config(qualifiers = "w1280dp-h800dp-land-mdpi")
     fun disabledState() {
         compose.setContent {
-            VinylTheme { LyricsScreen(playing(fakeCover()), Color(0xFF3A2E22), MusicSettings(lyricsOnline = false), actions) }
+            // Dijeda: latar ambient beranimasi tanpa henti saat memutar, sehingga Compose tidak pernah idle untuk diambil gambarnya
+            VinylTheme { LyricsScreen(playing(fakeCover()).copy(isPlaying = false), Color(0xFF3A2E22), MusicSettings(lyricsOnline = false), actions) }
         }
         compose.onRoot().captureRoboImage("build/outputs/roborazzi/tahap9_lirik_teletext.png")
     }
