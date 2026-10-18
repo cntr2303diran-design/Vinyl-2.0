@@ -1,5 +1,12 @@
 package com.vinyl.launcher.ui.lyrics
 
+import com.vinyl.launcher.ui.theme.RetroColors
+import com.vinyl.launcher.ui.theme.MonoFamily
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.foundation.Canvas
 import android.os.Build
 import android.os.SystemClock
 import androidx.compose.animation.core.animateFloatAsState
@@ -138,6 +145,15 @@ fun LyricsScreen(
             cinematic = music.cinematicColors,
             texts = LyricsFocus.BACKDROP_TEXTS,
         )
+        // Garis scan CRT tipis di atas latar (hanya menggelapkan, jadi tidak mengurangi kontras teks putih)
+        Canvas(Modifier.fillMaxSize().clearAndSetSemantics { }) {
+            var y = 0f
+            val gap = 3.dp.toPx()
+            while (y < size.height) {
+                drawLine(Color.Black.copy(alpha = 0.10f), Offset(0f, y), Offset(size.width, y), 1f)
+                y += gap
+            }
+        }
         Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
             Header(np, actions.close)
             Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
@@ -150,8 +166,28 @@ fun LyricsScreen(
     }
 }
 
+/** Bilah halaman teletext: nomor halaman, judul, dan empat blok warna tombol cepat (hiasan). */
+@Composable
+private fun TeletextBar() {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .background(Color.Black.copy(alpha = 0.72f))
+            .padding(horizontal = Dimen.xl, vertical = 6.dp)
+            .clearAndSetSemantics { },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text("P888", color = RetroColors.Amber, fontFamily = MonoFamily, style = MaterialTheme.typography.labelLarge)
+        Text("  LIRIK · SUBTITEL", color = TextPrimary, fontFamily = MonoFamily, style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
+        listOf(Color(0xFFE5484D), Color(0xFF46A758), Color(0xFFF5D90A), Color(0xFF3DB9CF)).forEach { c ->
+            Box(Modifier.padding(start = 6.dp).size(width = 18.dp, height = 8.dp).background(c))
+        }
+    }
+}
+
 @Composable
 private fun Header(np: NowPlaying, onClose: () -> Unit) {
+    TeletextBar()
     Row(
         Modifier.fillMaxWidth().padding(start = Dimen.xl, end = Dimen.l, top = Dimen.l, bottom = Dimen.s),
         verticalAlignment = Alignment.CenterVertically,
@@ -215,43 +251,55 @@ private fun RoundButton(icon: androidx.compose.ui.graphics.vector.ImageVector, l
 @Composable
 private fun Body(np: NowPlaying, handle: LyricsHandle, music: MusicSettings, actions: LyricsActions) {
     if (!np.hasTrack) {
-        Message("Tidak ada lagu yang diputar", "Putar lagu di aplikasi musik; liriknya akan muncul di sini.")
+        Message("STANDBY", "Tidak ada lagu yang diputar", "Putar lagu di aplikasi musik; liriknya akan muncul di sini.")
         return
     }
     when (val state = handle.state) {
-        LyricsState.Idle, LyricsState.Loading -> Message("Mencari lirik…", "Hanya judul, artis, album, dan durasi lagu yang dikirim ke lrclib.net.") {
+        LyricsState.Idle, LyricsState.Loading -> Message("MENCARI SINYAL", "Mencari lirik…", "Hanya judul, artis, album, dan durasi lagu yang dikirim ke lrclib.net.") {
             CircularProgressIndicator(color = TextPrimary, modifier = Modifier.padding(top = Dimen.l))
         }
         LyricsState.Disabled -> Message(
+            "SIARAN MATI",
             "Pencarian lirik online mati",
             "Menyalakannya mengirim judul, artis, album, dan durasi lagu ke lrclib.net. Tidak ada data lain yang dikirim. Bisa dimatikan lagi di Pengaturan → Musik.",
         ) { PillButton("Nyalakan pencarian lirik", actions.enableOnline) }
-        LyricsState.NotFound -> Message("Lirik tidak ditemukan", "lrclib.net belum punya lirik untuk lagu ini.")
-        LyricsState.Failed -> Message("Tidak bisa mengambil lirik", "Periksa koneksi internet Anda, lalu coba lagi.") {
+        LyricsState.NotFound -> Message("NO SIGNAL", "Lirik tidak ditemukan", "lrclib.net belum punya lirik untuk lagu ini.")
+        LyricsState.Failed -> Message("NO SIGNAL", "Tidak bisa mengambil lirik", "Periksa koneksi internet Anda, lalu coba lagi.") {
             PillButton("Coba lagi", handle.retry)
         }
         is LyricsState.Ready -> {
             val lyrics = state.lyrics
             when {
-                lyrics.instrumental -> Message("♪ Instrumental", "Lagu ini tidak memiliki lirik.")
+                lyrics.instrumental -> Message("♪ INSTRUMENTAL", "Instrumental", "Lagu ini tidak memiliki lirik.")
                 lyrics.hasSynced -> SyncedLyrics(np, lyrics, music.lyricsBlur, actions.seek)
                 lyrics.plainLines.isNotEmpty() -> PlainLyrics(lyrics.plainLines)
-                else -> Message("Lirik tidak ditemukan", "lrclib.net belum punya lirik untuk lagu ini.")
+                else -> Message("NO SIGNAL", "Lirik tidak ditemukan", "lrclib.net belum punya lirik untuk lagu ini.")
             }
         }
     }
 }
 
+/**
+ * Pesan status bergaya kartu teletext: kode singkat (mis. NO SIGNAL) di atas kotak hitam, lalu penjelasan biasa dalam
+ * bahasa Indonesia. Kotak hitamnya sendiri menjamin kontras, tidak bergantung pada warna cover di belakang.
+ */
 @Composable
-private fun Message(title: String, body: String, content: @Composable () -> Unit = {}) {
-    Column(
-        Modifier.fillMaxSize().padding(Dimen.xxl),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(title, style = MaterialTheme.typography.headlineSmall, color = TextPrimary, textAlign = TextAlign.Center)
-        Text(body, style = MaterialTheme.typography.bodyLarge, color = TextSecondary, textAlign = TextAlign.Center, modifier = Modifier.padding(top = Dimen.s))
-        content()
+private fun Message(code: String, title: String, body: String, content: @Composable () -> Unit = {}) {
+    Box(Modifier.fillMaxSize().padding(Dimen.xl), contentAlignment = Alignment.Center) {
+        Column(
+            Modifier
+                .widthIn(max = 520.dp)
+                .clip(Corner.m)
+                .background(Color.Black.copy(alpha = 0.78f))
+                .padding(Dimen.xl)
+                .semantics(mergeDescendants = true) { },
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(code, color = RetroColors.VfdGreen, fontFamily = MonoFamily, style = MaterialTheme.typography.headlineMedium, textAlign = TextAlign.Center)
+            Text(title, style = MaterialTheme.typography.titleLarge, color = TextPrimary, textAlign = TextAlign.Center, modifier = Modifier.padding(top = Dimen.m))
+            Text(body, style = MaterialTheme.typography.bodyLarge, color = TextSecondary, textAlign = TextAlign.Center, modifier = Modifier.padding(top = Dimen.s))
+            content()
+        }
     }
 }
 
@@ -376,7 +424,11 @@ private fun SyncedLine(text: String, look: LineLook, active: Boolean, rtl: Boole
                 transformOrigin = TransformOrigin(if (rtl) 1f else 0f, 0.5f)
             }
             .then(blurModifier)
-            .padding(vertical = Dimen.s)
+            // Baris aktif tampil seperti subtitel siaran: kotak hitam tipis di belakang teks
+            .drawBehind {
+                if (active) drawRoundRect(Color.Black.copy(alpha = 0.45f * lineAlpha), cornerRadius = CornerRadius(6.dp.toPx()))
+            }
+            .padding(vertical = Dimen.s, horizontal = 8.dp)
             .semantics { selected = active },
     )
 }

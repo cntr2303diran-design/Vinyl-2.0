@@ -299,8 +299,8 @@ private fun SettingsScreen(vm: SettingsViewModel, onBack: () -> Unit) {
             }
             Page.FX -> ControlCard {
 
-        SwitchRow("Bunyi tombol kaset", s.effects.needleSound, { on -> vm.update { it.copy(effects = it.effects.copy(needleSound = on)) } },
-            subtitle = "\"Klak\" tombol PLAY dan dengung motor saat lagu diputar, klik saat dijeda")
+        SwitchRow("Bunyi tombol kaset & TV", s.effects.needleSound, { on -> vm.update { it.copy(effects = it.effects.copy(needleSound = on)) } },
+            subtitle = "\"Klak\" tombol PLAY dan motor, klik saat dijeda, \"thunk\" saat TV menyala, statis saat pindah halaman")
         SwitchRow("Getar", s.effects.haptics, { on -> vm.update { it.copy(effects = it.effects.copy(haptics = on)) } })
         SwitchRow("Efek saat knob & tombol disentuh", s.effects.interactionFx, { on -> vm.update { it.copy(effects = it.effects.copy(interactionFx = on)) } },
             subtitle = "Klik & getar tiap gigi knob seek, dan desing pita saat ganti lagu")

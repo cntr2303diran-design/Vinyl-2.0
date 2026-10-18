@@ -73,6 +73,19 @@ object SoundFx {
         if (fx.needleSound) play(flipPcm, gain(fx.volume))
     }
 
+    private val crtPcm: ShortArray by lazy { synthCrtOn() }
+    private val staticPcm: ShortArray by lazy { synthStatic() }
+
+    /** TV menyala (keluar dari siaga): "thunk" tabung + dengung singkat. Mengikuti sakelar bunyi tombol kaset & TV. */
+    fun crtOn(fx: EffectSettings) {
+        if (fx.needleSound) play(crtPcm, gain(fx.volume) * 0.8f)
+    }
+
+    /** Pindah halaman (ganti "channel"): desis statis sangat singkat. Mengikuti sakelar efek sentuh. */
+    fun channel(fx: EffectSettings) {
+        if (fx.interactionFx && fx.needleSound) play(staticPcm, gain(fx.volume) * 0.45f)
+    }
+
     /** Desis pita pelan yang diulang terus sampai [stopCrackle] dipanggil. */
     fun startCrackle(volume: Float) {
         stopCrackle()
@@ -191,6 +204,30 @@ object SoundFx {
             // ujung lingkaran dibuat pelan agar sambungan putaran ulang tidak berbunyi klik
             val edge = minOf(1.0, i / 2000.0, (n - 1 - i) / 2000.0)
             toShort((lp - hp) * 0.16 * edge)
+        }
+    }
+
+    /** "Thunk" degauss tabung: dentum 60 Hz yang cepat meredam + dengung 50 Hz singkat. */
+    private fun synthCrtOn(): ShortArray {
+        val n = (RATE * 0.55).toInt()
+        val rnd = Random(61)
+        return ShortArray(n) { i ->
+            val t = i.toDouble() / RATE
+            val thunk = (sin(2 * PI * 60 * t) + 0.4 * sin(2 * PI * 120 * t)) * exp(-t * 14) * 0.9
+            val click = if (t < 0.003) (rnd.nextDouble() * 2 - 1) * 0.6 else 0.0
+            val hum = sin(2 * PI * 50 * t) * 0.12 * (t / 0.05).coerceAtMost(1.0) * exp(-t * 5)
+            toShort(thunk + click + hum)
+        }
+    }
+
+    /** Statis channel: noise putih singkat dengan selubung naik-turun cepat. */
+    private fun synthStatic(): ShortArray {
+        val n = (RATE * 0.16).toInt()
+        val rnd = Random(73)
+        return ShortArray(n) { i ->
+            val t = i.toDouble() / RATE
+            val env = sin(PI * (t / 0.16)).coerceAtLeast(0.0)
+            toShort((rnd.nextDouble() * 2 - 1) * env * 0.5)
         }
     }
 

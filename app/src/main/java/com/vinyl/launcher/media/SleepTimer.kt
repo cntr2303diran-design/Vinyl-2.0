@@ -43,6 +43,12 @@ object SleepTimer {
     private val _state = MutableStateFlow<State>(State.Idle)
     val state: StateFlow<State> = _state.asStateFlow()
 
+    private val _slept = MutableStateFlow(false)
+    /** True setelah timer selesai dan menjeda musik, sampai musik diputar lagi ([clearSlept]); TV menampilkan "mati". */
+    val slept: StateFlow<Boolean> = _slept.asStateFlow()
+
+    fun clearSlept() { _slept.value = false }
+
     @Volatile private var job: Job? = null
     @Volatile private var appContext: Context? = null
 
@@ -72,6 +78,7 @@ object SleepTimer {
     }
 
     private fun launchTimer(durationMs: Long, endOfTrack: Boolean) {
+        _slept.value = false
         val previous = job
         job = scope.launch {
             previous?.cancelAndJoin()    // pemulihan volume timer lama selesai dulu sebelum yang baru membaca volume
@@ -115,6 +122,7 @@ object SleepTimer {
             // Waktu habis: jeda, tunggu sesi benar-benar berhenti, baru (di finally) volume dipulihkan
             MediaRepository.log("Sleep timer selesai → jeda")
             withContext(Dispatchers.Main) { MediaRepository.pause("Sleep timer") }
+            _slept.value = true
             withTimeoutOrNull(2_000) { MediaRepository.state.first { !it.isPlaying } }
             delay(300)
         } finally {

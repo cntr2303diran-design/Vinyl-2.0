@@ -166,6 +166,8 @@ fun RoomScene(
     showCover: Boolean = true,
     /** Tampilkan judul & artis di layar TV. */
     showTitle: Boolean = true,
+    /** TV "dimatikan" oleh timer tidur (animasi power-off, lalu siaga sampai musik diputar lagi). */
+    tvOff: Boolean = false,
     /** Video milik pengguna untuk layar TV (hanya TV utama; pantulan di lantai tetap memakai cover). */
     screenVideo: (@Composable () -> Unit)? = null,
     /** Isi tambahan di layar TV (batang visualizer, lirik saat TV didekatkan); menerima status zoom TV. Lambda terakhir. */
@@ -222,7 +224,7 @@ fun RoomScene(
             // Pantulan TV di lantai mengilap (hanya ruang gelap)
             if (tone == RoomTone.DIM) {
                 Reflection(Modifier.offset(w * tv.left, h * sc.floorY).size(w * tv.width, h * tv.height), alpha = 0.16f) {
-                    TvFor(np, retro, mode, accent, status, motionAllowed, titleScrimAlpha, knobState, showCover, showTitle)
+                    TvFor(np, retro, mode, accent, status, motionAllowed, titleScrimAlpha, knobState, showCover, showTitle, tvOff)
                 }
             }
             // TV
@@ -242,7 +244,7 @@ fun RoomScene(
                         role = Role.Button,
                     ) { tvZoomed = !tvZoomed },
             ) {
-                TvFor(np, retro, mode, accent, status, motionAllowed, titleScrimAlpha, knobState, showCover, showTitle, video = screenVideo) {
+                TvFor(np, retro, mode, accent, status, motionAllowed, titleScrimAlpha, knobState, showCover, showTitle, tvOff, video = screenVideo) {
                     screenOverlay(tvZoomed)
                     if (tvZoomed) LyricsHint(onOpenLyrics)
                 }
@@ -340,6 +342,7 @@ private fun TvFor(
     knobState: KnobState,
     showCover: Boolean,
     showTitle: Boolean,
+    tvOff: Boolean,
     video: (@Composable () -> Unit)? = null,
     overlay: @Composable () -> Unit = {},
 ) {
@@ -349,7 +352,7 @@ private fun TvFor(
         body = retro.tvBody, knob = retro.knobStyle, vfdColor = retro.vfdColor, vfdLines = status.vfdLines,
         crtStrength = retro.crtStrength, motion = retro.albumMotion, reduceMotion = !motionAllowed,
         titleScrimAlpha = titleScrimAlpha, knobTurns = knobState.turns, knobHighlight = knobState.active,
-        modifier = Modifier.fillMaxSize(), screenOverlay = overlay, screenVideo = video,
+        modifier = Modifier.fillMaxSize(), screenOverlay = overlay, screenVideo = video, poweredOff = tvOff,
     )
 }
 

@@ -1,5 +1,6 @@
 package com.vinyl.launcher.ui.room
 
+import android.os.Build
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -112,6 +113,8 @@ fun CrtTv(
     screenOverlay: @Composable () -> Unit = {},
     /** Video milik pengguna di layar (menggantikan cover setelah frame pertamanya tampil); null = cover saja. */
     screenVideo: (@Composable () -> Unit)? = null,
+    /** TV dimatikan (mis. timer tidur selesai): gambar menyusut menjadi garis lalu titik, kemudian siaga. */
+    poweredOff: Boolean = false,
 ) {
     val palette = bodyPalette(body)
     val knobColors = knobPalette(knob)
@@ -125,6 +128,19 @@ fun CrtTv(
         else power.animateTo(1f, tween(Tokens.Motion.CRT_POWER_ON_MS, easing = LinearEasing))
     }
 
+    // "Power off": gambar menyusut tegak menjadi garis, lalu mendatar menjadi titik terang, lalu gelap
+    val off = remember { Animatable(if (poweredOff) 1f else 0f) }
+    LaunchedEffect(poweredOff) {
+        if (!poweredOff) off.snapTo(0f)
+        else if (reduceMotion) off.snapTo(1f)
+        else off.animateTo(1f, tween(Tokens.Motion.CRT_POWER_OFF_MS, easing = LinearEasing))
+    }
+    val dark = mode == TvScreenMode.STANDBY || (poweredOff && off.value >= 1f)
+    // Lengkung & aberasi tabung (AGSL, Android 13+); null di versi lama atau bila efek tabung dimatikan
+    val crtShader = remember(crt > 0f) {
+        if (crt > 0f && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) CrtShader.createOrNull() else null
+    }
+
     BoxWithConstraints(modifier) {
         val w = maxWidth
         val h = maxHeight
@@ -132,7 +148,7 @@ fun CrtTv(
         fun fy(f: Float): Dp = h * f
 
         Canvas(Modifier.fillMaxSize().clearAndSetSemantics { }) {
-            drawTvBody(palette, knobColors, knobTurns, knobHighlight, on = mode != TvScreenMode.STANDBY)
+            drawTvBody(palette, knobColors, knobTurns, knobHighlight, on = !dark)
         }
 
         // Layar
@@ -146,14 +162,23 @@ fun CrtTv(
                 .background(RetroColors.CrtGlass)
                 .clearAndSetSemantics { },
         ) {
-            if (mode != TvScreenMode.STANDBY) {
+            if (!dark) {
                 val p = power.value
+                val q = off.value
                 Box(
                     Modifier
                         .fillMaxSize()
                         .graphicsLayer {
-                            scaleY = (0.015f + 0.985f * ((p - 0.25f) / 0.75f).coerceIn(0f, 1f)).coerceAtLeast(0.015f)
-                            scaleX = 0.82f + 0.18f * (p / 0.4f).coerceIn(0f, 1f)
+                            if (crtShader != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                renderEffect = crtShader.effect(size.width, size.height, crt)
+                            }
+                            if (q > 0f) {
+                                scaleY = (1f - q / 0.6f).coerceAtLeast(0.012f)
+                                scaleX = if (q < 0.6f) 1f else (1f - (q - 0.6f) / 0.4f).coerceAtLeast(0.02f)
+                            } else {
+                                scaleY = (0.015f + 0.985f * ((p - 0.25f) / 0.75f).coerceIn(0f, 1f)).coerceAtLeast(0.015f)
+                                scaleX = 0.82f + 0.18f * (p / 0.4f).coerceIn(0f, 1f)
+                            }
                         },
                 ) {
                     ScreenPicture(art, accent, motion, mode == TvScreenMode.MOTION)
@@ -164,10 +189,12 @@ fun CrtTv(
                     }
                     ScreenTitle(title, artist, w)
                     screenOverlay()
+                    // Garis/titik yang tersisa saat dimatikan menyala putih seperti tabung sungguhan
+                    if (q > 0f) Box(Modifier.fillMaxSize().background(Color.White.copy(alpha = (q * 1.4f).coerceAtMost(0.9f))))
                 }
                 if (p < 1f) Box(Modifier.fillMaxSize().background(Color.White.copy(alpha = (1f - p) * 0.35f)))
             }
-            Canvas(Modifier.fillMaxSize()) { drawCrtGlass(crt, standby = mode == TvScreenMode.STANDBY) }
+            Canvas(Modifier.fillMaxSize()) { drawCrtGlass(crt, standby = dark) }
         }
 
         // VFD tiga baris di panel kayu

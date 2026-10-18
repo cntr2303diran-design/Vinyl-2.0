@@ -133,6 +133,7 @@ import com.vinyl.launcher.ui.console.ConsoleRoute
 import com.vinyl.launcher.data.VideoRules
 import com.vinyl.launcher.data.TurntablePosition
 import com.vinyl.launcher.media.VideoLibrary
+import com.vinyl.launcher.media.SleepTimer
 import com.vinyl.launcher.media.VideoMatch
 import com.vinyl.launcher.ui.room.ScreenVideo
 import com.vinyl.launcher.audio.AudioConsoleRuntime
@@ -190,6 +191,23 @@ fun HomeScreen(vm: HomeViewModel) {
     LifecycleResumeEffect(crackleOn, settings.effects.volume) {
         if (crackleOn) SoundFx.startCrackle(settings.effects.volume)
         onPauseOrDispose { SoundFx.stopCrackle() }
+    }
+
+    // Timer tidur selesai → TV "dimatikan" sampai musik diputar lagi
+    val slept by SleepTimer.slept.collectAsStateWithLifecycle()
+    LaunchedEffect(np.isPlaying) { if (np.isPlaying) SleepTimer.clearSlept() }
+    val tvOff = slept && !np.isPlaying
+
+    // Bunyi TV: "thunk" saat layar menyala dari siaga, statis singkat saat pindah halaman ("ganti channel")
+    var hadTrack by remember { mutableStateOf(np.hasTrack) }
+    LaunchedEffect(np.hasTrack) {
+        if (np.hasTrack && !hadTrack) SoundFx.crtOn(settings.effects)
+        hadTrack = np.hasTrack
+    }
+    var lastPage by remember { mutableStateOf(page) }
+    LaunchedEffect(page) {
+        if (page != lastPage) SoundFx.channel(settings.effects)
+        lastPage = page
     }
 
     // Warna dari cover album (Palette); netral saat tidak ada musik
@@ -388,6 +406,7 @@ fun HomeScreen(vm: HomeViewModel) {
                 motionAllowed = motionAllowed,
                 wallPicture = picture,
                 lyricsVisible = home.lyricsVisible,
+                tvOff = tvOff,
                 screenVideo = videoUri?.let { uri ->
                     { ScreenVideo(uri, np.isPlaying, onError = { failedVideo = videoMatch?.file?.documentId }, Modifier.fillMaxSize()) }
                 },
@@ -536,6 +555,7 @@ private fun HomeContent(
     wallPicture: ImageBitmap?,
     lyricsVisible: Boolean,
     screenVideo: (@Composable () -> Unit)?,
+    tvOff: Boolean,
     onWidgetChange: (WidgetConfig) -> Unit,
     vm: HomeViewModel,
 ) {
@@ -592,6 +612,7 @@ private fun HomeContent(
                 TurntablePosition.CENTER -> 0f
                 TurntablePosition.RIGHT -> 1f
             },
+            tvOff = tvOff,
             showCover = home.coverVisible,
             showTitle = home.trackInfoVisible,
             modifier = Modifier.fxForeground(fx, fxPlan, visual.parallax, visual.parallaxStrength),
