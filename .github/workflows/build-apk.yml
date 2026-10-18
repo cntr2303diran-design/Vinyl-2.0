@@ -63,8 +63,6 @@ jobs:
             echo "ℹ️ APK debug memakai kunci debug bawaan (tanpa kunci rahasia). Isi Secrets VINYL_KEYSTORE_* agar pembaruan antar-build bisa saling menimpa (lihat SECURITY.md)." >> "$GITHUB_STEP_SUMMARY"
           fi
 
-      # SEMENTARA (branch retro-tv): cetak tanda tangan API resmi dari android.jar agar kode baru tidak mengarang API.
-      # Dihapus sebelum digabung ke main.
       - name: Tes unit
         run: |
           chmod +x gradlew
@@ -107,6 +105,17 @@ jobs:
               m=$(echo "$e" | grep -o 'android:maxSdkVersion="[^"]*"' | cut -d'"' -f2 || true)
               echo "$n${m:+ (hanya s.d. API $m)}"
             done | sort; } | tee -a build.log
+          # Sidik jari sertifikat penanda tangan APK: harus sama di setiap build agar pembaruan bisa menimpa
+          APK=$(find app/build/outputs/apk/debug -name '*.apk' | head -1)
+          SIGNER=$(ls "${ANDROID_HOME:-/nonexistent}"/build-tools/*/apksigner 2>/dev/null | sort -V | tail -1 || true)
+          FP=""
+          if [ -n "$APK" ] && [ -x "$SIGNER" ]; then
+            # Format sama dengan keytool (huruf besar, dipisah titik dua) agar mudah dicocokkan
+            FP=$("$SIGNER" verify --print-certs "$APK" | grep -m1 'certificate SHA-256 digest' | sed 's/.*digest: //' \
+              | tr 'a-f' 'A-F' | sed 's/../&:/g; s/:$//' || true)
+          fi
+          { echo; echo "===== SERTIFIKAT APK (SHA-256) ====="; echo "${FP:-tidak terbaca}"; } | tee -a build.log
+          echo "Sertifikat APK (SHA-256): \`${FP:-tidak terbaca}\`" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Ringkas peringatan kompiler
         if: always()

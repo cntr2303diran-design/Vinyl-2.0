@@ -84,6 +84,8 @@ Mengisi Secrets (langkah di bawah) menyelesaikannya sekaligus: semua build berik
    `VINYL_KEY_ALIAS`, `VINYL_KEY_PASSWORD`.
 5. **Simpan salinan `vinyl-release.jks` dan kata sandinya di tempat aman** (pengelola kata sandi). Bila hilang, aplikasi tidak bisa diperbarui lagi.
 6. Jalankan ulang workflow. Ringkasan run harus berbunyi *"Kunci tanda tangan rahasia dari Secrets dipakai"*.
+   Ringkasan dan log run juga mencetak *Sertifikat APK (SHA-256)*; nilainya harus sama dengan sidik jari keystore Anda
+   (`keytool -list -v`) dan tidak berubah antar-build.
 7. Di tablet: uninstall Vinyl Launcher lama, pasang APK baru, lalu Pengaturan → *Cadangan & privasi* → **Pulihkan dari berkas**.
 8. Hanya bila repo Anda masih menyimpan kunci lama (repo `vinyllauncher` yang lama): hapus dari pohon kerja dengan `git rm app/vinyl.keystore`
    (riwayat Git tetap berisi kunci lama — itu sebabnya langkah 2–7 perlu). Di Vinyl-2.0 langkah ini tidak diperlukan.
