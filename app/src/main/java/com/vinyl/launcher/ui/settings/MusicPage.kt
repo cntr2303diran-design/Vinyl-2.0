@@ -44,7 +44,7 @@ fun MusicPlaybackControls(m: MusicSettings, onChange: (MusicSettings) -> Unit) {
 fun MusicLookControls(m: MusicSettings, onChange: (MusicSettings) -> Unit) {
     Column {
         ChipRow(
-            "Gaya rak piringan", ShelfStyle.entries.toList(), m.shelfStyle,
+            "Gaya rak kaset", ShelfStyle.entries.toList(), m.shelfStyle,
             text = { if (it == ShelfStyle.FLOW) "Berjajar" else "Tumpukan 3D" },
             onSelect = { onChange(m.copy(shelfStyle = it)) },
         )

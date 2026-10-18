@@ -53,7 +53,7 @@ class ContrastTest {
     @Test fun `panel hampir buram tetap membuat teks terbaca di atas latar putih`() {
         // Skenario terburuk: panel di atas aplikasi berlatar putih. Komposit PANEL (alpha 0xF2) di atas putih.
         val a = 0xF2 / 255.0
-        fun mix(shift: Int) = ((0xF2151517L shr shift) and 0xFF) * a + 255 * (1 - a)
+        fun mix(shift: Int) = ((Tokens.Argb.PANEL shr shift) and 0xFF) * a + 255 * (1 - a)
         val panelOnWhite = (0xFFL shl 24) or (mix(16).toLong() shl 16) or (mix(8).toLong() shl 8) or mix(0).toLong()
         assertAtLeast("teks utama di panel di atas putih", ColorMath.contrast(Tokens.Argb.TEXT_PRIMARY, panelOnWhite))
         assertAtLeast("teks sekunder di panel di atas putih", ColorMath.contrast(Tokens.Argb.TEXT_SECONDARY, panelOnWhite))

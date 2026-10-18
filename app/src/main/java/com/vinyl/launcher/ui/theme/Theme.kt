@@ -23,12 +23,12 @@ import com.vinyl.launcher.data.Anchor
 import com.vinyl.launcher.data.FontChoice
 
 /*
- * Bahasa desain "Vinyl":
- * - Gelap & tenang seperti Apple Music / layar kunci iOS: latar ambient dari warna cover,
- *   teks putih dengan 3 tingkat opasitas (primer, sekunder, tersier).
+ * Bahasa desain (tema TV tabung, lihat DESIGN.md):
+ * - Permukaan gelap bernada hangat (charcoal), aksen amber lampu indikator; ruang TV punya palet sendiri (Tokens.Retro).
+ * - Teks putih dengan 3 tingkat opasitas (primer, sekunder, tersier), >= 4,5:1 di semua permukaan & latar cover.
  * - Permukaan "kaca": putih transparan tipis + garis tepi halus (lihat GlassSurface).
  * - Pengelompokan ala One UI: kartu besar membulat, judul besar, banyak ruang kosong.
- * - Tipografi Inter (variable font) dengan tracking rapat untuk angka besar.
+ * - Tipografi Inter (variable font) dengan tracking rapat untuk angka besar; JetBrains Mono untuk angka VFD/console.
  */
 
 // ===== Warna =====
@@ -40,7 +40,7 @@ val Hairline = Color(Tokens.Argb.HAIRLINE)
 val TextPrimary = Color(Tokens.Argb.TEXT_PRIMARY)
 val TextSecondary = Color(Tokens.Argb.TEXT_SECONDARY)
 val TextTertiary = Color(Tokens.Argb.TEXT_TERTIARY)
-val Accent = Color(Tokens.Argb.ACCENT)          // oranye hangat ala label piringan
+val Accent = Color(Tokens.Argb.ACCENT)          // amber lampu indikator TV
 val AccentOn = Color(Tokens.Argb.ACCENT_ON)
 
 // ===== Tema TV tabung ("Retro Projection") — nilai dari Tokens.Retro =====

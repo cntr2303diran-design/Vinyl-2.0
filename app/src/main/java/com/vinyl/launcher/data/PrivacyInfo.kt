@@ -38,14 +38,14 @@ object PrivacyInfo {
 
     val permissions: List<Item> = listOf(
         Item("android.permission.INTERNET", "Internet", "Lirik, cuaca, dan cover album seperti dijelaskan di atas. Hanya HTTPS."),
-        Item("android.permission.SYSTEM_ALERT_WINDOW", "Tampil di atas aplikasi lain", "Menampilkan layar kunci vinyl, taskbar, dan tombol navigasi."),
+        Item("android.permission.SYSTEM_ALERT_WINDOW", "Tampil di atas aplikasi lain", "Menampilkan layar kunci TV, taskbar, dan tombol navigasi."),
         Item("android.permission.FOREGROUND_SERVICE", "Layanan latar depan", "Menjaga layar kunci, taskbar, dan tombol navigasi tetap aktif."),
         Item("android.permission.FOREGROUND_SERVICE_SPECIAL_USE", "Layanan latar (khusus)", "Jenis layanan untuk tampilan di atas aplikasi lain; tidak ada kategori sistem lain yang cocok."),
         Item("android.permission.POST_NOTIFICATIONS", "Menampilkan notifikasi", "Notifikasi wajib dari layanan latar depan di atas."),
-        Item("android.permission.RECEIVE_BOOT_COMPLETED", "Mulai setelah restart", "Menyalakan lagi layar kunci vinyl dan taskbar setelah ponsel menyala atau aplikasi diperbarui."),
+        Item("android.permission.RECEIVE_BOOT_COMPLETED", "Mulai setelah restart", "Menyalakan lagi layar kunci TV dan taskbar setelah ponsel menyala atau aplikasi diperbarui."),
         Item("android.permission.REQUEST_DELETE_PACKAGES", "Meminta penghapusan aplikasi", "Tombol Copot di app drawer; sistem tetap meminta konfirmasi Anda."),
         Item("android.permission.EXPAND_STATUS_BAR", "Membuka panel notifikasi", "Gestur geser untuk membuka panel notifikasi."),
-        Item("android.permission.VIBRATE", "Getar", "Getar halus saat jarum turun. Bisa dimatikan di Suara & getar."),
+        Item("android.permission.VIBRATE", "Getar", "Getar halus saat tombol kaset ditekan dan knob diputar. Bisa dimatikan di Suara & getar."),
         Item("android.permission.READ_CALENDAR", "Kalender", "Menampilkan titik acara hari ini di layar kunci. Dibaca di perangkat, tidak dikirim ke mana pun.", optional = true),
         Item("android.permission.PACKAGE_USAGE_STATS", "Akses penggunaan aplikasi", "Mengetahui aplikasi yang terakhir dibuka untuk taskbar. Diproses di perangkat saja.", optional = true),
         Item(

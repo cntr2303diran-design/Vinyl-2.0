@@ -201,14 +201,17 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     // ---------- Musik ----------
-    fun togglePlay() = MediaRepository.togglePlayPause("Turntable")
+    /** Tombol putar/jeda di ruang TV: bunyi tombol deck kaset (sesuai Pengaturan → Suara & getar), lalu perintahnya. */
+    fun togglePlay() {
+        if (MediaRepository.state.value.isPlaying) SoundFx.stopKey(getApplication(), settings.value.effects)
+        else SoundFx.playKey(getApplication(), settings.value.effects)
+        MediaRepository.togglePlayPause("Ruang TV")
+    }
     fun next() { SoundFx.flip(getApplication(), settings.value.effects); MediaRepository.next() }
     fun previous() { SoundFx.flip(getApplication(), settings.value.effects); MediaRepository.previous() }
     fun seek(ms: Long) = MediaRepository.seekTo(ms)
     fun openMusic() = MediaRepository.openMusicApp(getApplication())
 
     // ---------- Efek jarum ----------
-    fun needleDown() = SoundFx.needleDown(getApplication(), settings.value.effects)
-    fun needleUp() = SoundFx.needleUp(getApplication(), settings.value.effects)
     fun tick() = SoundFx.tick(getApplication(), settings.value.effects)
 }

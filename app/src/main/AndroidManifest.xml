@@ -4,18 +4,18 @@
 
     <!-- Kalender perangkat untuk titik acara (opsional) -->
     <uses-permission android:name="android.permission.READ_CALENDAR" />
-    <!-- Layanan layar kunci vinyl -->
+    <!-- Layanan layar kunci TV -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <!-- Diperlukan agar layar kunci vinyl bisa dimunculkan dari latar belakang (Android 10+) -->
+    <!-- Diperlukan agar layar kunci TV bisa dimunculkan dari latar belakang (Android 10+) -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <!-- Uninstall dari app drawer -->
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
     <!-- Gestur "buka notifikasi" (cadangan bila layanan aksesibilitas tidak aktif) -->
     <uses-permission android:name="android.permission.EXPAND_STATUS_BAR" />
-    <!-- Getar halus saat jarum turun -->
+    <!-- Getar halus saat tombol kaset ditekan / knob diputar -->
     <uses-permission android:name="android.permission.VIBRATE" />
     <!-- Taskbar Vinyl: daftar aplikasi terakhir dibuka (izin khusus, diberikan pengguna di Pengaturan) -->
     <uses-permission
@@ -93,7 +93,7 @@
         android:enableOnBackInvokedCallback="true"
         tools:targetApi="36">
 
-        <!-- HOME: layar utama turntable -->
+        <!-- HOME: layar utama ruang TV -->
         <activity
             android:name=".ui.home.HomeActivity"
             android:exported="true"
@@ -128,7 +128,7 @@
             android:label="@string/settings_title"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|uiMode" />
 
-        <!-- Layar kunci vinyl: tampil di atas keyguard sistem -->
+        <!-- Layar kunci TV: tampil di atas keyguard sistem -->
         <activity
             android:name=".ui.cover.CoverActivity"
             android:exported="false"
@@ -151,7 +151,7 @@
             </intent-filter>
         </service>
 
-        <!-- Memantau layar mati untuk memunculkan layar kunci vinyl -->
+        <!-- Memantau layar mati untuk memunculkan layar kunci TV -->
         <service
             android:name=".service.CoverService"
             android:exported="false"

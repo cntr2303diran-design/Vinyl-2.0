@@ -624,7 +624,7 @@ fun GestureAction.label() = when (this) {
     GestureAction.LOCK_SCREEN -> "Kunci layar"
     GestureAction.OPEN_APP -> "Buka aplikasi"
     GestureAction.SETTINGS -> "Pengaturan"
-    GestureAction.CRATE -> "Rak piringan"
+    GestureAction.CRATE -> "Perpustakaan kaset"
     GestureAction.PLAY_PAUSE -> "Putar/jeda"
     GestureAction.NEXT_TRACK -> "Lagu berikutnya"
     GestureAction.PREV_TRACK -> "Lagu sebelumnya"

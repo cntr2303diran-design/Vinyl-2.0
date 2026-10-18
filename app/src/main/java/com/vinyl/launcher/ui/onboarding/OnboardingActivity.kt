@@ -57,8 +57,14 @@ import androidx.lifecycle.lifecycleScope
 import com.vinyl.launcher.data.CalendarRepository
 import com.vinyl.launcher.data.SettingsRepository
 import com.vinyl.launcher.media.MediaRepository
-import com.vinyl.launcher.ui.components.VinylDisc
-import com.vinyl.launcher.ui.components.VinylLabel
+import com.vinyl.launcher.data.AlbumMotion
+import com.vinyl.launcher.data.KnobStyle
+import com.vinyl.launcher.data.TvBody
+import com.vinyl.launcher.data.VfdColor
+import com.vinyl.launcher.ui.room.CrtTv
+import com.vinyl.launcher.ui.room.TvGeometry
+import com.vinyl.launcher.ui.room.TvScreenMode
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import com.vinyl.launcher.ui.home.HomeActivity
 import com.vinyl.launcher.ui.settings.SettingsActivity
 import com.vinyl.launcher.ui.theme.VinylTheme
@@ -68,7 +74,6 @@ import kotlinx.coroutines.launch
 import androidx.compose.ui.graphics.Color
 import androidx.core.content.ContextCompat
 import android.content.pm.PackageManager
-import com.vinyl.launcher.data.VinylStyle
 
 /**
  * Onboarding: launcher default, akses notifikasi, kalender (opsional), layar kunci vinyl.
@@ -184,8 +189,8 @@ fun PermissionSteps(coverEnabled: Boolean, onCoverEnabled: (Boolean) -> Unit) {
             calendarLauncher.launch(Manifest.permission.READ_CALENDAR)
         }
         PermissionStep(
-            4, "Layar kunci vinyl",
-            "Tampilkan di atas aplikasi lain agar layar kunci vinyl muncul setiap layar dinyalakan.",
+            4, "Layar kunci TV",
+            "Tampilkan di atas aplikasi lain agar layar kunci TV muncul setiap layar dinyalakan.",
             coverEnabled && overlay && postNotif,
             if (!overlay) "Izinkan tampilan" else if (!postNotif) "Izinkan notifikasi" else "Aktifkan",
             optional = true,
@@ -215,18 +220,18 @@ private fun OnboardingScreen(onFinish: () -> Unit) {
                 .verticalScroll(rememberScrollState()).padding(32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            VinylDisc(
-                modifier = Modifier.size(160.dp),
-                rotation = 0f,
-                style = VinylStyle.CLASSIC,
-                labelColor = WarmAccent,
-                discTint = WarmAccent,
-                label = VinylLabel.Text("Vinyl Launcher", "tablet sebagai turntable"),
+            // TV tabung dalam keadaan siaga sebagai gambar pembuka (tanpa aset bermerek)
+            CrtTv(
+                mode = TvScreenMode.STANDBY, art = null, title = "", artist = "", accent = WarmAccent,
+                body = TvBody.CREAM, knob = KnobStyle.CHROME, vfdColor = VfdColor.GREEN,
+                vfdLines = listOf("STANDBY", "HALO", ""), crtStrength = 0.6f, motion = AlbumMotion.OFF,
+                reduceMotion = true, titleScrimAlpha = 0f,
+                modifier = Modifier.size(240.dp, 240.dp / TvGeometry.ASPECT).clearAndSetSemantics { },
             )
             Spacer(Modifier.height(20.dp))
             Text("Selamat datang di Vinyl Launcher", fontSize = 28.sp, fontWeight = FontWeight.Light)
             Text(
-                "Beberapa langkah singkat agar turntable Anda siap diputar.",
+                "Beberapa langkah singkat agar TV dan kaset Anda siap diputar.",
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 6.dp, bottom = 24.dp),
             )

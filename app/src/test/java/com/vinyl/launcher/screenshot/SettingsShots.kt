@@ -1,12 +1,12 @@
 package com.vinyl.launcher.screenshot
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
@@ -36,9 +36,12 @@ class SettingsShots {
     fun tvSection() {
         compose.setContent {
             VinylTheme {
-                Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).verticalScroll(rememberScrollState()).padding(16.dp)) {
-                    HomeSectionControls(HomeSection.TV, HomeSettings(), RetroSettings(), {}, {})
-                    HomeSectionControls(HomeSection.CLOCK, HomeSettings(), RetroSettings(), {}, {})
+                // Surface memberi warna teks bawaan (onSurface) seperti di halaman Pengaturan sungguhan
+                Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                    Column(Modifier.verticalScroll(rememberScrollState()).padding(16.dp)) {
+                        HomeSectionControls(HomeSection.TV, HomeSettings(), RetroSettings(), {}, {})
+                        HomeSectionControls(HomeSection.CLOCK, HomeSettings(), RetroSettings(), {}, {})
+                    }
                 }
             }
         }

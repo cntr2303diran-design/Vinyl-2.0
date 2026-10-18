@@ -85,7 +85,7 @@ fun VisualEffectControls(v: VisualSettings, onChange: (VisualSettings) -> Unit) 
         }
         SwitchRow(
             "Cahaya reaktif", v.reactiveGlow, { onChange(v.copy(reactiveGlow = it)) },
-            subtitle = "Cahaya lembut di belakang turntable. Mengikuti suara bila Visualizer di bawah menyala; bila tidak, hanya berdenyut pelan saat musik diputar.",
+            subtitle = "Cahaya lembut di belakang TV. Mengikuti suara bila Visualizer di bawah menyala; bila tidak, hanya berdenyut pelan saat musik diputar.",
         )
         SwitchRow(
             "Partikel", v.particles, { onChange(v.copy(particles = it)) },

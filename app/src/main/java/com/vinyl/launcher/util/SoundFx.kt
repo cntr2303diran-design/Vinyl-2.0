@@ -20,14 +20,15 @@ import kotlin.math.tanh
 import kotlin.random.Random
 
 /**
- * Efek suara & getar turntable, disintesis langsung (tanpa file audio):
- * - [needleDown]: "tuk" jarum menyentuh piringan + desis & kresek vinyl selama ±2,5 detik
- * - [needleUp]: klik saat lengan terangkat
- * - [tick]: klik kecil saat vinyl diputar dengan jari / tonearm melewati tepi piringan
- * - [flip]: kibasan saat ganti lagu
- * - [startCrackle]/[stopCrackle]: kresek vinyl pelan berulang selama lagu diputar
+ * Efek suara & getar deck kaset, disintesis langsung (tanpa file audio):
+ * - [playKey]: tombol PLAY ditekan — "klak" mekanik + motor gulungan mulai berputar
+ * - [stopKey]: tombol dilepas saat jeda — klik pegas pendek
+ * - [tick]: klik kecil saat knob seek diputar (tiap "gigi")
+ * - [flip]: desing pita digulung cepat saat ganti lagu, ditutup klik
+ * - [startCrackle]/[stopCrackle]: desis pita pelan berulang selama lagu diputar (tanpa letupan)
  *
- * Suara diputar TANPA meminta audio focus, sehingga musik tidak terhenti.
+ * Suara diputar TANPA meminta audio focus, sehingga musik tidak terhenti. Nama field pengaturan (needleSound, crackle)
+ * dipertahankan dari tema vinyl agar pengaturan & cadangan lama tetap terbaca.
  */
 object SoundFx {
     private const val RATE = 44100
@@ -46,12 +47,12 @@ object SoundFx {
     /** Penguat: slider 0..1 dipetakan agar nilai tengah pun sudah cukup keras. */
     private fun gain(volume: Float) = (volume * 2.1f + 0.2f).coerceIn(0f, 1f)
 
-    fun needleDown(context: Context, fx: EffectSettings) {
+    fun playKey(context: Context, fx: EffectSettings) {
         if (fx.haptics) buzz(context, fx.hapticStrength, longArrayOf(60, 40, 35, 50, 25), intArrayOf(255, 0, 200, 0, 120))
         if (fx.needleSound) play(dropPcm, gain(fx.volume))
     }
 
-    fun needleUp(context: Context, fx: EffectSettings) {
+    fun stopKey(context: Context, fx: EffectSettings) {
         if (fx.haptics) buzz(context, fx.hapticStrength, longArrayOf(35, 30, 20), intArrayOf(210, 0, 130))
         if (fx.needleSound) play(liftPcm, gain(fx.volume))
     }
@@ -72,7 +73,7 @@ object SoundFx {
         if (fx.needleSound) play(flipPcm, gain(fx.volume))
     }
 
-    /** Kresek vinyl pelan yang diulang terus sampai [stopCrackle] dipanggil. */
+    /** Desis pita pelan yang diulang terus sampai [stopCrackle] dipanggil. */
     fun startCrackle(volume: Float) {
         stopCrackle()
         runCatching {
@@ -121,25 +122,23 @@ object SoundFx {
 
     private fun toShort(v: Double): Short = (tanh(v * 1.5).coerceIn(-1.0, 1.0) * Short.MAX_VALUE).toInt().toShort()
 
-    /** "Tuk" bernada rendah + klik tajam, lalu desis & kresek yang memudar. */
+    /** Tombol PLAY: klik tajam + "klak" bernada rendah, lalu dengung motor yang naik dan memudar (±0,6 detik). */
     private fun synthDrop(): ShortArray {
-        val n = (RATE * 2.6).toInt()
+        val n = (RATE * 0.62).toInt()
         val out = ShortArray(n)
         val rnd = Random(33)
         var lp = 0.0
         for (i in 0 until n) {
             val t = i.toDouble() / RATE
-            // thump 80 Hz + harmonik, cepat meredam
-            val thump = (sin(2 * PI * 80 * t) + 0.5 * sin(2 * PI * 160 * t)) * exp(-t * 24) * 0.95
-            // klik awal (noise sangat singkat)
-            val click = if (t < 0.006) (rnd.nextDouble() * 2 - 1) * (1 - t / 0.006) * 0.9 else 0.0
-            // desis vinyl: noise yang di-low-pass, memudar
-            lp += 0.1 * ((rnd.nextDouble() * 2 - 1) - lp)
-            val hiss = lp * 0.2 * exp(-t * 0.8) * (if (t > 0.05) 1.0 else t / 0.05)
-            // kresek acak (impuls jarang)
-            val crackle = if (rnd.nextDouble() < 0.0012 * exp(-t * 0.6)) (rnd.nextDouble() * 2 - 1) * 0.8 else 0.0
-            val fadeOut = if (t > 2.2) (2.6 - t) / 0.4 else 1.0
-            out[i] = toShort((thump + click + hiss + crackle) * fadeOut)
+            val click = if (t < 0.004) (rnd.nextDouble() * 2 - 1) * (1 - t / 0.004) * 0.9 else 0.0
+            // "klak" tuas: dua dentum pendek berdekatan
+            val clunk = (sin(2 * PI * 140 * t) * exp(-t * 60) + sin(2 * PI * 95 * (t - 0.03).coerceAtLeast(0.0)) *
+                exp(-(t - 0.03).coerceAtLeast(0.0) * 45) * (if (t > 0.03) 1.0 else 0.0)) * 0.8
+            // motor gulungan: dengung 55 Hz + noise lembut, naik lalu memudar
+            lp += 0.04 * ((rnd.nextDouble() * 2 - 1) - lp)
+            val rise = (t / 0.15).coerceAtMost(1.0)
+            val motor = (sin(2 * PI * 55 * t) * 0.18 + lp * 0.25) * rise * exp(-(t - 0.15).coerceAtLeast(0.0) * 4.5)
+            out[i] = toShort(click + clunk + motor)
         }
         return out
     }
@@ -162,31 +161,36 @@ object SoundFx {
         }
     }
 
-    /** Kibasan: noise yang menyapu naik, ditutup klik. */
+    /** Pita digulung cepat: desing bernada naik (noise terfilter + nada), ditutup klik berhenti. */
     private fun synthFlip(): ShortArray {
-        val n = (RATE * 0.22).toInt()
+        val n = (RATE * 0.30).toInt()
         val rnd = Random(19)
         var lp = 0.0
+        var phase = 0.0
         return ShortArray(n) { i ->
             val t = i.toDouble() / RATE
-            val env = sin(PI * (t / 0.22)).coerceAtLeast(0.0)
-            lp += (0.05 + 0.5 * t / 0.22) * ((rnd.nextDouble() * 2 - 1) - lp)
-            val click = if (t > 0.19) (rnd.nextDouble() * 2 - 1) * exp(-(t - 0.19) * 300) * 0.8 else 0.0
-            toShort(lp * env * 0.9 + click)
+            val env = sin(PI * (t / 0.30)).coerceAtLeast(0.0)
+            lp += (0.08 + 0.4 * t / 0.30) * ((rnd.nextDouble() * 2 - 1) - lp)
+            phase += 2 * PI * (300 + 900 * t / 0.30) / RATE
+            val whir = (lp * 0.6 + sin(phase) * 0.12) * env
+            val click = if (t > 0.27) (rnd.nextDouble() * 2 - 1) * exp(-(t - 0.27) * 300) * 0.8 else 0.0
+            toShort(whir + click)
         }
     }
 
-    /** 4 detik desis halus + letupan kecil acak, untuk diulang. */
+    /** 4 detik desis pita halus (noise terfilter, tanpa letupan), untuk diulang. */
     private fun synthCrackle(): ShortArray {
         val n = RATE * 4
         val rnd = Random(91)
         var lp = 0.0
-        var pop = 0.0
+        var hp = 0.0
         return ShortArray(n) { i ->
-            lp += 0.06 * ((rnd.nextDouble() * 2 - 1) - lp)
-            if (rnd.nextDouble() < 0.0006) pop = (rnd.nextDouble() * 2 - 1) * 0.9
-            pop *= 0.82
-            toShort(lp * 0.22 + pop)
+            val x = rnd.nextDouble() * 2 - 1
+            lp += 0.35 * (x - lp)          // potong frekuensi sangat tinggi
+            hp += 0.02 * (lp - hp)         // buang dengung rendah → desis
+            // ujung lingkaran dibuat pelan agar sambungan putaran ulang tidak berbunyi klik
+            val edge = minOf(1.0, i / 2000.0, (n - 1 - i) / 2000.0)
+            toShort((lp - hp) * 0.16 * edge)
         }
     }
 

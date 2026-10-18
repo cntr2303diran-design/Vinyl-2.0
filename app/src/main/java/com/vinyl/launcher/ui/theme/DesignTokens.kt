@@ -14,12 +14,12 @@ object Tokens {
 
     /** Warna sebagai ARGB 32-bit (0xAARRGGBB) dalam Long. */
     object Argb {
-        // Permukaan (gelap saja; satu-satunya mode selain tampilan kaca)
-        const val INK = 0xFF09090BL
-        const val INK_ELEVATED = 0xFF141416L
-        const val INK_CARD = 0xFF1C1C1FL
-        const val INK_CARD_HIGH = 0xFF26262AL
-        const val INK_CARD_HIGHEST = 0xFF303035L
+        // Permukaan gelap bernada hangat (charcoal tema TV tabung, bukan hitam-biru). Tingkatan sama seperti sebelumnya.
+        const val INK = 0xFF121210L
+        const val INK_ELEVATED = 0xFF1A1A18L
+        const val INK_CARD = 0xFF242522L
+        const val INK_CARD_HIGH = 0xFF2D2F2BL
+        const val INK_CARD_HIGHEST = 0xFF373935L
         const val HAIRLINE = 0x1FFFFFFFL
         const val OUTLINE = 0x33FFFFFFL
 
@@ -29,11 +29,11 @@ object Tokens {
         const val TEXT_SECONDARY = 0xCCFFFFFFL
         const val TEXT_TERTIARY = 0x9EFFFFFFL
 
-        // Aksen hangat ala label piringan
-        const val ACCENT = 0xFFFF9F43L
-        const val ACCENT_ON = 0xFF1E1206L
-        const val PRIMARY_CONTAINER = 0xFF3A2614L
-        const val ON_PRIMARY_CONTAINER = 0xFFFFDCC2L
+        // Aksen amber lampu indikator TV (sama dengan Retro.AMBER), menggantikan oranye label piringan
+        const val ACCENT = 0xFFD6A64DL
+        const val ACCENT_ON = 0xFF1E1D1BL
+        const val PRIMARY_CONTAINER = 0xFF3A2F18L
+        const val ON_PRIMARY_CONTAINER = 0xFFF2DDB0L
         const val SECONDARY = 0xFFD9C9B4L
         const val ERROR_CONTAINER = 0xFF3B1716L
         const val ON_ERROR_CONTAINER = 0xFFFFB4ABL
@@ -47,7 +47,7 @@ object Tokens {
         const val TEXT_ON_DARK = 0xFFFFFFFFL
 
         /** Permukaan semua-aplikasi (panel taskbar, app drawer) — hampir buram agar teks tetap terbaca di atas aplikasi lain. */
-        const val PANEL = 0xF2151517L
+        const val PANEL = 0xF2181816L
     }
 
     /**

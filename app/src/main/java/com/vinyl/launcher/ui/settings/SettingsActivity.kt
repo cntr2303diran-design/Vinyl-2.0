@@ -109,12 +109,12 @@ private enum class Page(val title: String, val subtitle: String, val icon: Image
     PERMISSIONS("Izin & status", "Launcher default, notifikasi, aksesibilitas", Icons.Rounded.VerifiedUser, Color(0xFF30D158)),
     HOME("Layar utama", "TV, kaset, dinding, jam, widget", Icons.Rounded.Home, Color(0xFF0A84FF)),
     DRAWER("App drawer", "Sering dipakai, kategori, lencana, pencarian", Icons.Rounded.GridView, Color(0xFF34C759)),
-    LOCK("Layar kunci", "Layar kunci vinyl & tampilannya", Icons.Rounded.Lock, Color(0xFF5E5CE6)),
+    LOCK("Layar kunci", "Layar kunci TV & tampilannya", Icons.Rounded.Lock, Color(0xFF5E5CE6)),
     MUSIC("Musik", "Aplikasi default, lirik, rak, timer tidur", Icons.Rounded.MusicNote, Color(0xFFFF375F)),
     TASKBAR("Taskbar", "Bar aplikasi gaya PC", Icons.Rounded.Dock, Color(0xFFFF9F43)),
     NAV("Tombol navigasi", "Kembali, Home, Terbaru", Icons.Rounded.TouchApp, Color(0xFF64D2FF)),
     VISUAL("Efek visual", "Distorsi kaca, cahaya, partikel, parallax, visualizer", Icons.Rounded.GraphicEq, Color(0xFF00C7BE)),
-    FX("Suara & getar", "Jarum, kresek, getar", Icons.Rounded.Vibration, Color(0xFFBF5AF2)),
+    FX("Suara & getar", "Tombol kaset, desis pita, getar", Icons.Rounded.Vibration, Color(0xFFBF5AF2)),
     GESTURES("Gestur", "Swipe & gestur gambar sendiri", Icons.Rounded.Gesture, Color(0xFFFFD60A)),
     WEATHER("Cuaca", "Lokasi untuk widget cuaca", Icons.Rounded.WbSunny, Color(0xFFFF9F0A)),
     APPS("Aplikasi & preset", "Aplikasi tersembunyi, preset tema", Icons.Rounded.Apps, Color(0xFF32D74B)),
@@ -160,7 +160,7 @@ private fun SettingsScreen(vm: SettingsViewModel, onBack: () -> Unit) {
 
         ControlCard {
         SwitchRow(
-            "Aktifkan layar kunci vinyl", s.coverEnabled, { on -> vm.update { it.copy(coverEnabled = on) } },
+            "Aktifkan layar kunci TV", s.coverEnabled, { on -> vm.update { it.copy(coverEnabled = on) } },
             subtitle = "Muncul di atas layar kunci sistem setiap layar dinyalakan",
         )
         TextButton(onClick = { CoverActivity.show(context) }) { Text("Pratinjau layar kunci") }
@@ -299,13 +299,13 @@ private fun SettingsScreen(vm: SettingsViewModel, onBack: () -> Unit) {
             }
             Page.FX -> ControlCard {
 
-        SwitchRow("Suara jarum", s.effects.needleSound, { on -> vm.update { it.copy(effects = it.effects.copy(needleSound = on)) } },
-            subtitle = "Bunyi \"tuk\" dan desis vinyl saat lagu mulai")
+        SwitchRow("Bunyi tombol kaset", s.effects.needleSound, { on -> vm.update { it.copy(effects = it.effects.copy(needleSound = on)) } },
+            subtitle = "\"Klak\" tombol PLAY dan dengung motor saat lagu diputar, klik saat dijeda")
         SwitchRow("Getar", s.effects.haptics, { on -> vm.update { it.copy(effects = it.effects.copy(haptics = on)) } })
-        SwitchRow("Efek saat vinyl disentuh", s.effects.interactionFx, { on -> vm.update { it.copy(effects = it.effects.copy(interactionFx = on)) } },
-            subtitle = "Klik & getar saat vinyl diputar dengan jari, tonearm digeser, dan ganti lagu")
-        SwitchRow("Kresek vinyl terus-menerus", s.effects.crackle, { on -> vm.update { it.copy(effects = it.effects.copy(crackle = on)) } },
-            subtitle = "Desis & letupan pelan selama lagu diputar di layar utama")
+        SwitchRow("Efek saat knob & tombol disentuh", s.effects.interactionFx, { on -> vm.update { it.copy(effects = it.effects.copy(interactionFx = on)) } },
+            subtitle = "Klik & getar tiap gigi knob seek, dan desing pita saat ganti lagu")
+        SwitchRow("Desis pita terus-menerus", s.effects.crackle, { on -> vm.update { it.copy(effects = it.effects.copy(crackle = on)) } },
+            subtitle = "Desis kaset yang sangat pelan selama lagu diputar di layar utama")
         if (s.effects.needleSound || s.effects.crackle) SliderRow("Volume efek", s.effects.volume, 0.05f..1f, { v -> vm.update { it.copy(effects = it.effects.copy(volume = v)) } })
         if (s.effects.haptics) SliderRow("Kekuatan getar", s.effects.hapticStrength, 0.3f..1f, { v -> vm.update { it.copy(effects = it.effects.copy(hapticStrength = v)) } })
 
@@ -533,8 +533,8 @@ private fun AboutCard() {
             }
         }
         Text(
-            "Tablet sebagai turntable: layar utama & layar kunci bertema piringan hitam, lirik tersinkron, rak piringan, " +
-                "taskbar gaya PC, tombol navigasi & gestur yang bisa diatur sendiri.",
+            "Tablet sebagai TV tabung: ruang TV dengan kaset & knob, layar kunci TV, perpustakaan kaset, Audio Console, " +
+                "lirik tersinkron, taskbar gaya PC, tombol navigasi & gestur yang bisa diatur sendiri.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 12.dp),

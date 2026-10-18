@@ -46,12 +46,10 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -67,9 +65,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vinyl.launcher.data.Anchor
-import com.vinyl.launcher.data.ClockType
 import com.vinyl.launcher.data.CoverSettings
-import com.vinyl.launcher.data.VinylStyle
 import com.vinyl.launcher.media.MediaRepository
 import com.vinyl.launcher.media.NowPlaying
 import com.vinyl.launcher.ui.components.BackgroundLayer
@@ -83,8 +79,18 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.sp
 import com.vinyl.launcher.ui.components.ShimmerText
 import com.vinyl.launcher.ui.components.TwoMonthCalendar
-import com.vinyl.launcher.ui.components.VinylDisc
-import com.vinyl.launcher.ui.components.VinylLabel
+import com.vinyl.launcher.data.RetroSettings
+import com.vinyl.launcher.data.RoomTone
+import com.vinyl.launcher.fx.rememberPowerSave
+import com.vinyl.launcher.ui.room.CrtTv
+import com.vinyl.launcher.ui.room.TvGeometry
+import com.vinyl.launcher.ui.room.TvScreen
+import com.vinyl.launcher.ui.room.VfdTicker
+import com.vinyl.launcher.ui.room.rememberWorstCoverPixel
+import com.vinyl.launcher.ui.theme.BackdropDim
+import com.vinyl.launcher.ui.theme.rememberReduceMotion
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import com.vinyl.launcher.ui.components.rememberNow
 import com.vinyl.launcher.ui.components.sheet
 import com.vinyl.launcher.ui.components.timeParts
@@ -94,7 +100,6 @@ import com.vinyl.launcher.ui.theme.horizontal
 import com.vinyl.launcher.ui.theme.toAlignment
 import com.vinyl.launcher.ui.theme.toColor
 import com.vinyl.launcher.ui.theme.toComposeColor
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -115,6 +120,7 @@ fun CoverScreen(
     val cover by vm.cover.collectAsStateWithLifecycle()
     val music by vm.music.collectAsStateWithLifecycle()
     val draft by vm.draft.collectAsStateWithLifecycle()
+    val retro = vm.settings.collectAsStateWithLifecycle().value.retro
     val np by vm.nowPlaying.collectAsStateWithLifecycle()
     val editing = draft != null
     val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
@@ -187,7 +193,7 @@ fun CoverScreen(
             if (landscape) {
                 Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
                     BoxWithConstraints(Modifier.weight(0.47f).fillMaxHeight(), contentAlignment = Alignment.Center) {
-                        CoverVinyl(np, cover, accent, albumColor, min(maxWidth.value * 0.95f, maxHeight.value * 0.86f).dp, now, offsetX.value)
+                        CoverTv(np, cover, retro, accent, min(maxWidth.value * 0.95f, maxHeight.value * 0.86f * TvGeometry.ASPECT).dp, now, offsetX.value)
                     }
                     InfoArea(
                         cover, np, now, accent, music.lyricsOnline,
@@ -198,7 +204,7 @@ fun CoverScreen(
             } else {
                 Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
                     BoxWithConstraints(Modifier.fillMaxWidth().weight(0.46f), contentAlignment = Alignment.Center) {
-                        CoverVinyl(np, cover, accent, albumColor, min(maxWidth.value * 0.82f, maxHeight.value).dp, now, offsetX.value)
+                        CoverTv(np, cover, retro, accent, min(maxWidth.value * 0.9f, maxHeight.value * 0.95f * TvGeometry.ASPECT).dp, now, offsetX.value)
                     }
                     InfoArea(
                         cover, np, now, accent, music.lyricsOnline,
@@ -228,67 +234,55 @@ fun CoverScreen(
 }
 
 /**
- * Vinyl besar berlabel cover album; berputar 33⅓ RPM saat musik aktif.
- * Ikut bergeser & menggelinding saat layar digeser ke kanan.
+ * TV tabung berisi cover album (pengganti piringan vinyl di layar kunci). Ikut bergeser & memudar saat layar digeser ke
+ * kanan untuk membuka. VFD menampilkan status putar, jam, dan artis.
  */
 @Composable
-private fun CoverVinyl(
-    np: NowPlaying,
-    cover: CoverSettings,
-    accent: Color,
-    discTint: Color,
-    size: Dp,
-    now: LocalDateTime,
-    dragOffset: Float,
-) {
-    var angle by remember { mutableFloatStateOf(0f) }
-    var velocity by remember { mutableFloatStateOf(0f) }
-    val playing = np.isPlaying && np.hasTrack
-
-    LaunchedEffect(playing) {
-        var last = 0L
-        val target = if (playing) 200f else 0f
-        while (isActive) {
-            withFrameNanos { t ->
-                val dt = if (last == 0L) 0f else (t - last) / 1e9f
-                last = t
-                velocity = if (velocity < target) min(target, velocity + 250f * dt) else maxOf(target, velocity - 130f * dt)
-                angle = (angle + velocity * dt) % 360f
-            }
-            if (!playing && velocity <= 0f) break
-        }
+private fun CoverTv(np: NowPlaying, cover: CoverSettings, retro: RetroSettings, accent: Color, width: Dp, now: LocalDateTime, dragOffset: Float) {
+    val motionAllowed = !rememberReduceMotion() && !rememberPowerSave()
+    val brightest = rememberWorstCoverPixel(np.art.takeIf { np.hasTrack }, RoomTone.DIM)
+    val scrim = remember(brightest) {
+        // Judul putih di atas cover: peredam secukupnya agar >= 4,5:1 di piksel paling terang
+        brightest?.let { BackdropDim.minOverlayAlpha(it, listOf(0xFFFFFFFFL), effects = false).toFloat() } ?: 0.25f
     }
-
-    val rimText = if (cover.clock.visible && cover.clock.type == ClockType.CIRCULAR) {
-        val (hm, ampm) = timeParts(now, cover.clock.use24h)
-        hm + (ampm?.let { " $it" } ?: "")
-    } else null
-
-    VinylDisc(
+    val time = timeParts(now, cover.clock.use24h).let { (hm, ampm) -> hm + (ampm?.let { " $it" } ?: "") }
+    CrtTv(
+        mode = TvScreen.mode(np.hasTrack, np.isPlaying, retro.albumMotion, motionAllowed),
+        art = np.art.takeIf { np.hasTrack },
+        title = if (np.hasTrack) np.title else "",
+        artist = if (np.hasTrack) np.artist else "",
+        accent = accent,
+        body = retro.tvBody,
+        knob = retro.knobStyle,
+        vfdColor = retro.vfdColor,
+        vfdLines = listOf(
+            VfdTicker.playback(np.hasTrack, np.isPlaying),
+            time.uppercase().take(VfdTicker.MAX_CHARS),
+            (np.artist.ifBlank { "--" }).uppercase().take(VfdTicker.MAX_CHARS),
+        ),
+        crtStrength = retro.crtStrength,
+        motion = retro.albumMotion,
+        reduceMotion = !motionAllowed,
+        titleScrimAlpha = scrim,
         modifier = Modifier
-            .size(size)
+            .size(width, width / TvGeometry.ASPECT)
             .graphicsLayer {
                 translationX = dragOffset
-                // Vinyl "menggelinding": sudut tambahan sebanding jarak geser
-                alpha = 1f - (dragOffset / (size.toPx() * 2.2f)).coerceIn(0f, 0.8f)
+                alpha = 1f - (dragOffset / (width.toPx() * 2.2f)).coerceIn(0f, 0.8f)
+            }
+            .semantics(mergeDescendants = true) {
+                contentDescription = if (np.hasTrack) "TV menampilkan ${np.title}" + (if (np.artist.isNotBlank()) " oleh ${np.artist}" else "")
+                else "TV, siaga"
             },
-        rotation = angle + dragOffset / (size.value * 3.1416f) * 360f * 0.35f,
-        style = VinylStyle.CLASSIC,
-        labelColor = accent,
-        discTint = discTint,
-        label = VinylLabel.Art(if (np.hasTrack) np.art else null),
-        rimText = rimText,
-        rimTextColor = cover.clock.color.toColor(),
     )
 }
 
 @Composable
 private fun InfoArea(cover: CoverSettings, np: NowPlaying, now: LocalDateTime, accent: Color, lyricsOnline: Boolean, modifier: Modifier) {
     val context = LocalContext.current
-    val clockOnRim = cover.clock.type == ClockType.CIRCULAR
     val items = buildList {
         if (cover.date.visible) add(CoverItem.DATE to cover.date.anchor)
-        if (cover.clock.visible && !clockOnRim) add(CoverItem.CLOCK to cover.clock.anchor)
+        if (cover.clock.visible) add(CoverItem.CLOCK to cover.clock.anchor)
         if (cover.calendar.visible) add(CoverItem.CALENDAR to cover.calendar.anchor)
         if (cover.songInfo.visible) add(CoverItem.SONG to cover.songInfo.anchor)
         if (cover.battery.visible) add(CoverItem.BATTERY to cover.battery.anchor)
@@ -355,6 +349,7 @@ private fun InfoArea(cover: CoverSettings, np: NowPlaying, now: LocalDateTime, a
 @Composable
 private fun CoverEditorPanel(vm: CoverViewModel, landscape: Boolean) {
     val draft by vm.draft.collectAsStateWithLifecycle()
+    val retro = vm.settings.collectAsStateWithLifecycle().value.retro
     val d = draft ?: return
     val calendarPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (!granted) vm.updateDraft(d.copy(calendarEvents = false))

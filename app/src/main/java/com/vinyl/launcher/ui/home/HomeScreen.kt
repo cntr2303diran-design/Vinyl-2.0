@@ -158,7 +158,7 @@ import com.vinyl.launcher.ui.library.LibraryCatalog
 import com.vinyl.launcher.ui.library.rememberLibraryState
 
 /** Warna netral saat tidak ada musik. */
-private val NeutralBg = Color(0xFF1B1B1F)
+private val NeutralBg = Color(0xFF1C1B19) // charcoal hangat bila tidak ada cover
 private val NeutralLabel = Color(0xFF8A8780)
 
 @Composable
