@@ -99,7 +99,13 @@ jobs:
           ./gradlew assembleDebug --stacktrace --no-daemon 2>&1 | tee -a build.log
           # Izin di APK sebenarnya (manifest gabungan, termasuk yang dibawa library) dicatat agar bisa diperiksa
           M=$(find app/build/intermediates -path '*debug*' -name AndroidManifest.xml -path '*merged_manifest*' | head -1)
-          { echo; echo "===== IZIN DI APK (manifest gabungan: $M) ====="; grep -o 'uses-permission[^>]*android:name="[^"]*"' "$M" | sed 's/.*name="//; s/"$//' | sort; } | tee -a build.log
+          # Elemen dengan beberapa atribut ditulis multi-baris di manifest gabungan, jadi baris digabung dulu sebelum dicari
+          { echo; echo "===== IZIN DI APK (manifest gabungan: $M) ====="
+            tr '\n' ' ' < "$M" | grep -o '<uses-permission[^>]*>' | while read -r e; do
+              n=$(echo "$e" | grep -o 'android:name="[^"]*"' | cut -d'"' -f2)
+              m=$(echo "$e" | grep -o 'android:maxSdkVersion="[^"]*"' | cut -d'"' -f2)
+              echo "$n${m:+ (hanya s.d. API $m)}"
+            done | sort; } | tee -a build.log
 
       - name: Ringkas peringatan kompiler
         if: always()
