@@ -103,7 +103,8 @@ jobs:
           { echo; echo "===== IZIN DI APK (manifest gabungan: $M) ====="
             tr '\n' ' ' < "$M" | grep -o '<uses-permission[^>]*>' | while read -r e; do
               n=$(echo "$e" | grep -o 'android:name="[^"]*"' | cut -d'"' -f2)
-              m=$(echo "$e" | grep -o 'android:maxSdkVersion="[^"]*"' | cut -d'"' -f2)
+              # grep tanpa hasil = status 1; dengan bash -e + pipefail itu menghentikan langkah, jadi diabaikan
+              m=$(echo "$e" | grep -o 'android:maxSdkVersion="[^"]*"' | cut -d'"' -f2 || true)
               echo "$n${m:+ (hanya s.d. API $m)}"
             done | sort; } | tee -a build.log
 
