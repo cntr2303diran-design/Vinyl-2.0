@@ -121,7 +121,7 @@ internal fun LocalTab(
             "FLAC, WAV, ALAC (termasuk 24-bit), MP3, AAC, OGG, dan Opus diputar langsung oleh pemutar bawaan, dengan ReplayGain, " +
                 "EQ parametrik & AutoEQ di Audio Console. Launcher hanya bisa membaca folder yang Anda pilih (tanpa izin penyimpanan).",
         ) {
-            TextButton(onClick = { picker.launch(null) }, modifier = Modifier.padding(top = 16.dp)) { Text("Pilih folder musik") }
+            TextButton(onClick = { picker.launch(null) }, modifier = Modifier.padding(top = 16.dp)) { Text("Pilih folder musik", color = RetroColors.CreamText) }
         }
         return
     }
@@ -156,15 +156,17 @@ internal fun LocalTab(
                             )
                         }
                         Row(Modifier.horizontalScroll(rememberScrollState())) {
-                            TextButton(onClick = { scope.launch { LocalLibrary.scan(context, folder) } }, enabled = !lib.scanning) { Text("Pindai ulang") }
-                            TextButton(onClick = { picker.launch(folder.toUri()) }) { Text("Ganti folder") }
+                            TextButton(onClick = { scope.launch { LocalLibrary.scan(context, folder) } }, enabled = !lib.scanning) {
+                                Text("Pindai ulang", color = if (lib.scanning) TextTertiary else RetroColors.CreamText)
+                            }
+                            TextButton(onClick = { picker.launch(folder.toUri()) }) { Text("Ganti folder", color = RetroColors.CreamText) }
                             TextButton(onClick = {
                                 scope.launch {
                                     onPlayer { it.copy(folderUri = null, folderName = "") }
                                     LocalLibrary.clear(context)
                                     VideoLibrary.releaseIfUnused(context, folder, listOf(videoFolder))
                                 }
-                            }) { Text("Lepas") }
+                            }) { Text("Lepas", color = TextSecondary) }
                         }
                     }
                     if (lib.scanning) LinearProgressIndicator(Modifier.fillMaxWidth().padding(vertical = 6.dp), color = RetroColors.CreamText)

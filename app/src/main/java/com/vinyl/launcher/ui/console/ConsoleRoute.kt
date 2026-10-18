@@ -64,6 +64,7 @@ fun ConsoleRoute(
     var advanced by remember { mutableStateOf(AdvancedReadings()) }
     var copied by remember { mutableStateOf(false) }
     val btLevels by BluetoothBattery.levels.collectAsStateWithLifecycle()
+    val btRemembered by BluetoothBattery.remembered.collectAsStateWithLifecycle()
     var btPermission by remember { mutableStateOf(BluetoothBattery.granted(context)) }
     val btRequest = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
         btPermission = ok
@@ -147,6 +148,9 @@ fun ConsoleRoute(
             copied = copied,
             btPermission = btPermission,
             btLevels = btLevels,
+            btRemembered = btRemembered,
+            // Umur laporan baterai dihitung ulang setiap kali snapshot audio berubah (sedikitnya tiap 3 detik)
+            nowMs = remember(snapshot) { System.currentTimeMillis() },
             player = playerDraft ?: player,
             path = path,
         ),

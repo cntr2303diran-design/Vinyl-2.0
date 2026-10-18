@@ -115,6 +115,7 @@ internal fun ConsolePanel(title: String, modifier: Modifier = Modifier, lit: Boo
 private fun sourceColor(s: Source): Color = when (s) {
     Source.MEASURED -> ConsoleColors.Green
     Source.REPORTED -> ConsoleColors.Green
+    Source.KNOWN -> ConsoleColors.Green
     Source.ESTIMATED -> ConsoleColors.Amber
     Source.UNAVAILABLE -> ConsoleColors.TextSecondary
 }

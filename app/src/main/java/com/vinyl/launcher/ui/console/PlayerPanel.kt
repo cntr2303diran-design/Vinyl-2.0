@@ -91,8 +91,8 @@ internal fun PlayerPanel(ui: ConsoleUi, actions: ConsoleActions) {
                 if (path.sourceRate > 0) append(" ${LocalFormat.khz(path.sourceRate)} kHz")
                 if (path.channels > 0) append(" · ${path.channels} kanal")
             }
-            ReadingRow("Sumber", Reading.reported(src, if (path.lossless) "Lossless, dari berkas" else "Dari berkas"))
-            if (path.decoded.isNotBlank()) ReadingRow("Hasil dekoder", Reading.reported(path.decoded, "Masuk ke rantai suara"))
+            ReadingRow("Sumber", Reading.known(src, if (path.lossless) "Lossless, dibaca dari berkas" else "Dibaca dari berkas"))
+            if (path.decoded.isNotBlank()) ReadingRow("Hasil dekoder", Reading.known(path.decoded, "Masuk ke rantai suara"))
             val chain = listOfNotNull(
                 path.replayGainDb?.let { "ReplayGain " + EqEditor.gainText(it) },
                 path.eqName?.let { "EQ \"$it\"" },
@@ -101,11 +101,11 @@ internal fun PlayerPanel(ui: ConsoleUi, actions: ConsoleActions) {
             )
             ReadingRow(
                 "Rantai suara",
-                if (path.transparent) Reading.reported("Tanpa olahan", "Sampel diteruskan apa adanya")
-                else Reading.reported(chain.joinToString(" → ").ifBlank { "Diolah" }, "Diproses float 32-bit"),
+                if (path.transparent) Reading.known("Tanpa olahan", "Sampel diteruskan apa adanya")
+                else Reading.known(chain.joinToString(" → ").ifBlank { "Diolah" }, "Diproses float 32-bit"),
             )
-            if (path.output.isNotBlank()) ReadingRow("Ke Android", Reading.reported(path.output, "Format AudioTrack; mixer Android mengatur volume & mencampur suara lain"))
-            if (path.usbRate.isNotBlank()) ReadingRow("DAC USB", Reading.reported(path.usbRate, "Diminta ke sistem"))
+            if (path.output.isNotBlank()) ReadingRow("Ke Android", Reading.known(path.output, "Format AudioTrack; mixer Android mengatur volume & mencampur suara lain"))
+            if (path.usbRate.isNotBlank()) ReadingRow("DAC USB", Reading.reported(path.usbRate, "Hasil permintaan ke sistem"))
         }
         ConsoleDivider()
 

@@ -87,7 +87,7 @@ fun deckDisplay(transport: StatusText.Transport, tapeMode: String?, s: AudioSnap
     // Pemutar bawaan: format sumber sebenarnya ("FLAC 24/96") — diketahui pasti, bukan perkiraan
     if (own != null && own.codec.isNotBlank()) return DeckDisplay(status, ownSourceLine(own))
     val device = when (s.active.reading.source) {
-        Source.REPORTED, Source.MEASURED -> s.active.device?.name ?: s.active.reading.display
+        Source.REPORTED, Source.MEASURED, Source.KNOWN -> s.active.device?.name ?: s.active.reading.display
         Source.ESTIMATED -> "≈ " + (s.active.device?.name ?: s.active.reading.display)
         Source.UNAVAILABLE -> "--"
     }

@@ -71,7 +71,7 @@ internal fun playing(art: ImageBitmap?) = NowPlaying(
 /** Status perangkat rekaan untuk OSD (tidak membaca perangkat sungguhan). */
 internal fun fakeStatus() = DeviceStatus(
     batteryLevel = 72, charging = false, wifi = Wifi.CONNECTED, wifiLevel = 3, hasCellular = true, cellLevel = 2,
-    bluetooth = Bluetooth.CONNECTED, bluetoothDevice = "Buds Pro", ringer = Ringer.VIBRATE, nextAlarm = LocalTime.of(6, 30),
+    bluetooth = Bluetooth.CONNECTED, bluetoothDevice = "Buds Pro", bluetoothBattery = "70%", ringer = Ringer.VIBRATE, nextAlarm = LocalTime.of(6, 30),
     notifications = 3,
 )
 

@@ -130,4 +130,29 @@ class ConsoleModelTest {
         assertTrue(gn.contains("semua audio (sesi 0)"))
         assertTrue(gn.contains("tidak terdengar"))
     }
+
+    @Test
+    fun rememberedBatteryIsShownAsAnHonestEstimateAndStoredWithoutTheAddress() {
+        val addr = "AA:BB:CC:DD:EE:FF"
+        val key = BatteryReports.storeKey(addr)
+        assertEquals(16, key.length)
+        assertFalse(key.contains("AA"))
+        assertEquals(key, BatteryReports.storeKey("aa:bb:cc:dd:ee:ff "))
+        val now = 10_000_000L
+        val map = mapOf(key to RememberedBattery(70, now - 25 * 60_000L))
+        assertEquals(map, BatteryReports.decode(BatteryReports.encode(map)))
+        assertTrue(BatteryReports.decode("rusak;x=1@2;0123456789abcdef=101@5").isEmpty())
+        val snap = AudioSnapshot(active = ActiveOutput(OutputDevice(7, DeviceKind.BLUETOOTH, "Buds", address = addr), Reading.reported("Buds")))
+        val r = ConsoleRows.battery(snap, AdvancedReadings(), permissionGranted = true, remembered = map, nowMs = now)
+        assertEquals(Source.ESTIMATED, r.source)
+        assertEquals("≈ 70%", r.text)
+        assertTrue(r.note.contains("25 menit lalu"))
+        // Laporan langsung selalu menang atas yang diingat
+        val live = ConsoleRows.battery(snap, AdvancedReadings(), true, mapOf(BatteryReports.key(addr) to 55), map, now)
+        assertEquals("55%", live.text)
+        // Terlalu tua → tidak ditampilkan
+        val old = ConsoleRows.battery(snap, AdvancedReadings(), true, emptyMap(), map, now + BatteryReports.MAX_AGE_MS + 1)
+        assertEquals(Source.UNAVAILABLE, old.source)
+        assertEquals("3 jam lalu", BatteryReports.ageText(0L, 3 * 3_600_000L))
+    }
 }

@@ -192,7 +192,13 @@ object DeviceStatusMonitor {
             enabled == false -> Bluetooth.OFF
             else -> Bluetooth.UNKNOWN
         }
-        _state.update { it.copy(bluetooth = bt, bluetoothDevice = btOut?.productName?.toString()?.takeIf { n -> n.isNotBlank() }) }
+        _state.update {
+            it.copy(
+                bluetooth = bt,
+                bluetoothDevice = btOut?.productName?.toString()?.takeIf { n -> n.isNotBlank() },
+                bluetoothAddress = btOut?.address?.takeIf { a -> a.isNotBlank() && a != "00:00:00:00:00:00" },
+            )
+        }
     }
 
     private fun readNetwork(caps: NetworkCapabilities?) {

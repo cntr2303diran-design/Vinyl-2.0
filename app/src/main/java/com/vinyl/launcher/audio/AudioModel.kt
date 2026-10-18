@@ -14,14 +14,15 @@ import kotlin.math.roundToInt
 /** Jenis perangkat keluaran (dipetakan dari AudioDeviceInfo di lapisan Android). */
 enum class DeviceKind { SPEAKER, EARPIECE, WIRED, BLUETOOTH, BLUETOOTH_CALL, BLE_AUDIO, USB, HDMI, HEARING_AID, OTHER }
 
-/** Asal sebuah nilai di konsol. */
-enum class Source { MEASURED, REPORTED, ESTIMATED, UNAVAILABLE }
+/** Asal sebuah nilai di konsol. KNOWN = diketahui pasti karena berasal dari pemutar bawaan launcher sendiri. */
+enum class Source { MEASURED, REPORTED, KNOWN, ESTIMATED, UNAVAILABLE }
 
 /** Satu nilai beserta asalnya. [text] null hanya bila [source] = UNAVAILABLE; [note] menjelaskan asal/alasannya. */
 data class Reading(val text: String?, val source: Source, val note: String) {
     companion object {
         fun reported(text: String, note: String = "Dilaporkan sistem") = Reading(text, Source.REPORTED, note)
         fun measured(text: String, note: String = "Terukur") = Reading(text, Source.MEASURED, note)
+        fun known(text: String, note: String = "Dari pemutar bawaan") = Reading(text, Source.KNOWN, note)
         fun estimated(text: String, note: String) = Reading(text, Source.ESTIMATED, note)
         fun unavailable(reason: String) = Reading(null, Source.UNAVAILABLE, reason)
     }
@@ -33,6 +34,7 @@ data class Reading(val text: String?, val source: Source, val note: String) {
     val sourceLabel: String get() = when (source) {
         Source.MEASURED -> "Terukur"
         Source.REPORTED -> "Dilaporkan sistem"
+        Source.KNOWN -> "Pasti"
         Source.ESTIMATED -> "Perkiraan"
         Source.UNAVAILABLE -> "Tidak tersedia"
     }

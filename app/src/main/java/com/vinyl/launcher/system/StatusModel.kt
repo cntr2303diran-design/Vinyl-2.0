@@ -35,6 +35,10 @@ data class DeviceStatus(
     val bluetooth: Bluetooth = Bluetooth.UNKNOWN,
     /** Nama perangkat audio Bluetooth yang tersambung (dari daftar keluaran audio), bila ada. */
     val bluetoothDevice: String? = null,
+    /** Alamatnya (hanya di memori) untuk mencocokkan laporan baterai earphone. */
+    val bluetoothAddress: String? = null,
+    /** Baterai earphone untuk OSD: "70%" (laporan langsung) atau "≈70%" (diingat); null = tidak diketahui. */
+    val bluetoothBattery: String? = null,
     val ringer: Ringer = Ringer.NORMAL,
     val doNotDisturb: Boolean = false,
     /** Alarm berikutnya sebagai jam lokal, null = tidak ada. */
@@ -113,6 +117,22 @@ object StatusText {
         return "SLEEP %d:%02d".format(Locale.ROOT, s / 60, s % 60)
     }
 
+    /**
+     * Baterai earphone untuk OSD: laporan langsung "70%", atau yang diingat "≈70%" (paling tua
+     * [com.vinyl.launcher.audio.BatteryReports.MAX_AGE_MS]); null bila tidak ada.
+     */
+    fun earphoneBattery(
+        address: String?,
+        live: Map<String, Int>,
+        remembered: Map<String, com.vinyl.launcher.audio.RememberedBattery>,
+        nowMs: Long,
+    ): String? {
+        val a = address?.takeIf { it.isNotBlank() } ?: return null
+        live[com.vinyl.launcher.audio.BatteryReports.key(a)]?.let { return "$it%" }
+        val r = remembered[com.vinyl.launcher.audio.BatteryReports.storeKey(a)] ?: return null
+        return if (nowMs - r.atMs in 0..com.vinyl.launcher.audio.BatteryReports.MAX_AGE_MS) "≈${r.level}%" else null
+    }
+
     /** Kalimat lengkap untuk pembaca layar (bagian yang tidak terbaca dilewati, tidak ditebak). */
     fun spoken(s: DeviceStatus): String = buildList {
         if (s.batteryLevel >= 0) add("Baterai ${s.batteryLevel} persen" + if (s.charging) ", mengisi daya" else "")
@@ -129,7 +149,10 @@ object StatusText {
             s.cellLevel >= 0 -> add("Sinyal seluler ${s.cellLevel} dari 4" + if (s.mobileData) ", data seluler dipakai" else "")
         }
         when (s.bluetooth) {
-            Bluetooth.CONNECTED -> add("Bluetooth tersambung" + (s.bluetoothDevice?.let { " ke $it" } ?: ""))
+            Bluetooth.CONNECTED -> add(
+                "Bluetooth tersambung" + (s.bluetoothDevice?.let { " ke $it" } ?: "") +
+                    (s.bluetoothBattery?.let { ", baterai ${it.removePrefix("≈").removeSuffix("%")} persen" + if (it.startsWith("≈")) " (perkiraan)" else "" } ?: ""),
+            )
             Bluetooth.ON -> add("Bluetooth menyala")
             Bluetooth.OFF -> add("Bluetooth mati")
             Bluetooth.UNKNOWN -> Unit

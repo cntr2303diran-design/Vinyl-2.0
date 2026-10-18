@@ -63,13 +63,21 @@ object ConsoleRows {
         adv: AdvancedReadings,
         permissionGranted: Boolean = false,
         reports: Map<String, Int> = emptyMap(),
+        remembered: Map<String, RememberedBattery> = emptyMap(),
+        nowMs: Long = 0L,
     ): Reading {
         val d = s.active.device
         if (!isBluetooth(d?.kind)) return Reading.unavailable("Keluaran aktif bukan perangkat Bluetooth")
         if (adv.battery.source != Source.UNAVAILABLE) return adv.battery
-        val level = d?.address?.takeIf { it.isNotBlank() }?.let { reports[BatteryReports.key(it)] }
+        val address = d?.address?.takeIf { it.isNotBlank() }
+        val level = address?.let { reports[BatteryReports.key(it)] }
+        val last = address?.let { remembered[BatteryReports.storeKey(it)] }?.takeIf { nowMs - it.atMs in 0..BatteryReports.MAX_AGE_MS }
         return when {
             level != null -> Reading.reported("$level%", "Dilaporkan sistem Bluetooth lewat siaran tidak resmi; diperbarui saat levelnya berubah")
+            last != null -> Reading.estimated(
+                "≈ ${last.level}%",
+                "Laporan terakhir ${BatteryReports.ageText(last.atMs, nowMs)}; sistem baru melapor lagi saat levelnya berubah",
+            )
             !permissionGranted -> Reading.unavailable("Butuh izin Perangkat sekitar (Bluetooth)")
             d?.address.isNullOrBlank() -> Reading.unavailable("Sistem tidak membuka alamat perangkat ini, jadi laporan baterai tidak bisa dicocokkan")
             else -> Reading.unavailable("Belum ada laporan. Sistem mengirimnya saat perangkat tersambung atau levelnya berubah")
@@ -122,11 +130,47 @@ object ConsoleRows {
     }
 }
 
+/** Level baterai terakhir yang pernah dilaporkan untuk satu perangkat, dan kapan. */
+data class RememberedBattery(val level: Int, val atMs: Long)
+
 /** Laporan baterai Bluetooth per alamat perangkat (dari siaran sistem). Murni agar validasinya diuji. */
 object BatteryReports {
     const val MAX_DEVICES = 16
+    /** Laporan lebih tua dari ini tidak ditampilkan lagi. */
+    const val MAX_AGE_MS = 3L * 24 * 60 * 60 * 1000
 
     fun key(address: String): String = address.trim().uppercase()
+
+    /** Kunci simpan: 16 karakter awal SHA-256 alamat — alamat Bluetooth asli tidak pernah ditulis ke penyimpanan. */
+    fun storeKey(address: String): String =
+        java.security.MessageDigest.getInstance("SHA-256").digest(key(address).toByteArray()).take(8).joinToString("") { "%02x".format(it) }
+
+    /** "baru saja", "12 menit lalu", "3 jam lalu", "2 hari lalu". */
+    fun ageText(atMs: Long, nowMs: Long): String {
+        val m = ((nowMs - atMs) / 60_000L).coerceAtLeast(0L)
+        return when {
+            m < 1 -> "baru saja"
+            m < 60 -> "$m menit lalu"
+            m < 24 * 60 -> "${m / 60} jam lalu"
+            else -> "${m / (24 * 60)} hari lalu"
+        }
+    }
+
+    /** Simpan ke teks "kunci=level@waktu;…" (paling banyak [MAX_DEVICES], yang terbaru). */
+    fun encode(map: Map<String, RememberedBattery>): String =
+        map.entries.sortedByDescending { it.value.atMs }.take(MAX_DEVICES).joinToString(";") { (k, v) -> "$k=${v.level}@${v.atMs}" }
+
+    /** Kebalikan [encode]; entri rusak atau berkunci aneh dibuang. */
+    fun decode(text: String?): Map<String, RememberedBattery> {
+        if (text.isNullOrBlank() || text.length > 4096) return emptyMap()
+        return text.split(';').mapNotNull { e ->
+            val k = e.substringBefore('=', "")
+            val level = e.substringAfter('=', "").substringBefore('@').toIntOrNull()
+            val at = e.substringAfter('@', "").toLongOrNull()
+            if (!Regex("^[0-9a-f]{16}$").matches(k) || level == null || level !in 0..100 || at == null || at <= 0) null
+            else k to RememberedBattery(level, at)
+        }.take(MAX_DEVICES).toMap()
+    }
 
     /** Terima laporan hanya bila level 0..100 dan alamatnya berbentuk alamat Bluetooth; selain itu abaikan. */
     fun accept(current: Map<String, Int>, address: String?, level: Int): Map<String, Int> {

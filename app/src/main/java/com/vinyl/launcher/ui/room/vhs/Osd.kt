@@ -259,7 +259,13 @@ private fun StatusCluster(state: OsdState, actions: OsdActions) {
                 if (s.simAbsent) PixelGlyph(OsdGlyphs.NO_SIM) else if (s.cellLevel >= 0) CellBars(s.cellLevel, s.mobileData)
             }
             if (s.bluetooth == Bluetooth.CONNECTED || s.bluetooth == Bluetooth.ON) {
-                PixelGlyph(OsdGlyphs.BLUETOOTH, dim = s.bluetooth != Bluetooth.CONNECTED)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    PixelGlyph(OsdGlyphs.BLUETOOTH, dim = s.bluetooth != Bluetooth.CONNECTED)
+                    // Baterai earphone (dari laporan sistem Bluetooth; "≈" = level terakhir yang diingat)
+                    s.bluetoothBattery?.takeIf { s.bluetooth == Bluetooth.CONNECTED }?.let {
+                        Text(it, style = osdStyle(18.sp), modifier = Modifier.padding(start = 3.dp))
+                    }
+                }
             }
             when (s.ringer) {
                 Ringer.VIBRATE -> PixelGlyph(OsdGlyphs.VIBRATE)

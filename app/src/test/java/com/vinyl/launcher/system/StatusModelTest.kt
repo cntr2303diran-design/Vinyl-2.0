@@ -88,4 +88,17 @@ class StatusModelTest {
         )
         assertTrue(StatusText.spoken(DeviceStatus(hasCellular = true, simAbsent = true)).contains("Tidak ada kartu SIM"))
     }
+
+    @Test
+    fun earphoneBatteryPrefersLiveReportsAndMarksRememberedOnes() {
+        val a = "AA:BB:CC:DD:EE:FF"
+        val now = 1_000_000_000L
+        val remembered = mapOf(com.vinyl.launcher.audio.BatteryReports.storeKey(a) to com.vinyl.launcher.audio.RememberedBattery(70, now - 60_000))
+        assertEquals("55%", StatusText.earphoneBattery(a, mapOf(a to 55), remembered, now))
+        assertEquals("≈70%", StatusText.earphoneBattery(a, emptyMap(), remembered, now))
+        assertEquals(null, StatusText.earphoneBattery(null, mapOf(a to 55), remembered, now))
+        assertEquals(null, StatusText.earphoneBattery(a, emptyMap(), remembered, now + com.vinyl.launcher.audio.BatteryReports.MAX_AGE_MS + 60_000))
+        val spoken = StatusText.spoken(DeviceStatus(bluetooth = Bluetooth.CONNECTED, bluetoothDevice = "Buds", bluetoothBattery = "≈70%"))
+        assertTrue(spoken, spoken.contains("baterai 70 persen (perkiraan)"))
+    }
 }

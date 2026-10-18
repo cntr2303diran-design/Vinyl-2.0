@@ -61,6 +61,7 @@ import com.vinyl.launcher.audio.Eq
 import com.vinyl.launcher.audio.EqSession
 import com.vinyl.launcher.audio.EqSessions
 import com.vinyl.launcher.audio.Reading
+import com.vinyl.launcher.audio.RememberedBattery
 import com.vinyl.launcher.audio.SystemAudioShortcuts
 import com.vinyl.launcher.audio.SystemAudioShortcuts.Kind
 import com.vinyl.launcher.audio.ToneSynth
@@ -97,6 +98,9 @@ data class ConsoleUi(
     val btPermission: Boolean = false,
     /** Level baterai Bluetooth per alamat dari siaran sistem. */
     val btLevels: Map<String, Int> = emptyMap(),
+    /** Level terakhir yang diingat (kunci sidik alamat) dan waktu sekarang untuk umurnya. */
+    val btRemembered: Map<String, RememberedBattery> = emptyMap(),
+    val nowMs: Long = 0L,
     /** Pengaturan pemutar bawaan (EQ parametrik, ReplayGain, crossfeed, profil AutoEQ tersimpan). */
     val player: PlayerSettings = PlayerSettings(),
     /** Jalur suara pemutar bawaan saat ini. */
@@ -212,7 +216,7 @@ private fun DevicesPanel(ui: ConsoleUi, actions: ConsoleActions) {
         val rows = ConsoleRows.devices(ui.snapshot)
         if (rows.isEmpty()) ConsoleNote("Tidak ada perangkat keluaran musik yang dilaporkan sistem.")
         rows.forEach { DeviceLine(it) }
-        ReadingRow("Baterai", ConsoleRows.battery(ui.snapshot, ui.advanced, ui.btPermission, ui.btLevels))
+        ReadingRow("Baterai", ConsoleRows.battery(ui.snapshot, ui.advanced, ui.btPermission, ui.btLevels, ui.btRemembered, ui.nowMs))
         if (!ui.btPermission) {
             ConsoleButton("Izinkan baca baterai Bluetooth", actions.onRequestBluetooth, description = "Minta izin Perangkat sekitar untuk membaca baterai Bluetooth")
             ConsoleNote("Memakai laporan baterai dari sistem Bluetooth lewat jalur tidak resmi; bisa tidak tersedia di sebagian perangkat.")
@@ -584,7 +588,28 @@ private fun AdvancedPanel(ui: ConsoleUi, actions: ConsoleActions) {
                 "Tidak memberi: baterai perangkat Bluetooth (tidak dimuat laporan sistem) atau akses ke Audio HAL.",
         )
         ConsoleDivider()
-        Text("Lewat ADB · sekali, tetap ada setelah HP restart", color = ConsoleColors.TextSecondary, style = MaterialTheme.typography.labelMedium)
+        // Jalur tanpa komputer (Android 11+): Shizuku dinyalakan lewat Wireless debugging di HP itu sendiri
+        val context = androidx.compose.ui.platform.LocalContext.current
+        Text("Tanpa komputer · Android 11+ lewat Shizuku", color = ConsoleColors.TextSecondary, style = MaterialTheme.typography.labelMedium)
+        ConsoleNote(
+            "1. Pasang aplikasi Shizuku.\n" +
+                "2. Aktifkan Opsi pengembang: Pengaturan → Tentang ponsel → Informasi perangkat lunak → ketuk Nomor versi 7 kali.\n" +
+                "3. Sambungkan ke Wi-Fi, lalu di Opsi pengembang nyalakan Wireless debugging.\n" +
+                "4. Buka Shizuku → Pairing (lewat Wireless debugging): masukkan kode pasangan dari Opsi pengembang ke notifikasi " +
+                "Shizuku, lalu Start.\n" +
+                "5. Kembali ke sini dan ketuk \"Berikan izin lewat Shizuku\" di bawah. Cukup sekali: izin DUMP tetap ada walau " +
+                "Shizuku berhenti atau HP restart.",
+        )
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            ConsoleButton(
+                if (s.shizuku == AdvancedAccess.ShizukuState.NOT_INSTALLED) "Pasang Shizuku" else "Buka Shizuku",
+                { SystemSettingsIntents.openShizuku(context) },
+            )
+            ConsoleButton("Tentang ponsel", { SystemSettingsIntents.open(context, android.provider.Settings.ACTION_DEVICE_INFO_SETTINGS) })
+            ConsoleButton("Opsi pengembang", { SystemSettingsIntents.open(context, android.provider.Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS) })
+        }
+        ConsoleDivider()
+        Text("Dengan komputer (ADB) · sekali, tetap ada setelah HP restart", color = ConsoleColors.TextSecondary, style = MaterialTheme.typography.labelMedium)
         ConsoleNote(
             "1. Aktifkan Opsi pengembang, lalu USB debugging atau Wireless debugging.\n" +
                 "2. Sambungkan HP ke komputer berisi ADB (atau pasangkan Wireless debugging).\n" +
@@ -618,7 +643,8 @@ private fun AdvancedPanel(ui: ConsoleUi, actions: ConsoleActions) {
         ConsoleButton(
             if (s.working) "Menunggu Shizuku…" else "Berikan izin lewat Shizuku", { confirming = true }, enabled = canGrant,
         )
-        ConsoleNote("Tanpa root, Shizuku perlu dinyalakan ulang lewat Wireless debugging setiap HP restart. Izin DUMP yang sudah diberikan tetap ada.")
+        ConsoleNote("Tanpa root, Shizuku perlu dinyalakan ulang lewat Wireless debugging setiap HP restart — tetapi itu hanya perlu bila " +
+            "ingin memberi izin lagi. Izin DUMP yang sudah diberikan tetap ada.")
         ConsoleDivider()
         ConsoleNote(
             "Privasi: laporan sistem dibaca di memori hanya saat console terbuka atau saat EQ mendeteksi sesi, dan hanya nilai yang tampil " +

@@ -88,7 +88,8 @@ object PrivacyInfo {
             "android.permission.BLUETOOTH_CONNECT", "Perangkat sekitar (Bluetooth)",
             "Opsional, diminta saat Anda menekan \"Izinkan baca baterai Bluetooth\" di Audio Console. Hanya untuk menerima laporan " +
                 "level baterai earphone/speaker Bluetooth dari sistem (jalur tidak resmi). Tidak memindai, tidak menyambung, dan tidak " +
-                "mengubah perangkat; level baterai hanya di memori.",
+                "mengubah perangkat. Level terakhir tiap perangkat diingat di penyimpanan internal (dengan sidik alamat, bukan alamat " +
+                "aslinya) agar bisa ditampilkan sebagai perkiraan setelah launcher dimulai ulang; tidak pernah dikirim.",
             optional = true,
         ),
         Item(

@@ -20,6 +20,7 @@ import com.vinyl.launcher.media.NowPlaying
 import com.vinyl.launcher.media.SleepTimer
 import com.vinyl.launcher.music.SleepPhase
 import com.vinyl.launcher.player.HiFi
+import com.vinyl.launcher.audio.BluetoothBattery
 import com.vinyl.launcher.system.DeviceStatusMonitor
 import com.vinyl.launcher.system.NotificationIcons
 import com.vinyl.launcher.system.StatusText
@@ -57,7 +58,9 @@ fun RoomOsd(
 ) {
     val context = LocalContext.current
     val now by rememberNow()
-    val status by DeviceStatusMonitor.state.collectAsStateWithLifecycle()
+    val rawStatus by DeviceStatusMonitor.state.collectAsStateWithLifecycle()
+    val btLive by BluetoothBattery.levels.collectAsStateWithLifecycle()
+    val btRemembered by BluetoothBattery.remembered.collectAsStateWithLifecycle()
     val icons by NotificationIcons.icons.collectAsStateWithLifecycle()
     val path by HiFi.path.collectAsStateWithLifecycle()
     val sleep by SleepTimer.state.collectAsStateWithLifecycle()
@@ -73,7 +76,9 @@ fun RoomOsd(
         use24h = clock.use24h,
         seconds = osd.seconds,
         showClock = clock.visible,
-        status = status,
+        status = rawStatus.copy(
+            bluetoothBattery = StatusText.earphoneBattery(rawStatus.bluetoothAddress, btLive, btRemembered, now.atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()),
+        ),
         notifications = if (osd.notifications) icons else emptyList(),
         showNotifications = osd.notifications,
         transport = StatusText.transport(np.hasTrack, np.isPlaying, seek.deltaMs?.takeIf { seek.touching }),
