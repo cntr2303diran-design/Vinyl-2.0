@@ -2,7 +2,16 @@ package com.vinyl.launcher.ui.crate
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.unit.dp
+import com.vinyl.launcher.data.CassetteShell
+import com.vinyl.launcher.ui.cassette.CassetteArt
+import com.vinyl.launcher.ui.cassette.CassetteLabel
+import com.vinyl.launcher.ui.room.RoomLayout
+import com.vinyl.launcher.ui.theme.RetroColors
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
@@ -162,6 +171,19 @@ private fun BoxScope.StackCard(
             )
             .semantics { contentDescription = description },
     ) {
-        Sleeve(img, cover, highlight = item.relation == 0)
+        // Kaset bersandar di rak tumpukan (tema TV tabung): sampul menjadi label kaset
+        Box(
+            Modifier
+                .align(Alignment.BottomCenter)
+                .size(cover, cover / RoomLayout.CASSETTE_ASPECT)
+                .then(if (item.relation == 0) Modifier.border(2.dp, RetroColors.Amber, RoundedCornerShape(10.dp)) else Modifier),
+        ) {
+            CassetteArt(
+                CassetteLabel(item.key, item.title, item.subtitle, img),
+                shell = if (img != null) CassetteShell.PICTURE else CassetteShell.BLACK,
+                accent = RetroColors.Amber,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
     }
 }

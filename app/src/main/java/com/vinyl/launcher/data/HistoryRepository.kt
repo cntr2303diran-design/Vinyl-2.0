@@ -15,29 +15,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import java.io.File
-
-/** Satu lagu di koleksi (riwayat putar). */
-@Serializable
-data class PlayRecord(
-    val key: String,
-    val title: String,
-    val artist: String,
-    val album: String = "",
-    val pkg: String? = null,
-    val firstPlayed: Long,
-    val lastPlayed: Long,
-    val plays: Int = 1,
-    /** Perkiraan total waktu didengarkan (ms). */
-    val listenedMs: Long = 0,
-    /** Path thumbnail cover (JPEG kecil di penyimpanan internal). */
-    val artFile: String? = null,
-    /** Riwayat waktu putar terakhir (maks 50) untuk statistik mingguan. */
-    val playTimes: List<Long> = emptyList(),
-)
 
 /**
  * Koleksi piringan: riwayat lagu yang pernah diputar, disimpan sebagai JSON di

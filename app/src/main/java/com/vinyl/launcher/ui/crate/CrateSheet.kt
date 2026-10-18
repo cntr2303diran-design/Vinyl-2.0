@@ -2,22 +2,10 @@ package com.vinyl.launcher.ui.crate
 
 import android.content.Context
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.requiredSize
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.PageSize
-import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.TransformOrigin
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.zIndex
-import kotlinx.coroutines.launch
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -85,7 +73,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.runtime.saveable.rememberSaveable
 import com.vinyl.launcher.data.MusicSettings
 import com.vinyl.launcher.data.PlayRecord
 import com.vinyl.launcher.data.ShelfStyle
@@ -94,9 +81,14 @@ import com.vinyl.launcher.ui.music.SleepTimerChip
 import com.vinyl.launcher.media.MediaRepository
 import com.vinyl.launcher.media.playFromSearch
 import com.vinyl.launcher.media.NowPlaying
-import com.vinyl.launcher.ui.components.AmbientBackdrop
+import com.vinyl.launcher.data.CassetteShell
+import com.vinyl.launcher.ui.cassette.CassetteArt
+import com.vinyl.launcher.ui.cassette.CassetteLabel
+import com.vinyl.launcher.ui.library.CassetteRack
+import com.vinyl.launcher.ui.library.LibraryCatalog
+import com.vinyl.launcher.ui.library.LibraryState
+import com.vinyl.launcher.ui.theme.RetroColors
 import com.vinyl.launcher.ui.components.glass
-import com.vinyl.launcher.ui.theme.Accent
 import com.vinyl.launcher.ui.theme.TextPrimary
 import com.vinyl.launcher.ui.theme.TextSecondary
 import com.vinyl.launcher.ui.theme.TextTertiary
@@ -105,12 +97,12 @@ import com.vinyl.launcher.util.rememberImage
 import java.util.concurrent.TimeUnit
 
 /**
- * "Rak piringan": lapisan layar penuh dengan empat tab (kontrol segmen ala iOS/macOS)
- * - Rak: sampul berjajar (cover-flow di atas papan kayu) atau Tumpukan 3D, plus lajur "Baru diputar"
- * - Antrean: daftar putar milik aplikasi musik; ketuk untuk melompat ke lagunya
- * - Riwayat: daftar lagu yang pernah diputar, dikelompokkan per hari
+ * Perpustakaan kaset (halaman kiri beranda; dulu "rak piringan"). Empat tab:
+ * - Rak: rak dinding kayu berisi kaset ([CassetteRack]) atau Tumpukan kaset 3D ([StackShelf])
+ * - Deck: antrean milik aplikasi musik; ketuk untuk melompat ke lagunya
+ * - Log: daftar lagu yang pernah diputar, dikelompokkan per hari
  * - Koleksi: statistik & semua lagu yang pernah didengarkan
- * Di bawah tab ada kapsul Timer tidur dan (di tab Rak) pilihan gaya rak.
+ * Di bawah tab ada tombol SLEEP (timer tidur) dan (di tab Rak) pilihan gaya rak.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -118,35 +110,44 @@ fun CrateSheet(
     np: NowPlaying,
     queue: List<MediaRepository.QueueEntry>,
     history: List<PlayRecord>,
-    fallback: Color,
     music: MusicSettings,
     onMusicChange: (MusicSettings) -> Unit,
     onClose: () -> Unit,
     onClearHistory: () -> Unit,
+    state: LibraryState,
+    onToggleFavorite: (String) -> Unit,
 ) {
-    // rememberSaveable: tab yang dipilih bertahan saat layar diputar atau proses dipulihkan
-    var tab by rememberSaveable { mutableIntStateOf(0) }
-    Box(Modifier.fillMaxSize().blockTouchesBehind()) {
-        AmbientBackdrop(np.art.takeIf { np.hasTrack }, np.swatches, fallback, animate = false, dim = 0.6f, cinematic = music.cinematicColors)
+    // Tab, pencarian, saringan, dan posisi rak hidup di [state] (dibuat di beranda) sehingga bertahan saat halaman
+    // ditinggalkan, layar diputar, atau proses dipulihkan
+    val tab = state.tab
+    val activeKey = if (np.hasTrack) LibraryCatalog.songKey(np.title, np.artist) else null
+    val deckKeys = remember(queue) { queue.map { LibraryCatalog.songKey(it.title, it.subtitle) }.toSet() }
+    Box(
+        Modifier
+            .fillMaxSize()
+            .blockTouchesBehind()
+            // Lemari kaset: charcoal hangat (teks krem/putih tetap >= 4,5:1)
+            .background(Brush.verticalGradient(listOf(RetroColors.CharcoalDeep, Color(0xFF1A1916)))),
+    ) {
         Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
             Row(
                 Modifier.fillMaxWidth().padding(start = 36.dp, end = 20.dp, top = 22.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text("Rak piringan", style = MaterialTheme.typography.displaySmall, color = TextPrimary)
+                    Text("Perpustakaan kaset", style = MaterialTheme.typography.headlineMedium, color = RetroColors.CreamText)
                     Text(
-                        "${history.size} lagu dalam koleksi",
+                        "${history.size} kaset dalam koleksi",
                         style = MaterialTheme.typography.bodyMedium, color = TextSecondary,
                     )
                 }
                 Box(
                     Modifier.size(48.dp).clip(CircleShape).glass(CircleShape).clickable(role = Role.Button, onClick = onClose),
                     contentAlignment = Alignment.Center,
-                ) { Icon(Icons.Rounded.Close, "Tutup rak piringan", tint = Color.White) }
+                ) { Icon(Icons.Rounded.Close, "Kembali ke ruang TV", tint = Color.White) }
             }
             Box(Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 6.dp), contentAlignment = Alignment.Center) {
-                Segmented(listOf("Rak", "Antrean", "Riwayat", "Koleksi"), tab) { tab = it }
+                Segmented(listOf("Rak", "Deck", "Log", "Koleksi"), tab) { state.tab = it }
             }
             FlowRow(
                 Modifier.fillMaxWidth().padding(horizontal = 36.dp),
@@ -157,7 +158,11 @@ fun CrateSheet(
                 if (tab == 0) ShelfStyleToggle(music.shelfStyle) { onMusicChange(music.copy(shelfStyle = it)) }
             }
             when (tab) {
-                0 -> RecordShelf(np, queue, history, music.shelfStyle)
+                0 -> if (music.shelfStyle == ShelfStyle.FLOW) {
+                    CassetteRack(history, activeKey, deckKeys, music.favorites, onToggleFavorite, state)
+                } else {
+                    RecordShelf(np, queue, history)
+                }
                 1 -> QueueList(np, queue)
                 2 -> HistoryList(history, onClearHistory)
                 else -> Collection(history, onClearHistory)
@@ -192,14 +197,14 @@ private fun Segmented(options: List<String>, selected: Int, onSelect: (Int) -> U
     }
 }
 
-/** Pilihan gaya rak: sampul berjajar atau tumpukan 3D. */
+/** Pilihan gaya rak: rak dinding kayu (dulu "berjajar") atau tumpukan kaset 3D. */
 @Composable
 private fun ShelfStyleToggle(style: ShelfStyle, onChange: (ShelfStyle) -> Unit) {
     Row(
         Modifier.glass(RoundedCornerShape(50), fillAlpha = 0.06f).padding(2.dp),
         horizontalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        for ((value, label) in listOf(ShelfStyle.FLOW to "Berjajar", ShelfStyle.STACK to "Tumpukan")) {
+        for ((value, label) in listOf(ShelfStyle.FLOW to "Rak dinding", ShelfStyle.STACK to "Tumpukan")) {
             val sel = value == style
             Text(
                 label,
@@ -231,12 +236,11 @@ internal data class ShelfItem(
 )
 
 /**
- * Rak piringan ala "cover flow": sampul-sampul berdiri di atas papan kayu.
- * Geser ke kanan/kiri untuk melihat lagu sebelumnya & berikutnya; ketuk sampul di tengah untuk memutarnya.
- * Sumber: antrean aplikasi musik bila tersedia, jika tidak → riwayat (sebelumnya) + lagu saat ini.
+ * Rak "Tumpukan kaset": kaset bersandar bertumpuk ([StackShelf]). Sumber: antrean aplikasi musik bila tersedia, jika
+ * tidak → riwayat (sebelumnya) + lagu saat ini. Di bawahnya lajur "Baru diputar".
  */
 @Composable
-private fun RecordShelf(np: NowPlaying, queue: List<MediaRepository.QueueEntry>, history: List<PlayRecord>, style: ShelfStyle) {
+private fun RecordShelf(np: NowPlaying, queue: List<MediaRepository.QueueEntry>, history: List<PlayRecord>) {
     val context = LocalContext.current
     val items = remember(np.title, np.artist, np.art, queue, history) {
         if (queue.isNotEmpty()) {
@@ -254,113 +258,55 @@ private fun RecordShelf(np: NowPlaying, queue: List<MediaRepository.QueueEntry>,
         }
     }
     if (items.isEmpty()) {
-        EmptyState("Rak masih kosong", "Putar beberapa lagu dulu — lagu sebelumnya dan berikutnya akan berjejer di rak ini.")
+        EmptyState("Tumpukan masih kosong", "Putar beberapa lagu dulu — kaset sebelumnya dan berikutnya akan bertumpuk di sini.")
         return
     }
     val startPage = items.indexOfFirst { it.relation == 0 }.let { if (it < 0) items.lastIndex else it }
-    val pager = rememberPagerState(initialPage = startPage) { items.size }
-    val scope = rememberCoroutineScope()
-    val stack = style == ShelfStyle.STACK
-    // Sampul yang sedang di depan pada mode Tumpukan (mode Berjajar memakai pager.currentPage)
     var stackFocus by remember(items) { mutableIntStateOf(startPage) }
-    // Pager hanya terpasang di mode Berjajar; di mode Tumpukan, animasi ke pager yang tak terpasang akan menggantung
-    LaunchedEffect(startPage, items.size, stack) { if (!stack) pager.animateScrollToPage(startPage) }
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val showStrip = maxHeight > 560.dp && history.isNotEmpty()
-        val sleeve = minOf(maxHeight * (if (showStrip) 0.40f else 0.50f), maxWidth * 0.28f, 320.dp)
-        val step = sleeve * 0.66f
         // Dihitung di sini, bukan di dalam Column: maxHeight/maxWidth milik BoxWithConstraintsScope tidak bisa dipakai
         // sebagai penerima implisit di dalam lambda ber-scope layout lain (DslMarker), dan kompiler menolaknya
         val stackCover = minOf(maxHeight * (if (showStrip) 0.34f else 0.42f), maxWidth * 0.5f, 300.dp)
-        val sidePad = (maxWidth - step) / 2
-        val focusedIndex = if (stack) stackFocus else pager.currentPage
-        val focused = items.getOrNull(focusedIndex)
+        val focused = items.getOrNull(stackFocus)
 
         Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
             Spacer(Modifier.weight(0.15f))
-            if (stack) {
-                val cover = stackCover
-                StackShelf(
-                    items = items,
-                    startPage = startPage,
-                    cover = cover,
-                    onFocusChange = { stackFocus = it },
-                    modifier = Modifier.fillMaxWidth().height(cover * 1.3f + 8.dp),
-                )
-            } else Box(Modifier.fillMaxWidth().height(sleeve + 76.dp)) {
-                // Papan kayu (digambar di belakang sampul)
-                Shelf(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(76.dp))
-                // Cahaya lembut di bawah sampul yang sedang dipilih
-                Box(
-                    Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(bottom = 54.dp)
-                        .size(width = sleeve * 1.3f, height = 26.dp)
-                        .background(
-                            Brush.radialGradient(listOf(Accent.copy(alpha = 0.30f), Color.Transparent)),
-                            RoundedCornerShape(50),
-                        ),
-                )
-                HorizontalPager(
-                    state = pager,
-                    pageSize = PageSize.Fixed(step),
-                    contentPadding = PaddingValues(horizontal = sidePad),
-                    beyondViewportPageCount = 3,
-                    modifier = Modifier.fillMaxWidth().height(sleeve + 36.dp).align(Alignment.TopCenter),
-                    verticalAlignment = Alignment.Bottom,
-                ) { page ->
-                    val item = items[page]
-                    val img = item.art ?: rememberImage(item.bitmap, item.source)
-                    val offset = (pager.currentPage - page) + pager.currentPageOffsetFraction
-                    val abs = kotlin.math.abs(offset).coerceAtMost(2f)
-                    // Piringan menyembul lebih jauh dari sampul yang sedang di tengah
-                    val peek = 0.10f + 0.20f * (1f - abs.coerceAtMost(1f))
-                    Box(
-                        Modifier
-                            .requiredSize(sleeve)
-                            .zIndex(-abs)
-                            .graphicsLayer {
-                                cameraDistance = 14f * density
-                                rotationY = (offset.coerceIn(-1.4f, 1.4f)) * 42f
-                                val sc = 1f - 0.16f * abs.coerceAtMost(1.5f)
-                                scaleX = sc; scaleY = sc
-                                transformOrigin = TransformOrigin(0.5f, 1f) // berdiri di atas papan
-                                alpha = 1f - 0.25f * (abs - 1f).coerceAtLeast(0f)
-                            }
-                            .clickable {
-                                if (page != pager.currentPage) scope.launch { pager.animateScrollToPage(page) }
-                                else item.play?.invoke()
-                            },
-                    ) {
-                        DiscPeek(peek = peek, modifier = Modifier.requiredSize(sleeve))
-                        Sleeve(img, null, highlight = item.relation == 0)
-                    }
-                }
-            }
-            // Info sampul yang sedang di tengah (kartu kaca ala iOS)
+            StackShelf(
+                items = items,
+                startPage = startPage,
+                cover = stackCover,
+                onFocusChange = { stackFocus = it },
+                modifier = Modifier.fillMaxWidth().height(stackCover * 1.3f + 8.dp),
+            )
+            // Info kaset yang sedang di depan
             Spacer(Modifier.height(16.dp))
             if (focused != null) {
                 val (label, color) = when {
-                    focused.relation == 0 -> "SEDANG DIPUTAR" to Accent
-                    focused.relation < 0 -> "SEBELUMNYA" to TextTertiary
-                    else -> "BERIKUTNYA" to TextTertiary
+                    focused.relation == 0 -> "SEDANG DIPUTAR" to RetroColors.Amber
+                    focused.relation < 0 -> "SEBELUMNYA" to RetroColors.CreamTextSecondary
+                    else -> "BERIKUTNYA" to RetroColors.CreamTextSecondary
                 }
                 Row(
-                    Modifier.widthIn(max = 560.dp).glass(Corner.l).padding(horizontal = 22.dp, vertical = 14.dp),
+                    Modifier
+                        .widthIn(max = 560.dp)
+                        .clip(Corner.l)
+                        .background(RetroColors.Charcoal)
+                        .padding(horizontal = 22.dp, vertical = 14.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(Modifier.weight(1f)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             if (focused.relation == 0) {
-                                Icon(Icons.Rounded.GraphicEq, null, tint = Accent, modifier = Modifier.size(15.dp))
+                                Icon(Icons.Rounded.GraphicEq, null, tint = RetroColors.Amber, modifier = Modifier.size(15.dp))
                                 Spacer(Modifier.width(6.dp))
                             }
                             Text(label, color = color, style = MaterialTheme.typography.labelMedium)
-                            Text("   ${focusedIndex + 1} / ${items.size}", color = TextTertiary, style = MaterialTheme.typography.labelMedium)
+                            Text("   ${stackFocus + 1} / ${items.size}", color = RetroColors.CreamTextSecondary, style = MaterialTheme.typography.labelMedium)
                         }
-                        Text(focused.title, style = MaterialTheme.typography.titleLarge, color = TextPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
-                        Text(focused.subtitle, style = MaterialTheme.typography.bodyMedium, color = TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(focused.title, style = MaterialTheme.typography.titleLarge, color = RetroColors.CreamText, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
+                        Text(focused.subtitle, style = MaterialTheme.typography.bodyMedium, color = RetroColors.CreamTextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     if (focused.relation != 0 && focused.play != null) {
                         Spacer(Modifier.width(14.dp))
@@ -368,24 +314,24 @@ private fun RecordShelf(np: NowPlaying, queue: List<MediaRepository.QueueEntry>,
                             Modifier
                                 .minimumInteractiveComponentSize()
                                 .clip(RoundedCornerShape(50))
-                                .background(Color.White.copy(alpha = 0.94f))
+                                .background(RetroColors.CreamText)
                                 .clickable(role = Role.Button) { focused.play.invoke() }
                                 .padding(horizontal = 18.dp, vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Icon(Icons.Rounded.PlayArrow, null, tint = Color(0xFF111113), modifier = Modifier.size(20.dp))
+                            Icon(Icons.Rounded.PlayArrow, null, tint = RetroColors.Ink, modifier = Modifier.size(20.dp))
                             Spacer(Modifier.width(4.dp))
-                            Text("Putar", color = Color(0xFF111113), style = MaterialTheme.typography.labelLarge)
+                            Text("Putar", color = RetroColors.Ink, style = MaterialTheme.typography.labelLarge)
                         }
                     }
                 }
             }
-            // Lajur riwayat: lagu yang baru diputar
+            // Lajur riwayat: kaset yang baru diputar
             if (showStrip) {
                 Spacer(Modifier.height(18.dp))
                 Text(
                     "BARU DIPUTAR",
-                    style = MaterialTheme.typography.labelMedium, color = TextSecondary,
+                    style = MaterialTheme.typography.labelMedium, color = RetroColors.CreamTextSecondary,
                     modifier = Modifier.align(Alignment.Start).padding(start = 40.dp, bottom = 8.dp),
                 )
                 LazyRow(
@@ -396,93 +342,21 @@ private fun RecordShelf(np: NowPlaying, queue: List<MediaRepository.QueueEntry>,
                     items(history.take(14), key = { it.key }) { r ->
                         val img = rememberImage(null, r.artFile)
                         Column(
-                            Modifier.width(92.dp).clickable { playFromSearch(context, r) },
+                            Modifier.width(120.dp).clickable(onClickLabel = "Putar ${r.title}", role = Role.Button) { playFromSearch(context, r) },
                         ) {
-                            Box(Modifier.size(92.dp)) {
-                                DiscPeek(peek = 0.12f, modifier = Modifier.size(92.dp))
-                                Sleeve(img, 92.dp, highlight = false)
-                            }
-                            Text(r.title, style = MaterialTheme.typography.labelMedium, color = TextPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp))
+                            CassetteArt(
+                                CassetteLabel(r.key, r.title, r.artist, img),
+                                shell = if (img != null) CassetteShell.PICTURE else CassetteShell.BLACK,
+                                accent = RetroColors.Amber,
+                                modifier = Modifier.fillMaxWidth().aspectRatio(1.56f),
+                            )
+                            Text(r.title, style = MaterialTheme.typography.labelMedium, color = RetroColors.CreamText, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp))
                         }
                     }
                 }
             }
             Spacer(Modifier.weight(0.25f))
         }
-    }
-}
-
-/** Piringan hitam yang menyembul dari sisi kanan sampul (digambar di belakang sampul). */
-@Composable
-internal fun DiscPeek(peek: Float, modifier: Modifier = Modifier) {
-    Canvas(modifier) {
-        val d = size.minDimension * 0.96f
-        val r = d / 2f
-        val c = Offset(size.width / 2f + size.width * peek, size.height / 2f)
-        drawCircle(Color(0xFF0B0B0D), r, c)
-        // alur
-        var rr = r * 0.34f
-        while (rr < r * 0.97f) {
-            drawCircle(Color.White.copy(alpha = 0.045f), rr, c, style = Stroke(width = 1f))
-            rr += r * 0.045f
-        }
-        // kilau
-        drawCircle(
-            Brush.sweepGradient(
-                listOf(Color.Transparent, Color.White.copy(alpha = 0.10f), Color.Transparent, Color.White.copy(alpha = 0.08f), Color.Transparent),
-                center = c,
-            ),
-            r, c,
-        )
-        // label & lubang tengah
-        drawCircle(Accent, r * 0.30f, c)
-        drawCircle(Color.Black.copy(alpha = 0.25f), r * 0.30f, c, style = Stroke(width = 2f))
-        drawCircle(Color(0xFF0B0B0D), r * 0.04f, c)
-        drawCircle(Color.White.copy(alpha = 0.12f), r, c, style = Stroke(width = 1.2f))
-    }
-}
-
-/** Papan rak kayu walnut: permukaan atas terang, sisi depan lebih gelap, serat kayu halus, bayangan di bawah. */
-@Composable
-private fun Shelf(modifier: Modifier) {
-    Canvas(modifier) {
-        val w = size.width
-        val topH = size.height * 0.32f
-        val frontH = size.height * 0.38f
-        val y0 = 0f
-        // Bayangan lembut di bawah papan
-        drawRect(
-            Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.45f), Color.Transparent), startY = y0 + topH + frontH, endY = size.height),
-            topLeft = Offset(0f, y0 + topH + frontH), size = Size(w, size.height - topH - frontH),
-        )
-        // Permukaan atas (perspektif: sedikit lebih terang)
-        drawRect(
-            Brush.verticalGradient(listOf(Color(0xFF6B4A33), Color(0xFF7C5A40)), startY = y0, endY = y0 + topH),
-            topLeft = Offset(0f, y0), size = Size(w, topH),
-        )
-        // Sisi depan
-        drawRect(
-            Brush.verticalGradient(listOf(Color(0xFF4A3021), Color(0xFF2E1D13)), startY = y0 + topH, endY = y0 + topH + frontH),
-            topLeft = Offset(0f, y0 + topH), size = Size(w, frontH),
-        )
-        // Serat kayu
-        val rnd = kotlin.random.Random(7)
-        repeat(26) {
-            val yy = y0 + rnd.nextFloat() * (topH + frontH)
-            val a = 0.05f + rnd.nextFloat() * 0.07f
-            val path = Path().apply {
-                moveTo(0f, yy)
-                var x = 0f
-                while (x < w) {
-                    x += 60f
-                    lineTo(x, yy + kotlin.math.sin(x / (90f + it * 7f)) * 2.2f)
-                }
-            }
-            drawPath(path, Color.Black.copy(alpha = a), style = Stroke(width = 1.2f))
-        }
-        // Garis sorot di tepi depan
-        drawLine(Color.White.copy(alpha = 0.18f), Offset(0f, y0 + topH), Offset(w, y0 + topH), strokeWidth = 1.5f)
-        drawLine(Color.White.copy(alpha = 0.08f), Offset(0f, y0), Offset(w, y0), strokeWidth = 1f)
     }
 }
 
@@ -589,7 +463,7 @@ internal fun Sleeve(img: ImageBitmap?, size: Dp?, highlight: Boolean) {
             .shadow(if (highlight) 30.dp else 14.dp, shape)
             .clip(shape)
             .background(Color(0xFF232327))
-            .then(if (highlight) Modifier.border(2.dp, Accent, shape) else Modifier.border(0.6.dp, Color.White.copy(alpha = 0.1f), shape)),
+            .then(if (highlight) Modifier.border(2.dp, RetroColors.Amber, shape) else Modifier.border(0.6.dp, Color.White.copy(alpha = 0.1f), shape)),
         contentAlignment = Alignment.Center,
     ) {
         if (img != null) Image(img, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
@@ -668,10 +542,7 @@ private fun HistoryList(history: List<PlayRecord>, onClear: () -> Unit) {
                                     .padding(horizontal = 14.dp, vertical = 10.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Box(Modifier.size(58.dp)) {
-                                    DiscPeek(peek = 0.13f, modifier = Modifier.size(58.dp))
-                                    Sleeve(img, 58.dp, highlight = false)
-                                }
+                                Sleeve(img, 58.dp, highlight = false)
                                 Spacer(Modifier.width(18.dp))
                                 Column(Modifier.weight(1f)) {
                                     Text(e.record.title, style = MaterialTheme.typography.titleSmall, color = TextPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)

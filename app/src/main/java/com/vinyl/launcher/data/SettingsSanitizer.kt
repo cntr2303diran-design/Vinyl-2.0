@@ -28,6 +28,8 @@ object SettingsSanitizer {
     const val MIN_FREQUENT = 3
     const val MAX_FREQUENT = 10
     const val MAX_CATEGORY_OVERRIDES = 500
+    const val MAX_FAVORITES = 1000
+    const val MAX_SONG_KEY = 600
     /** Parallax terlalu lemah tidak terlihat; di bawah ini dianggap salah dan dinaikkan. */
     const val MIN_PARALLAX = 0.1f
 
@@ -48,7 +50,10 @@ object SettingsSanitizer {
         dock = dock(s.dock),
         nav = nav(s.nav),
         drawer = drawer(s.drawer),
-        music = s.music.copy(sleepMinutes = SleepTimerPlan.clampMinutes(s.music.sleepMinutes)),
+        music = s.music.copy(
+            sleepMinutes = SleepTimerPlan.clampMinutes(s.music.sleepMinutes),
+            favorites = s.music.favorites.map { it.text(MAX_SONG_KEY) }.filter { it.isNotEmpty() }.take(MAX_FAVORITES).toSet(),
+        ),
         visual = s.visual.copy(parallaxStrength = s.visual.parallaxStrength.fix(MIN_PARALLAX, 1f, 0.6f)),
         retro = retro(s.retro),
         customGestures = s.customGestures

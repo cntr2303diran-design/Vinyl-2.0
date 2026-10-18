@@ -140,4 +140,12 @@ class SettingsMigrationTest {
         assertEquals(1f, s.retro.glowIntensity)
         assertEquals(0f, s.presets[0].retro!!.crtStrength)
     }
+
+    @Test
+    fun favoritesAreCleanedAndBounded() {
+        val many = (1..1500).map { "lagu $it|artis" }.toSet() + setOf("", "bad\u0007key|x")
+        val s = SettingsSanitizer.sanitize(AppSettings(music = MusicSettings(favorites = many)))
+        assertEquals(SettingsSanitizer.MAX_FAVORITES, s.music.favorites.size)
+        assertTrue(s.music.favorites.none { it.isEmpty() || it.any(Char::isISOControl) })
+    }
 }

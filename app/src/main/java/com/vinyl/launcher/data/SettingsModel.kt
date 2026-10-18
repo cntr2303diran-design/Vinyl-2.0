@@ -256,6 +256,8 @@ data class MusicSettings(
     val cinematicColors: Boolean = true,
     /** Durasi sleep timer yang terakhir dipilih (menit), disorot di dialog berikutnya. */
     val sleepMinutes: Int = 30,
+    /** Kaset favorit di perpustakaan kaset: kunci lagu "judul|artis" (sama dengan kunci riwayat). */
+    val favorites: Set<String> = emptySet(),
 )
 
 /** Arah gerak parallax: lapisan latar seperti di balik kaca (jendela) atau melayang di depan layar. */

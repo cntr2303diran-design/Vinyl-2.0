@@ -172,6 +172,23 @@ fun Cassette(
     }
 }
 
+/**
+ * Gambar kaset diam (tanpa tombol, gulungan tidak berputar) untuk rak dan detail perpustakaan. Bentuk dan label sama
+ * persis dengan kaset kontrol di ruang TV.
+ */
+@Composable
+fun CassetteArt(
+    label: CassetteLabel,
+    shell: CassetteShell,
+    accent: Color,
+    modifier: Modifier = Modifier,
+    progress: Float = 0.35f,
+    timeText: String = "",
+) {
+    val (rl, rr) = Reels.radii(progress)
+    Box(modifier) { Shell(label, shell, accent, rl, rr, 0f, 0f, timeText) }
+}
+
 private data class ShellPalette(val body: Color, val edge: Color, val see: Boolean)
 
 private fun shellPalette(shell: CassetteShell, accent: Color): ShellPalette = when (shell) {
@@ -248,7 +265,7 @@ private fun DrawScope.drawShell(p: ShellPalette, rl: Float, rr: Float, angleL: F
     val winW = w * 0.56f
     drawRoundRect(Color(0xFF14110E).copy(alpha = if (p.see) 0.55f else 0.85f), topLeft = Offset(winLeft, winTop), size = Size(winW, winH), cornerRadius = CornerRadius(winH * 0.25f))
     val cy = winTop + winH / 2f
-    val maxR = winH * 0.95f
+    val maxR = winH * 0.47f   // jari-jari pita penuh: muat di jendela
     val cxL = winLeft + winW * 0.22f
     val cxR = winLeft + winW * 0.78f
     drawReel(Offset(cxL, cy), rl * maxR, maxR * Reels.HUB, angleL)

@@ -148,6 +148,8 @@ import com.vinyl.launcher.ui.room.KnobState
 import com.vinyl.launcher.ui.cassette.Cassette
 import com.vinyl.launcher.ui.cassette.CassetteLabel
 import com.vinyl.launcher.ui.cassette.KnobSeek
+import com.vinyl.launcher.ui.library.LibraryCatalog
+import com.vinyl.launcher.ui.library.rememberLibraryState
 
 /** Warna netral saat tidak ada musik. */
 private val NeutralBg = Color(0xFF1B1B1F)
@@ -216,6 +218,8 @@ fun HomeScreen(vm: HomeViewModel) {
     val currentPage by rememberUpdatedState(page)
     val pageLayout by rememberUpdatedState(swapPages to rtl)
     var screenWidthPx by remember { mutableIntStateOf(0) }
+    // Keadaan perpustakaan kaset hidup di sini agar posisi rak bertahan saat halaman ditinggalkan
+    val libraryState = rememberLibraryState()
     val swipeFromSide: (Float) -> Unit = { dx ->
         vm.showPage(PageNav.afterSwipe(currentPage, dx, pageLayout.first, pageLayout.second))
     }
@@ -372,10 +376,14 @@ fun HomeScreen(vm: HomeViewModel) {
         ) {
             if (pageVisible(indexOf(RoomPage.LIBRARY), pagePosition)) {
                 CrateSheet(
-                    np = np, queue = queue, history = history, fallback = bgColor,
+                    np = np, queue = queue, history = history,
                     music = settings.music,
                     onMusicChange = { m -> vm.updateSettings { it.copy(music = m) } },
                     onClose = { vm.showPage(RoomPage.ROOM) }, onClearHistory = vm::clearHistory,
+                    state = libraryState,
+                    onToggleFavorite = { key ->
+                        vm.updateSettings { it.copy(music = it.music.copy(favorites = LibraryCatalog.toggleFavorite(it.music.favorites, key))) }
+                    },
                 )
             }
         }
