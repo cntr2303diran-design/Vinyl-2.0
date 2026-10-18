@@ -134,6 +134,11 @@ import kotlin.math.abs
 import com.vinyl.launcher.util.GestureRecognizer
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
+import com.vinyl.launcher.ui.console.ConsoleScreen
+import com.vinyl.launcher.ui.theme.rememberReduceMotion
 
 /** Warna netral saat tidak ada musik. */
 private val NeutralBg = Color(0xFF1B1B1F)
@@ -148,17 +153,17 @@ fun HomeScreen(vm: HomeViewModel) {
     val drawerOpen by vm.drawerOpen.collectAsStateWithLifecycle()
     val visibleApps by vm.visibleApps.collectAsStateWithLifecycle()
     val allApps by vm.allApps.collectAsStateWithLifecycle()
-    val crateOpen by vm.crateOpen.collectAsStateWithLifecycle()
     val lyricsOpen by vm.lyricsOpen.collectAsStateWithLifecycle()
     val queue by vm.queue.collectAsStateWithLifecycle()
     val history by vm.history.collectAsStateWithLifecycle()
+    val page by vm.page.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val haptics = LocalHapticFeedback.current
     val editing = draft != null
 
     // Efek visual (Tahap 4): satu keputusan (FxPlan) dari pengaturan + lingkungan; tertutup overlay = semua efek berhenti
     val fx = rememberFxState()
-    val fxPlan = rememberFxPlan(settings.visual, np.isPlaying, screenVisible = !drawerOpen && !crateOpen && !lyricsOpen, fx = fx)
+    val fxPlan = rememberFxPlan(settings.visual, np.isPlaying, screenVisible = page == RoomPage.ROOM && !drawerOpen && !lyricsOpen, fx = fx)
     FxRunner(fx, fxPlan)
     val visualizerState by VisualizerStatus.state.collectAsStateWithLifecycle()
     val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
@@ -180,8 +185,8 @@ fun HomeScreen(vm: HomeViewModel) {
     BackHandler(enabled = true) {
         when {
             lyricsOpen -> vm.closeLyrics()
-            crateOpen -> vm.closeCrate()
             drawerOpen -> vm.closeDrawer()
+            page != RoomPage.ROOM -> vm.showPage(RoomPage.ROOM)
             editing -> vm.cancelEdit()
             else -> Unit // sudah di Home: abaikan
         }
@@ -190,9 +195,28 @@ fun HomeScreen(vm: HomeViewModel) {
     val gestures by rememberUpdatedState(settings.gestures)
     val customGestures by rememberUpdatedState(settings.customGestures)
 
+    // ----- Tiga halaman: perpustakaan kaset · ruang TV · konsol audio (aturan di PageNav) -----
+    val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
+    val swapPages = settings.retro.swapPages
+    val reduceMotion = rememberReduceMotion()
+    val pagePosition by animateFloatAsState(
+        PageNav.indexOf(page, swapPages, rtl).toFloat(),
+        tween(if (reduceMotion) 0 else Tokens.Motion.PAGE_SLIDE_MS, easing = Ease.standard),
+        label = "page",
+    )
+    val currentPage by rememberUpdatedState(page)
+    val pageLayout by rememberUpdatedState(swapPages to rtl)
+    var screenWidthPx by remember { mutableIntStateOf(0) }
+    val swipeFromSide: (Float) -> Unit = { dx ->
+        vm.showPage(PageNav.afterSwipe(currentPage, dx, pageLayout.first, pageLayout.second))
+    }
+    fun indexOf(p: RoomPage) = PageNav.indexOf(p, swapPages, rtl)
+
+    Box(Modifier.fillMaxSize().onSizeChanged { screenWidthPx = it.width }) {
     Box(
         Modifier
             .fillMaxSize()
+            .roomPage(indexOf(RoomPage.ROOM), pagePosition, screenWidthPx)
             // Hanya MENGAMATI sentuhan untuk riak distorsi kaca; tidak pernah mengonsumsi event
             .pointerInput(fxPlan.distortion) {
                 if (!fxPlan.distortion) return@pointerInput
@@ -222,7 +246,8 @@ fun HomeScreen(vm: HomeViewModel) {
                     contentDescription = "Layar utama"
                     if (!editing) customActions = listOf(
                         CustomAccessibilityAction("Buka semua aplikasi") { vm.openDrawer(); true },
-                        CustomAccessibilityAction("Buka rak piringan") { vm.openCrate(); true },
+                        CustomAccessibilityAction("Buka perpustakaan kaset") { vm.showPage(RoomPage.LIBRARY); true },
+                        CustomAccessibilityAction("Buka konsol audio") { vm.showPage(RoomPage.CONSOLE); true },
                         CustomAccessibilityAction("Ubah tampilan layar utama") { vm.startEdit(); true },
                     )
                 }
@@ -270,7 +295,8 @@ fun HomeScreen(vm: HomeViewModel) {
                                 SystemActions.perform(context, gestures.swipeUp, vm::openCrate, vm::startEdit) { vm.openDrawer() }
                             abs(dy) > abs(dx) && dy > 120f ->
                                 SystemActions.perform(context, gestures.swipeDown, vm::openCrate, vm::startEdit) { vm.openDrawer() }
-                            abs(dx) >= abs(dy) && dx < -160f -> vm.openCrate()
+                            abs(dx) >= abs(dy) && abs(dx) >= PageNav.SWIPE_PX ->
+                                vm.showPage(PageNav.afterSwipe(currentPage, dx, pageLayout.first, pageLayout.second))
                         }
                     }
                 }
@@ -298,6 +324,37 @@ fun HomeScreen(vm: HomeViewModel) {
                 vm = vm,
             )
 
+        }
+    }
+
+        // Halaman perpustakaan kaset (dulu "rak piringan" yang muncul sebagai lapisan)
+        Box(
+            Modifier
+                .fillMaxSize()
+                .roomPage(indexOf(RoomPage.LIBRARY), pagePosition, screenWidthPx)
+                .sidePageSwipe(swipeFromSide)
+                .semantics {
+                    customActions = listOf(CustomAccessibilityAction("Kembali ke ruang TV") { vm.showPage(RoomPage.ROOM); true })
+                },
+        ) {
+            if (pageVisible(indexOf(RoomPage.LIBRARY), pagePosition)) {
+                CrateSheet(
+                    np = np, queue = queue, history = history, fallback = bgColor,
+                    music = settings.music,
+                    onMusicChange = { m -> vm.updateSettings { it.copy(music = m) } },
+                    onClose = { vm.showPage(RoomPage.ROOM) }, onClearHistory = vm::clearHistory,
+                )
+            }
+        }
+
+        // Halaman konsol audio
+        Box(
+            Modifier
+                .fillMaxSize()
+                .roomPage(indexOf(RoomPage.CONSOLE), pagePosition, screenWidthPx)
+                .sidePageSwipe(swipeFromSide),
+        ) {
+            if (pageVisible(indexOf(RoomPage.CONSOLE), pagePosition)) ConsoleScreen(onBack = { vm.showPage(RoomPage.ROOM) })
         }
 
         // App drawer
@@ -339,20 +396,6 @@ fun HomeScreen(vm: HomeViewModel) {
                 )
             }
             AppDrawer(data = drawerData, tint = bgColor, np = np, actions = drawerActions)
-        }
-
-        // Rak piringan
-        AnimatedVisibility(
-            visible = crateOpen,
-            enter = slideInHorizontally(tween(340)) { it / 3 } + fadeIn(tween(260)),
-            exit = slideOutHorizontally(tween(260)) { it / 3 } + fadeOut(tween(200)),
-        ) {
-            CrateSheet(
-                np = np, queue = queue, history = history, fallback = bgColor,
-                music = settings.music,
-                onMusicChange = { m -> vm.updateSettings { it.copy(music = m) } },
-                onClose = vm::closeCrate, onClearHistory = vm::clearHistory,
-            )
         }
 
         // Lirik layar penuh

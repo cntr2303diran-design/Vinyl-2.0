@@ -31,6 +31,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -69,16 +70,31 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     val queue: StateFlow<List<MediaRepository.QueueEntry>> = MediaRepository.queue
     val history: StateFlow<List<PlayRecord>> = HistoryRepository.records
 
-    private val _crateOpen = MutableStateFlow(false)
-    /** Rak piringan (antrean + koleksi). */
-    val crateOpen: StateFlow<Boolean> = _crateOpen.asStateFlow()
-    fun openCrate() { if (_draft.value == null) { _drawerOpen.value = false; _lyricsOpen.value = false; _crateOpen.value = true } }
-    fun closeCrate() { _crateOpen.value = false }
+    /*
+     * Tiga halaman beranda (lihat PageNav). Halaman aktif hidup di ViewModel sehingga bertahan saat rotasi/ubah ukuran.
+     * Setelah proses dimatikan sistem, launcher sengaja kembali ke ruang TV: HomeActivity memakai stateNotNeeded (perilaku
+     * standar launcher), jadi sistem tidak menyimpan state-nya, dan "Home" memang berarti ruang TV.
+     */
+    private val _page = MutableStateFlow(RoomPage.ROOM)
+    val page: StateFlow<RoomPage> = _page.asStateFlow()
+
+    /** Pindah ke [target]; drawer & lirik ditutup. Diabaikan selama mode edit. */
+    fun showPage(target: RoomPage) {
+        if (_draft.value != null) return
+        _drawerOpen.value = false
+        _lyricsOpen.value = false
+        _page.value = target
+    }
+
+    /** Rak kaset (dulu "rak piringan") kini halaman kiri; nama lama dipertahankan untuk aksi gestur CRATE. */
+    val crateOpen: StateFlow<Boolean> = _page.map { it == RoomPage.LIBRARY }.stateIn(viewModelScope, SharingStarted.Eagerly, false)
+    fun openCrate() = showPage(RoomPage.LIBRARY)
+    fun closeCrate() { if (_page.value == RoomPage.LIBRARY) _page.value = RoomPage.ROOM }
 
     private val _lyricsOpen = MutableStateFlow(false)
     /** Lirik layar penuh. */
     val lyricsOpen: StateFlow<Boolean> = _lyricsOpen.asStateFlow()
-    fun openLyrics() { if (_draft.value == null) { _drawerOpen.value = false; _crateOpen.value = false; _lyricsOpen.value = true } }
+    fun openLyrics() { if (_draft.value == null) { _drawerOpen.value = false; _lyricsOpen.value = true } }
     fun closeLyrics() { _lyricsOpen.value = false }
     fun clearHistory() = HistoryRepository.clear()
 
@@ -100,8 +116,8 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     /** Tombol Home ditekan saat launcher sudah di depan: tutup drawer/editor. */
     fun onHomePressed() {
         _drawerOpen.value = false
-        _crateOpen.value = false
         _lyricsOpen.value = false
+        _page.value = RoomPage.ROOM
         if (_draft.value != null) cancelEdit()
     }
 
@@ -109,6 +125,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     fun startEdit() {
         _drawerOpen.value = false
         _lyricsOpen.value = false
+        _page.value = RoomPage.ROOM
         _draft.value = settings.value.home
     }
     fun updateDraft(transform: (HomeSettings) -> HomeSettings) = _draft.update { it?.let(transform) }
