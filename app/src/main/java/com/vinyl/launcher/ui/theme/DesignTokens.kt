@@ -93,6 +93,42 @@ object Tokens {
         const val STANDBY_LED = 0xFFB4442EL
     }
 
+    /**
+     * Beranda bergaya rekaman VHS ("found footage" malam hari): ruangan gelap yang hanya diterangi layar TV dan
+     * proyeksi, meja kayu walnut, deck kaset hitam dengan tombol perak, dan teks layar kamera (OSD) putih bertepi hitam.
+     * Pasangan teks/latar dijaga >= 4,5:1 oleh VhsPaletteTest.
+     */
+    object Vhs {
+        // Ruangan malam
+        const val WALL_LIT = 0xFF1B2029L        // dinding tepat di belakang TV (diterangi proyeksi)
+        const val WALL_DARK = 0xFF07080BL       // tepi ruangan
+        const val FLOOR = 0xFF050506L
+        // Meja kayu
+        const val WOOD_LIGHT = 0xFF6A4630L
+        const val WOOD_MID = 0xFF46301FL
+        const val WOOD_DARK = 0xFF231710L
+        // Deck kaset
+        const val DECK_FACE = 0xFF19191BL
+        const val DECK_FACE_LIGHT = 0xFF2C2D30L
+        const val KEY_FACE = 0xFFC9C6BDL        // tombol perak
+        const val KEY_FACE_DOWN = 0xFFA9A69DL
+        const val KEY_INK = 0xFF1A1918L         // simbol di tombol perak
+        // Teks layar kamera (OSD)
+        const val OSD_TEXT = 0xFFF4F3EEL
+        const val OSD_SHADOW = 0xFF000000L
+        /** Isian merah untuk baterai lemah; teks/garis OSD putih di atasnya (bukan teks merah di atas latar). */
+        const val OSD_WARN_FILL = 0xFFB3261EL
+        const val OSD_ACCENT = 0xFFFFD45CL      // "HI-FI", timer tidur
+        /**
+         * Peredam hitam di belakang pita OSD (atas & bawah). Dengan alpha ini teks OSD putih tetap >= 4,5:1 bahkan di atas
+         * proyeksi putih penuh (dibuktikan VhsPaletteTest).
+         */
+        const val OSD_SCRIM_ALPHA = 0.66
+        // Label kaset kertas
+        const val LABEL_PAPER = 0xFFE9E0CCL
+        const val LABEL_INK = 0xFF1C1A2EL       // spidol biru-hitam
+    }
+
     /** Jarak dalam dp. Kelipatan 4 supaya ritme tata letak konsisten. */
     object Space {
         const val XS = 4
@@ -133,14 +169,19 @@ object Tokens {
         const val CASSETTE_INSERT_MS = 340
         /** Batas bawah satu langkah animasi kaset saat skip beruntun (animasi digabung & dipercepat). */
         const val CASSETTE_RAPID_MS = 120
-        const val KNOB_ZOOM_IN_MS = 320
-        const val KNOB_ZOOM_OUT_MS = 260
         const val PROJECTION_CROSSFADE_MS = 900
         const val PAGE_SLIDE_MS = 380
         /** Lama satu informasi tampil di VFD sebelum bergantian. */
         const val VFD_CYCLE_MS = 4000
         /** Lama nama output audio baru diprioritaskan di VFD. */
         const val VFD_PRIORITY_MS = 3000
+        /** Lama tampilan maju/mundur di layar TV setelah knob dilepas. */
+        const val SEEK_OSD_HOLD_MS = 900
+        /** Butir film & garis tracking diperbarui ~12 kali per detik (seperti video lama; hemat baterai). */
+        const val FILM_FRAME_MS = 83
+        /** Jeda rata-rata antara dua gangguan tracking VHS. */
+        const val TRACKING_EVERY_MS = 9000
+        const val TRACKING_GLITCH_MS = 700
         /** Putaran gulungan kaset per menit pada kecepatan normal / cepat. */
         const val REEL_RPM_NORMAL = 40f
         const val REEL_RPM_FAST = 60f

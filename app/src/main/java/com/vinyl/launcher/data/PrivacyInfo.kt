@@ -89,8 +89,14 @@ object PrivacyInfo {
         ),
         Item(
             "android.permission.BLUETOOTH", "Bluetooth (Android 10–11)",
-            "Padanan lama izin di atas untuk Android 10 dan 11 (diberikan saat pemasangan). Dipakai untuk hal yang sama saja.",
+            "Padanan lama izin di atas untuk Android 10 dan 11 (diberikan saat pemasangan). Dipakai untuk hal yang sama, dan untuk " +
+                "membaca apakah Bluetooth menyala (ikon di OSD beranda).",
             optional = true,
+        ),
+        Item(
+            "android.permission.ACCESS_NETWORK_STATE", "Melihat status jaringan",
+            "OSD beranda (pengganti status bar): apakah Wi-Fi tersambung dan kekuatan sinyalnya, serta apakah internet lewat data " +
+                "seluler. Nama jaringan tidak dibaca. Izin biasa tanpa dialog.",
         ),
         Item(
             ID_SHIZUKU, "Shizuku (opsional)",
@@ -99,6 +105,6 @@ object PrivacyInfo {
                 "(pm grant com.vinyl.launcher android.permission.DUMP) lalu berhenti. Tidak ada perintah lain.",
             optional = true,
         ),
-        Item(ID_ACCESSIBILITY, "Layanan aksesibilitas", "Hanya untuk aksi global kunci layar dan buka notifikasi dari gestur. Tidak membaca isi layar.", optional = true),
+        Item(ID_ACCESSIBILITY, "Layanan aksesibilitas", "Hanya untuk aksi global: kunci layar, buka notifikasi, dan buka pengaturan cepat (dari gestur dan OSD beranda). Tidak membaca isi layar.", optional = true),
     )
 }

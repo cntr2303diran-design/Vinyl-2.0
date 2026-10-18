@@ -10,7 +10,7 @@ import androidx.compose.ui.unit.dp
 import com.vinyl.launcher.data.CassetteShell
 import com.vinyl.launcher.ui.cassette.CassetteArt
 import com.vinyl.launcher.ui.cassette.CassetteLabel
-import com.vinyl.launcher.ui.room.SceneLayout
+import com.vinyl.launcher.ui.cassette.CASSETTE_ASPECT
 import com.vinyl.launcher.ui.theme.RetroColors
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
@@ -175,7 +175,7 @@ private fun BoxScope.StackCard(
         Box(
             Modifier
                 .align(Alignment.BottomCenter)
-                .size(cover, cover / SceneLayout.CASSETTE_UPRIGHT_ASPECT)
+                .size(cover, cover / CASSETTE_ASPECT)
                 .then(if (item.relation == 0) Modifier.border(2.dp, RetroColors.Amber, RoundedCornerShape(10.dp)) else Modifier),
         ) {
             CassetteArt(

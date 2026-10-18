@@ -22,10 +22,26 @@ import com.vinyl.launcher.data.RetroSettings
 import com.vinyl.launcher.data.RoomTone
 import com.vinyl.launcher.data.TvBody
 import com.vinyl.launcher.media.NowPlaying
-import com.vinyl.launcher.ui.room.KnobState
-import com.vinyl.launcher.ui.room.RoomScene
-import com.vinyl.launcher.ui.room.SceneStatus
-import com.vinyl.launcher.ui.room.SceneTheme
+import com.vinyl.launcher.data.CassetteShell
+import com.vinyl.launcher.system.Bluetooth
+import com.vinyl.launcher.system.DeviceStatus
+import com.vinyl.launcher.system.NotificationIcons
+import com.vinyl.launcher.system.Ringer
+import com.vinyl.launcher.system.StatusText
+import com.vinyl.launcher.system.Wifi
+import com.vinyl.launcher.ui.room.stage.DeckDisplay
+import com.vinyl.launcher.ui.room.stage.ProjectionContent
+import com.vinyl.launcher.ui.room.stage.RoomStage
+import com.vinyl.launcher.ui.room.stage.SeekState
+import com.vinyl.launcher.ui.room.stage.StageActions
+import com.vinyl.launcher.ui.room.stage.StageInfo
+import com.vinyl.launcher.ui.room.vhs.OsdActions
+import com.vinyl.launcher.ui.room.vhs.OsdState
+import com.vinyl.launcher.ui.room.vhs.VhsFilm
+import com.vinyl.launcher.ui.room.vhs.VhsOsd
+import com.vinyl.launcher.ui.theme.VinylTheme
+import java.time.LocalDateTime
+import java.time.LocalTime
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -52,17 +68,52 @@ internal fun playing(art: ImageBitmap?) = NowPlaying(
     durationMs = 258_000, isPlaying = true, positionMs = 155_000, accentColor = 0xFFD3A774.toInt(), canSeek = true,
 )
 
+/** Status perangkat rekaan untuk OSD (tidak membaca perangkat sungguhan). */
+internal fun fakeStatus() = DeviceStatus(
+    batteryLevel = 72, charging = false, wifi = Wifi.CONNECTED, wifiLevel = 3, hasCellular = true, cellLevel = 2,
+    bluetooth = Bluetooth.CONNECTED, bluetoothDevice = "Buds Pro", ringer = Ringer.VIBRATE, nextAlarm = LocalTime.of(6, 30),
+    notifications = 3,
+)
+
+/** Ikon notifikasi rekaan (lonceng putih), bukan ikon aplikasi sungguhan. */
+internal fun fakeNotificationIcon(): ImageBitmap {
+    val b = Bitmap.createBitmap(48, 48, Bitmap.Config.ARGB_8888)
+    val c = android.graphics.Canvas(b)
+    val p = Paint().apply { color = 0xFFFFFFFF.toInt(); isAntiAlias = true }
+    c.drawRoundRect(8f, 8f, 40f, 40f, 8f, 8f, p)
+    return b.asImageBitmap()
+}
+
+/** Beranda lengkap (panggung + film + OSD) dengan data rekaan dan waktu tetap, tanpa animasi. */
 @Composable
-internal fun ScenePreview(np: NowPlaying, retro: RetroSettings, knob: KnobState? = null, tone: RoomTone = retro.room) {
-    val k = knob ?: remember { KnobState() }
-    Box(Modifier.fillMaxSize().background(SceneTheme.of(tone).wallEdge)) {
-        RoomScene(
-            np = np, retro = retro, tone = tone, tvSize = 0.85f, accent = Color(0xFFD3A774), motionAllowed = false,
-            editing = false,
-            status = SceneStatus("10:09 AM", "Buds Pro", listOf(if (np.hasTrack) "PLAY" else "STANDBY", "OUT 48 kHz", "BUDS PRO")),
-            positionMs = np.positionMs, titleScrimAlpha = 0.25f, knobState = k, volume = 0.45f, onVolume = {},
-            onPrevious = {}, onRewind = {}, onPlayPause = {}, onNext = {}, onSeek = {}, onTick = {}, onOpenLyrics = {},
-        )
+internal fun StagePreview(np: NowPlaying, retro: RetroSettings, seek: SeekState? = null, tone: RoomTone = retro.room, landscape: Boolean = true) {
+    val s = seek ?: remember { SeekState() }
+    VinylTheme {
+        Box(Modifier.fillMaxSize().background(Color(0xFF07080B))) {
+            val transport = StatusText.transport(np.hasTrack, np.isPlaying, s.deltaMs?.takeIf { s.touching })
+            RoomStage(
+                np = np, retro = retro, tone = tone, tvSize = 0.85f, accent = Color(0xFFD3A774), motionAllowed = false,
+                editing = false, positionMs = np.positionMs, titleScrimAlpha = 0.25f, seek = s,
+                info = StageInfo(
+                    tvVfd = if (np.hasTrack) "PLAY" else "STANDBY",
+                    deck = DeckDisplay(StatusText.modeLine(transport) + if (np.hasTrack) "  SP" else "", "BUDS PRO · OUT 48 kHz"),
+                    tapeTime = if (np.durationMs > 0) "4:18" else "",
+                ),
+                actions = StageActions({}, {}, {}, {}, {}, {}, {}),
+                projection = np.art?.let { ProjectionContent.Picture(it) },
+            )
+            VhsFilm(animate = false, modifier = Modifier.fillMaxSize())
+            VhsOsd(
+                OsdState(
+                    now = LocalDateTime.of(2026, 10, 18, 19, 21, 7), use24h = true, seconds = true, showClock = true,
+                    status = fakeStatus(), notifications = List(2) { NotificationIcons.Entry("contoh.app$it", fakeNotificationIcon()) },
+                    showNotifications = true, transport = transport, tapeMode = if (np.hasTrack) "SP" else null, sleepLine = null,
+                    hasTrack = np.hasTrack, positionMs = s.previewMs ?: np.positionMs, durationMs = np.durationMs, canSeek = np.canSeek,
+                ),
+                landscape = landscape,
+                actions = OsdActions({}, {}, {}, {}, {}),
+            )
+        }
     }
 }
 
@@ -74,40 +125,60 @@ class RoomShots {
 
     private fun shot(name: String) = compose.onRoot().captureRoboImage("build/outputs/roborazzi/$name.png")
 
-    /** Ukuran persis gambar referensi (1312 x 816) agar bisa dibandingkan berdampingan. */
     @Test
     @Config(qualifiers = "w1312dp-h816dp-land-mdpi")
-    fun referenceSize() {
-        compose.setContent { ScenePreview(playing(fakeCover()), RetroSettings()) }
-        shot("ref_tablet_1312x816")
+    fun tablet() {
+        compose.setContent { StagePreview(playing(fakeCover()), RetroSettings()) }
+        shot("tahap10_vhs_tablet")
     }
 
     @Test
     @Config(qualifiers = "w1312dp-h816dp-land-mdpi")
-    fun referenceSizeStandby() {
-        compose.setContent { ScenePreview(NowPlaying(), RetroSettings()) }
-        shot("ref_tablet_standby")
+    fun tabletStandby() {
+        compose.setContent { StagePreview(NowPlaying(), RetroSettings()) }
+        shot("tahap10_vhs_tablet_standby")
     }
 
     @Test
     @Config(qualifiers = "w1280dp-h800dp-land-mdpi")
-    fun tabletKnobMode() {
-        val k = KnobState().apply { active = true; turns = 0.12f; previewMs = 158_600L }
-        compose.setContent { ScenePreview(playing(fakeCover()), RetroSettings(), k) }
-        shot("ref_tablet_mode_knob")
+    fun tabletSeekingWithTheKnob() {
+        val k = SeekState().apply { touching = true; turns = 0.4f; startMs = 155_000L; previewMs = 171_000L }
+        compose.setContent { StagePreview(playing(fakeCover()), RetroSettings(tvBody = TvBody.WALNUT), k) }
+        shot("tahap10_vhs_knob_seek")
     }
 
     @Test
     @Config(qualifiers = "w411dp-h891dp-xxhdpi")
     fun phonePortrait() {
-        compose.setContent { ScenePreview(playing(fakeCover()), RetroSettings()) }
-        shot("ref_ponsel_portrait")
+        compose.setContent { StagePreview(playing(fakeCover()), RetroSettings(tvBody = TvBody.WALNUT), landscape = false) }
+        shot("tahap10_vhs_ponsel")
+    }
+
+    @Test
+    @Config(qualifiers = "w360dp-h780dp-xxhdpi", fontScale = 2.0f)
+    fun smallPhoneLargeFont() {
+        compose.setContent { StagePreview(playing(fakeCover()), RetroSettings(tvBody = TvBody.CHARCOAL, cassetteShell = CassetteShell.BLACK), landscape = false) }
+        shot("tahap10_vhs_ponsel_kecil_font200")
+    }
+
+    @Test
+    @Config(qualifiers = "w915dp-h412dp-land-xxhdpi")
+    fun phoneLandscape() {
+        compose.setContent { StagePreview(playing(fakeCover()), RetroSettings(tvBody = TvBody.SPACE_AGE, cassetteShell = CassetteShell.COLORED)) }
+        shot("tahap10_vhs_ponsel_mendatar")
     }
 
     @Test
     @Config(qualifiers = "w1280dp-h800dp-land-mdpi")
-    fun tabletLightRoomWalnut() {
-        compose.setContent { ScenePreview(playing(fakeCover()), RetroSettings(tvBody = TvBody.WALNUT, room = RoomTone.LIGHT)) }
-        shot("ref_tablet_terang_walnut")
+    fun tabletLightRoomPictureTape() {
+        compose.setContent { StagePreview(playing(fakeCover()), RetroSettings(room = RoomTone.LIGHT, cassetteShell = CassetteShell.PICTURE)) }
+        shot("tahap10_vhs_terang")
+    }
+
+    @Test
+    @Config(qualifiers = "ar-w1280dp-h800dp-land-mdpi")
+    fun tabletRtl() {
+        compose.setContent { StagePreview(playing(fakeCover()), RetroSettings()) }
+        shot("tahap10_vhs_rtl")
     }
 }

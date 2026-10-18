@@ -102,6 +102,12 @@ private fun mono(weight: FontWeight) = Font(
 )
 val MonoFamily = FontFamily(listOf(FontWeight.Light, FontWeight.Normal, FontWeight.Medium, FontWeight.Bold).map { mono(it) })
 
+/** Huruf layar kamera/VCR (OSD): jam, tanggal, status, penghitung pita. */
+val OsdFamily = FontFamily(Font(R.font.vt323))
+
+/** Tulisan tangan spidol untuk label kaset. */
+val MarkerFamily = FontFamily(Font(R.font.permanent_marker))
+
 private val DarkScheme = darkColorScheme(
     primary = Accent,
     onPrimary = AccentOn,

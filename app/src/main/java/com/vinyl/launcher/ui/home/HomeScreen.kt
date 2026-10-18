@@ -69,7 +69,6 @@ import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
-import com.vinyl.launcher.ui.components.rememberNow
 import com.vinyl.launcher.ui.drawer.AppDrawer
 import com.vinyl.launcher.ui.drawer.DrawerActions
 import com.vinyl.launcher.ui.drawer.DrawerData
@@ -91,7 +90,6 @@ import com.vinyl.launcher.fx.FxState
 import com.vinyl.launcher.fx.SpectrumBars
 import com.vinyl.launcher.fx.VisualizerPlan
 import com.vinyl.launcher.fx.VisualizerStatus
-import com.vinyl.launcher.fx.fxForeground
 import com.vinyl.launcher.fx.rememberFxPlan
 import com.vinyl.launcher.fx.rememberFxState
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -106,7 +104,6 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 import com.vinyl.launcher.ui.console.ConsoleRoute
 import com.vinyl.launcher.data.VideoRules
-import com.vinyl.launcher.data.TurntablePosition
 import com.vinyl.launcher.media.VideoLibrary
 import com.vinyl.launcher.media.SleepTimer
 import com.vinyl.launcher.media.VideoMatch
@@ -122,10 +119,6 @@ import com.vinyl.launcher.data.RetroSettings
 import com.vinyl.launcher.fx.FxOverlay
 import com.vinyl.launcher.fx.rememberPowerSave
 import com.vinyl.launcher.ui.components.rememberFileImage
-import com.vinyl.launcher.ui.room.KnobState
-import com.vinyl.launcher.ui.room.RoomScene
-import com.vinyl.launcher.ui.room.SceneStatus
-import com.vinyl.launcher.ui.room.SceneTheme
 import com.vinyl.launcher.ui.room.rememberWorstCoverPixel
 import com.vinyl.launcher.audio.AudioMonitor
 import com.vinyl.launcher.data.RoomTone
@@ -134,6 +127,20 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.unit.sp
 import com.vinyl.launcher.ui.library.LibraryCatalog
 import com.vinyl.launcher.ui.library.rememberLibraryState
+import com.vinyl.launcher.ui.room.stage.RoomStage
+import com.vinyl.launcher.ui.room.stage.SeekState
+import com.vinyl.launcher.ui.room.stage.StageActions
+import com.vinyl.launcher.ui.room.stage.StageInfo
+import com.vinyl.launcher.ui.room.stage.ProjectionContent
+import com.vinyl.launcher.ui.room.vhs.VhsFilm
+import com.vinyl.launcher.ui.room.VfdTicker
+import com.vinyl.launcher.system.DeviceStatusMonitor
+import com.vinyl.launcher.system.StatusText
+import com.vinyl.launcher.data.ProjectorSource
+import com.vinyl.launcher.data.DockSettings
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 
 /** Warna netral saat tidak ada musik. */
 private val NeutralBg = Color(0xFF1C1B19) // charcoal hangat bila tidak ada cover
@@ -231,11 +238,18 @@ fun HomeScreen(vm: HomeViewModel) {
     LifecycleResumeEffect(Unit) {
         resumed = true
         AudioMonitor.acquire(context)
+        DeviceStatusMonitor.acquire(context)
         onPauseOrDispose {
             resumed = false
             AudioMonitor.release()
+            DeviceStatusMonitor.release()
         }
     }
+    // Status bar Samsung disembunyikan selama ruang TV tampil; infonya ada di OSD
+    SystemStatusBar(
+        hidden = settings.retro.osd.hideStatusBar && settings.retro.osd.visible && page == RoomPage.ROOM && !drawerOpen && !lyricsOpen && !editing,
+        reapplyKey = resumed,
+    )
 
     // ----- Video milik pengguna di layar TV (folder SAF). Pemutar hanya ada selama ruang TV benar-benar tampil -----
     val video = settings.video
@@ -269,6 +283,23 @@ fun HomeScreen(vm: HomeViewModel) {
     val cover = np.art.takeIf { np.hasTrack }
     val projected = if (home.background.type == BackgroundType.IMAGE) picture else if (home.background.type == BackgroundType.ALBUM) cover else null
     val look = rememberRoomLook(settings.retro.room, home.background, projected)
+    // Knob SEEK: dibagi panggung (jarum & layar TV) dan OSD (mode FF/REW, penghitung pita)
+    val seekState = remember { SeekState() }
+    // Proyektor: video milik pengguna (sumber Otomatis), cover, atau visualizer; mati = dinding gelap
+    val projector = settings.retro.projector
+    val showBars = (fxPlan.visualizer == VisualizerPlan.REAL && visualizerState != VisualizerStatus.State.UNAVAILABLE) ||
+        fxPlan.visualizer == VisualizerPlan.DECORATIVE
+    val projection: ProjectionContent? = when {
+        !np.hasTrack || projector.source == ProjectorSource.OFF -> null
+        projector.source == ProjectorSource.AUTO && videoUri != null -> ProjectionContent.Video {
+            ScreenVideo(videoUri, np.isPlaying, onError = { failedVideo = videoMatch?.file?.documentId }, Modifier.fillMaxSize())
+        }
+        projector.source == ProjectorSource.VISUALIZER && showBars -> ProjectionContent.Visualizer {
+            SpectrumBars(fx, accent, Modifier.fillMaxSize().padding(horizontal = 24.dp, vertical = 18.dp).clearAndSetSemantics { })
+        }
+        cover != null -> ProjectionContent.Picture(cover)
+        else -> ProjectionContent.Tint(accent)
+    }
 
     Box(Modifier.fillMaxSize().onSizeChanged { screenWidthPx = it.width }) {
     Box(
@@ -284,12 +315,8 @@ fun HomeScreen(vm: HomeViewModel) {
                 }
             }
     ) {
-        // Dasar ruangan (juga di bawah bilah sistem); dinding, lantai, dan cahaya digambar RoomScene
-        Box(Modifier.fillMaxSize().background(SceneTheme.of(look.tone).wallEdge))
-        // Debu halus (partikel) di atas dinding, di bawah konten; cahaya reaktif sudah digambar ruang (bukan lapisan putih)
-        if (fxPlan.particles) {
-            FxOverlay(fx, fxPlan.copy(glow = false), accent, settings.visual.parallax, settings.visual.parallaxStrength, particleColor = dustColor(look.tone))
-        }
+        // Dasar ruangan (juga di bawah bilah sistem); dinding, lantai, dan cahaya digambar panggung
+        Box(Modifier.fillMaxSize().background(roomBase(look.tone)))
 
         // Area konten; saat edit, menyusut agar pratinjau tidak tertutup panel editor
         Box(
@@ -299,7 +326,6 @@ fun HomeScreen(vm: HomeViewModel) {
                     end = if (editing && landscape) EDITOR_WIDTH else 0.dp,
                     bottom = if (editing && !landscape) EDITOR_HEIGHT_PORTRAIT else 0.dp,
                 )
-                .windowInsetsPadding(WindowInsets.safeDrawing) // ruang aman untuk taskbar & status bar
                 // Geser atas/kiri dan tekan-lama hanya gestur; pembaca layar/switch access mendapat aksi setara
                 .semantics {
                     contentDescription = "Layar utama"
@@ -326,7 +352,7 @@ fun HomeScreen(vm: HomeViewModel) {
                     // lebih dulu; bila tidak ada yang cocok → swipe atas/bawah/kiri bawaan.
                     awaitEachGesture {
                         // Ketukan pada widget tidak membatalkan swipe; yang membatalkan hanya elemen yang ikut
-                        // memakai gerakan jari (mis. turntable saat vinyl/tonearm diseret)
+                        // memakai gerakan jari (mis. knob SEEK atau penghitung pita saat diseret)
                         val down = awaitFirstDown(requireUnconsumed = false)
                         val path = mutableListOf(down.position)
                         var moved = false
@@ -359,13 +385,6 @@ fun HomeScreen(vm: HomeViewModel) {
                         }
                     }
                 }
-                // Sisakan ruang untuk Taskbar Vinyl di sisi tempat ia menempel
-                .padding(
-                    start = if (settings.dock.enabled && !editing && settings.dock.position == DockPosition.LEFT) (76 + settings.dock.margin).dp else 0.dp,
-                    top = if (settings.dock.enabled && !editing && settings.dock.position == DockPosition.TOP) (76 + settings.dock.margin).dp else 0.dp,
-                    end = if (settings.dock.enabled && !editing && settings.dock.position == DockPosition.RIGHT) (76 + settings.dock.margin).dp else 0.dp,
-                    bottom = if (settings.dock.enabled && !editing && settings.dock.position == DockPosition.BOTTOM) (76 + settings.dock.margin).dp else 0.dp,
-                )
         ) {
             HomeContent(
                 home = home,
@@ -374,23 +393,34 @@ fun HomeScreen(vm: HomeViewModel) {
                 weather = settings.weather,
                 lyricsOnline = settings.music.lyricsOnline,
                 editing = editing,
-                fx = fx,
                 fxPlan = fxPlan,
+                fx = fx,
                 visual = settings.visual,
-                visualizerUnavailable = visualizerState == VisualizerStatus.State.UNAVAILABLE,
                 retro = settings.retro,
                 look = look,
                 motionAllowed = motionAllowed,
                 wallPicture = picture,
                 lyricsVisible = home.lyricsVisible,
                 tvOff = tvOff,
-                screenVideo = videoUri?.let { uri ->
-                    { ScreenVideo(uri, np.isPlaying, onError = { failedVideo = videoMatch?.file?.documentId }, Modifier.fillMaxSize()) }
-                },
+                seek = seekState,
+                projection = projection,
+                dock = settings.dock,
                 onWidgetChange = { updated -> vm.updateDraft { h -> h.copy(widgets = h.widgets.map { if (it.id == updated.id) updated else it }) } },
                 vm = vm,
             )
+        }
 
+        // Rekaman VHS (butir, tracking) lalu OSD di atasnya; ikut bergeser bersama halaman
+        if (settings.retro.osd.film) VhsFilm(animate = motionAllowed && resumed && page == RoomPage.ROOM, Modifier.fillMaxSize())
+        if (settings.retro.osd.visible) {
+            var tick by remember { mutableIntStateOf(0) }
+            LaunchedEffect(np) { while (np.isPlaying) { delay(500); tick++ } }
+            val pos = remember(np, tick) { np.positionAt() }
+            RoomOsd(
+                np = np, positionMs = pos, seek = seekState, osd = settings.retro.osd, clock = home.clock, landscape = landscape,
+                onSeek = vm::seek,
+                modifier = Modifier.padding(dockPadding(settings.dock, editing)),
+            )
         }
     }
 
@@ -513,7 +543,7 @@ fun HomeScreen(vm: HomeViewModel) {
 
 }
 
-/** Jam, turntable & widget. Dipisah agar mudah dibaca. */
+/** Panggung TV & widget. Dipisah agar mudah dibaca. */
 @Composable
 private fun HomeContent(
     home: HomeSettings,
@@ -522,103 +552,119 @@ private fun HomeContent(
     weather: WeatherSettings,
     lyricsOnline: Boolean,
     editing: Boolean,
-    fx: FxState,
     fxPlan: FxPlan,
+    fx: FxState,
     visual: VisualSettings,
-    visualizerUnavailable: Boolean,
     retro: RetroSettings,
     look: RoomLook,
     motionAllowed: Boolean,
     wallPicture: ImageBitmap?,
     lyricsVisible: Boolean,
-    screenVideo: (@Composable () -> Unit)?,
     tvOff: Boolean,
+    seek: SeekState,
+    projection: ProjectionContent?,
+    dock: DockSettings,
     onWidgetChange: (WidgetConfig) -> Unit,
     vm: HomeViewModel,
 ) {
-    val now by rememberNow()
-    BoxWithConstraints(Modifier.fillMaxSize()) {
+    val density = LocalDensity.current
+    val layoutDirection = LocalLayoutDirection.current
+    val safe = WindowInsets.safeDrawing
+    val dockPad = dockPadding(dock, editing)
+    // Panggung digambar penuh (juga di bawah bilah sistem); ruang yang dipakai sistem & taskbar diteruskan sebagai inset
+    val topInset = with(density) { safe.getTop(density).toDp() } + dockPad.calculateTopPadding()
+    val bottomInset = with(density) { safe.getBottom(density).toDp() } + dockPad.calculateBottomPadding()
+    val startPad = with(density) { (if (layoutDirection == LayoutDirection.Ltr) safe.getLeft(density, layoutDirection) else safe.getRight(density, layoutDirection)).toDp() } +
+        dockPad.calculateStartPadding(layoutDirection)
+    val endPad = with(density) { (if (layoutDirection == LayoutDirection.Ltr) safe.getRight(density, layoutDirection) else safe.getLeft(density, layoutDirection)).toDp() } +
+        dockPad.calculateEndPadding(layoutDirection)
 
-        // ----- Ruang TV (komposisi gambar referensi): TV, kaset, tombol, progres, volume, TIME / Output -----
-        var clockTick by remember { mutableIntStateOf(0) }
-        LaunchedEffect(np) {
-            while (np.isPlaying) { delay(500); clockTick++ }
-        }
-        val posMs = remember(np, clockTick) { np.positionAt() }
-        val knobState = remember { KnobState() }
-        LaunchedEffect(editing, np.hasTrack) { if (editing || !np.hasTrack) knobState.exit() }
-        val audio by AudioMonitor.state.collectAsStateWithLifecycle()
-        val (volume, setVolume) = rememberMediaVolume()
-        val brightest = rememberWorstCoverPixel(np.art, RoomTone.DIM)
-        val scrim = remember(brightest) {
-            // Judul putih di atas cover: peredam terkecil agar >= 4,5:1 di piksel cover paling terang
-            brightest?.let { BackdropDim.minOverlayAlpha(it, listOf(0xFFFFFFFFL), effects = false).toFloat() } ?: 0.25f
-        }
-        val lyrics = rememberLyrics(np, lyricsVisible, lyricsOnline)
-        RoomScene(
-            np = np,
-            retro = retro,
-            tone = look.tone,
-            tvSize = home.turntableSize,
-            accent = accent,
-            motionAllowed = motionAllowed && !editing,
-            editing = editing,
-            status = SceneStatus(
-                timeText = if (home.clock.visible) clockText(now, home.clock.use24h) else null,
-                outputText = outputText(audio),
-                vfdLines = vfdLines(np, audio),
-            ),
-            positionMs = posMs,
-            titleScrimAlpha = scrim,
-            knobState = knobState,
-            volume = volume,
-            onVolume = setVolume,
+    var clockTick by remember { mutableIntStateOf(0) }
+    LaunchedEffect(np) {
+        while (np.isPlaying) { delay(500); clockTick++ }
+    }
+    val posMs = remember(np, clockTick) { np.positionAt() }
+    val audio by AudioMonitor.state.collectAsStateWithLifecycle()
+    val brightest = rememberWorstCoverPixel(np.art, RoomTone.DIM)
+    val scrim = remember(brightest) {
+        // Cover sedikit diredam seperti tabung; judul memakai kotak teks hitam sendiri
+        brightest?.let { BackdropDim.minOverlayAlpha(it, listOf(0xFFFFFFFFL), effects = false).toFloat() } ?: 0.25f
+    }
+    val lyrics = rememberLyrics(np, lyricsVisible, lyricsOnline)
+    val transport = StatusText.transport(np.hasTrack, np.isPlaying, seek.deltaMs?.takeIf { seek.touching })
+    val info = StageInfo(
+        tvVfd = VfdTicker.playback(np.hasTrack, np.isPlaying),
+        deck = deckDisplay(transport, tapeMode(np), audio),
+        tapeTime = tapeTime(np),
+    )
+    val actions = remember(vm) {
+        StageActions(
             onPrevious = vm::previous,
-            onRewind = { vm.seek((np.positionAt() - 10_000L).coerceAtLeast(0L)) },
-            onPlayPause = { if (np.hasTrack) vm.togglePlay() else vm.openMusic() },
+            onRewind = { vm.seek((vm.nowPlaying.value.positionAt() - 10_000L).coerceAtLeast(0L)) },
+            onPlayPause = { if (vm.nowPlaying.value.hasTrack) vm.togglePlay() else vm.openMusic() },
             onNext = vm::next,
             onSeek = vm::seek,
             onTick = vm::tick,
             onOpenLyrics = vm::openLyrics,
+        )
+    }
+    Box(Modifier.fillMaxSize()) {
+        RoomStage(
+            np = np, retro = retro, tone = look.tone, tvSize = home.turntableSize, accent = accent,
+            motionAllowed = motionAllowed && !editing, editing = editing, positionMs = posMs, titleScrimAlpha = scrim,
+            seek = seek, info = info, actions = actions, projection = projection,
+            modifier = Modifier.padding(start = startPad, end = endPad),
+            topInset = topInset.value, bottomInset = bottomInset.value,
             wallColor = if (home.background.type == BackgroundType.SOLID) home.background.solidColor.toColor() else null,
             wallGradient = if (home.background.type == BackgroundType.GRADIENT)
                 home.background.gradientStart.toColor() to home.background.gradientEnd.toColor() else null,
             wallPicture = wallPicture,
-            tvPosition = when (home.turntablePosition) {
-                TurntablePosition.LEFT -> -1f
-                TurntablePosition.CENTER -> 0f
-                TurntablePosition.RIGHT -> 1f
-            },
-            tvOff = tvOff,
             showCover = home.coverVisible,
-            showTitle = home.trackInfoVisible,
-            modifier = Modifier.fxForeground(fx, fxPlan, visual.parallax, visual.parallaxStrength),
-            screenVideo = screenVideo,
-        ) { zoomed ->
-            // Di layar TV: batang visualizer (atau keterangan jujurnya) di bawah, lirik saat TV didekatkan
-            Box(Modifier.fillMaxSize().padding(horizontal = 18.dp, vertical = 10.dp)) {
-                if (zoomed && lyrics != null) {
-                    LyricsLines(
-                        np, lyrics, primary = Color.White, secondary = Color.White.copy(alpha = 0.85f), fontSize = 18.sp,
-                        modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth(),
-                    )
+            // Saat subtitel lirik tampil, judul tidak ditulis di atasnya
+            showTitle = home.trackInfoVisible && lyrics == null,
+            tvOff = tvOff,
+            atmosphere = {
+                // Debu halus melayang di cahaya proyeksi (di depan dinding, di belakang TV)
+                if (fxPlan.particles) {
+                    FxOverlay(fx, fxPlan.copy(glow = false), accent, visual.parallax, visual.parallaxStrength, particleColor = dustColor(look.tone))
                 }
-                if (np.hasTrack) {
-                    Box(Modifier.align(Alignment.BottomCenter).padding(bottom = if (zoomed) 36.dp else 0.dp)) {
-                        VisualizerStrip(fx, fxPlan.visualizer, visual.visualizer, visualizerUnavailable, Color.White.copy(alpha = 0.7f), Color.White)
+            },
+        ) {
+            // Subtitel lirik di bagian bawah layar TV
+            if (lyrics != null) {
+                Box(Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 10.dp), contentAlignment = Alignment.BottomCenter) {
+                    Box(Modifier.background(Color.Black.copy(alpha = 0.72f)).padding(horizontal = 10.dp, vertical = 4.dp)) {
+                        LyricsLines(np, lyrics, primary = Color.White, secondary = Color.White.copy(alpha = 0.85f), fontSize = 16.sp)
                     }
                 }
             }
         }
 
-        // ----- Widget tambahan -----
-        val wPx = constraints.maxWidth
-        val hPx = constraints.maxHeight
-        home.widgets.forEach { w ->
-            HomeWidget(w, wPx, hPx, editing, weather, onWidgetChange)
+        // ----- Widget tambahan (di area aman, tidak di bawah bilah sistem/taskbar)
+        BoxWithConstraints(Modifier.fillMaxSize().windowInsetsPadding(safe).padding(dockPad)) {
+            val wPx = constraints.maxWidth
+            val hPx = constraints.maxHeight
+            home.widgets.forEach { w ->
+                HomeWidget(w, wPx, hPx, editing, weather, onWidgetChange)
+            }
         }
     }
 }
+
+/** Ruang yang dipakai Taskbar TV di sisi tempat ia menempel (tidak ada saat mengedit). */
+private fun dockPadding(dock: DockSettings, editing: Boolean): PaddingValues {
+    if (!dock.enabled || editing) return PaddingValues(0.dp)
+    val t = (76 + dock.margin).dp
+    return when (dock.position) {
+        DockPosition.LEFT -> PaddingValues(start = t)
+        DockPosition.TOP -> PaddingValues(top = t)
+        DockPosition.RIGHT -> PaddingValues(end = t)
+        DockPosition.BOTTOM -> PaddingValues(bottom = t)
+    }
+}
+
+/** Warna dasar ruangan di bawah panggung (terlihat sesaat saat halaman bergeser). */
+private fun roomBase(tone: RoomTone): Color = if (tone == RoomTone.LIGHT) Color(0xFFBDB7AC) else Color(Tokens.Vhs.WALL_DARK)
 
 /**
  * Widget yang bisa diseret & diubah ukurannya di mode edit.

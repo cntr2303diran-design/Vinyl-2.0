@@ -78,7 +78,6 @@ import com.vinyl.launcher.data.GestureBinding
 import com.vinyl.launcher.data.GestureSettings
 import com.vinyl.launcher.data.HomeSettings
 import com.vinyl.launcher.data.SettingsRepository
-import com.vinyl.launcher.data.TurntablePosition
 import com.vinyl.launcher.data.WidgetConfig
 import com.vinyl.launcher.data.AlbumMotion
 import com.vinyl.launcher.data.CassetteShell
@@ -86,6 +85,9 @@ import com.vinyl.launcher.data.KnobStyle
 import com.vinyl.launcher.data.ReelSpeed
 import com.vinyl.launcher.data.RetroSettings
 import com.vinyl.launcher.data.RoomTone
+import com.vinyl.launcher.data.OsdSettings
+import com.vinyl.launcher.data.ProjectorSettings
+import com.vinyl.launcher.data.ProjectorSource
 import com.vinyl.launcher.data.TvBody
 import com.vinyl.launcher.data.VfdColor
 import com.vinyl.launcher.data.WidgetType
@@ -375,12 +377,6 @@ fun BackgroundControls(bg: BackgroundSettings, allowGradient: Boolean, pickerNam
     }
 }
 
-fun TurntablePosition.label() = when (this) {
-    TurntablePosition.LEFT -> "Kiri"
-    TurntablePosition.CENTER -> "Tengah"
-    TurntablePosition.RIGHT -> "Kanan"
-}
-
 fun WidgetType.label() = when (this) {
     WidgetType.CALENDAR -> "Kalender mini"
     WidgetType.WEATHER -> "Cuaca"
@@ -405,7 +401,7 @@ fun rememberMultiImagePicker(onPicked: (List<String>) -> Unit): () -> Unit {
 
 /** Bagian editor home screen (dipakai sebagai tab di panel edit). */
 enum class HomeSection(val title: String) {
-    TV("TV & kaset"), BACKGROUND("Dinding"), CLOCK("Jam"), WIDGETS("Widget")
+    TV("TV & kaset"), PROJECTOR("Proyektor"), BACKGROUND("Dinding"), CLOCK("Status & jam"), WIDGETS("Widget")
 }
 
 /**
@@ -422,6 +418,7 @@ fun HomeSectionControls(
 ) {
     when (section) {
         HomeSection.TV -> TvSectionControls(home, retro, onChange, onRetro)
+        HomeSection.PROJECTOR -> ProjectorControls(retro.projector) { onRetro(retro.copy(projector = it)) }
         HomeSection.BACKGROUND -> {
             SectionTitle("Dinding ruang")
             ControlCard {
@@ -435,12 +432,25 @@ fun HomeSectionControls(
             }
         }
         HomeSection.CLOCK -> {
-            SectionTitle("Jam di sudut")
+            val osd = retro.osd
+            fun setOsd(o: OsdSettings) = onRetro(retro.copy(osd = o))
+            SectionTitle("Status bar & OSD")
             ControlCard {
-                SwitchRow("Tampilkan TIME di kiri atas", home.clock.visible, { onChange(home.copy(clock = home.clock.copy(visible = it))) })
+                SwitchRow(
+                    "Pindahkan status bar ke beranda", osd.hideStatusBar && osd.visible, { setOsd(osd.copy(hideStatusBar = it, visible = osd.visible || it)) },
+                    subtitle = "Jam, tanggal, baterai, Wi-Fi, sinyal, Bluetooth, dering, dan notifikasi tampil sebagai teks kamera VHS. Usap dari atas untuk status bar asli.",
+                )
+                SwitchRow("Tampilkan OSD", osd.visible, { setOsd(osd.copy(visible = it)) })
+                SwitchRow("Ikon & jumlah notifikasi", osd.notifications, { setOsd(osd.copy(notifications = it)) }, subtitle = "Memakai akses notifikasi yang sama dengan kontrol musik; hanya ikon, isi notifikasi tidak dibaca")
+                SwitchRow("Butir film & garis tracking", osd.film, { setOsd(osd.copy(film = it)) }, subtitle = "Berhenti sendiri saat Hapus animasi atau Hemat daya aktif")
+            }
+            SectionTitle("Jam")
+            ControlCard {
+                SwitchRow("Tampilkan jam & tanggal", home.clock.visible, { onChange(home.copy(clock = home.clock.copy(visible = it))) })
                 SwitchRow("Format 24 jam", home.clock.use24h, { onChange(home.copy(clock = home.clock.copy(use24h = it))) })
+                SwitchRow("Detik", osd.seconds, { setOsd(osd.copy(seconds = it)) })
                 Text(
-                    "Gaya jam besar (tipis, flip, analog, dan lainnya) tetap ada di Layar kunci.",
+                    "Gaya jam besar (tipis, flip, analog, VFD, dan lainnya) tetap ada di Layar kunci.",
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 6.dp),
                 )
@@ -465,8 +475,7 @@ private fun TvSectionControls(home: HomeSettings, retro: RetroSettings, onChange
     SectionTitle("TV")
     ControlCard {
         ChipRow("Bodi TV", TvBody.entries, retro.tvBody, { it.label() }) { onRetro(retro.copy(tvBody = it)) }
-        SliderRow("Ukuran", home.turntableSize, 0.5f..1f, { onChange(home.copy(turntableSize = it)) })
-        ChipRow("Posisi (layar mendatar)", TurntablePosition.entries, home.turntablePosition, { it.label() }) { onChange(home.copy(turntablePosition = it)) }
+        SliderRow("Ukuran (TV tetap di tempatnya)", home.turntableSize, 0.5f..1f, { onChange(home.copy(turntableSize = it)) })
         ChipRow("Knob", KnobStyle.entries, retro.knobStyle, { it.label() }) { onRetro(retro.copy(knobStyle = it)) }
         ChipRow("Warna VFD", VfdColor.entries, retro.vfdColor, { it.label() }) { onRetro(retro.copy(vfdColor = it)) }
     }
@@ -475,8 +484,8 @@ private fun TvSectionControls(home: HomeSettings, retro: RetroSettings, onChange
         SwitchRow("Tampilkan cover", home.coverVisible, { onChange(home.copy(coverVisible = it)) }, subtitle = "Mati: layar hanya berwarna aksen lagu")
         SwitchRow("Judul & artis di layar", home.trackInfoVisible, { onChange(home.copy(trackInfoVisible = it)) })
         SwitchRow(
-            "Lirik saat TV didekatkan", home.lyricsVisible, { onChange(home.copy(lyricsVisible = it)) },
-            subtitle = "Ketuk TV untuk mendekat. Lirik dari LRCLIB, butuh internet",
+            "Subtitel lirik di layar TV", home.lyricsVisible, { onChange(home.copy(lyricsVisible = it)) },
+            subtitle = "Ketuk layar TV untuk lirik layar penuh. Lirik dari LRCLIB, butuh internet",
         )
         ChipRow("Gerak cover", AlbumMotion.entries, retro.albumMotion, { it.label() }) { onRetro(retro.copy(albumMotion = it)) }
         SliderRow("Efek tabung (scanline, tepi gelap)", retro.crtStrength, 0f..1f, { onRetro(retro.copy(crtStrength = it)) })
@@ -494,6 +503,38 @@ private fun TvSectionControls(home: HomeSettings, retro: RetroSettings, onChange
             subtitle = if (retro.swapPages) "Audio Console di kiri, perpustakaan kaset di kanan" else "Perpustakaan kaset di kiri, Audio Console di kanan",
         )
     }
+}
+
+/** Proyektor di dinding belakang TV. */
+@Composable
+private fun ProjectorControls(p: ProjectorSettings, onChange: (ProjectorSettings) -> Unit) {
+    SectionTitle("Proyektor di belakang TV")
+    ControlCard {
+        ChipRow("Gambar", ProjectorSource.entries, p.source, { it.label() }) { onChange(p.copy(source = it)) }
+        if (p.source != ProjectorSource.OFF) {
+            SliderRow("Kecerahan", p.brightness, 0.1f..1f, { onChange(p.copy(brightness = it)) })
+            SliderRow("Ukuran gambar", p.size, 0.6f..1.2f, { onChange(p.copy(size = it)) })
+            SliderRow("Fokus (tajam ↔ buram)", p.focus, 0f..1f, { onChange(p.copy(focus = it)) })
+            SwitchRow("Gangguan pita VHS", p.vhs, { onChange(p.copy(vhs = it)) }, subtitle = "Gambar sedikit bergoyang seperti rekaman lama")
+        }
+        Text(
+            when (p.source) {
+                ProjectorSource.AUTO -> "Video milik Anda yang cocok dengan lagu (atur di Pengaturan → Video), selain itu cover album."
+                ProjectorSource.COVER -> "Cover album diproyeksikan besar di dinding, bergerak pelan saat lagu berjalan."
+                ProjectorSource.VISUALIZER -> "Batang spektrum suara. Mode audio asli butuh izin mikrofon (Pengaturan → Gambar & efek); tanpa itu cover yang tampil."
+                ProjectorSource.OFF -> "Dinding tetap gelap; hanya cahaya layar TV."
+            },
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 6.dp),
+        )
+    }
+}
+
+fun ProjectorSource.label() = when (this) {
+    ProjectorSource.AUTO -> "Otomatis"
+    ProjectorSource.COVER -> "Cover"
+    ProjectorSource.VISUALIZER -> "Visualizer"
+    ProjectorSource.OFF -> "Mati"
 }
 
 fun TvBody.label() = when (this) {

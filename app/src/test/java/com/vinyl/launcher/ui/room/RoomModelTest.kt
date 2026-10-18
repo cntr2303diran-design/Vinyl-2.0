@@ -28,7 +28,7 @@ class RoomModelTest {
         assertEquals(TvScreenMode.DISPLAY, TvScreen.mode(true, true, AlbumMotion.OFF, true))
     }
 
-    // ---------- Geometri TV (tata letak adegan diuji di SceneLayoutTest)
+    // ---------- Geometri muka depan TV (tata letak panggung diuji di StageLayoutTest)
     @Test
     fun tvPartsDoNotOverlap() {
         assertTrue(!TvGeometry.SCREEN.overlaps(TvGeometry.PANEL))
@@ -38,6 +38,13 @@ class RoomModelTest {
         val knobBottom = TvGeometry.KNOB_CY + TvGeometry.KNOB_R * TvGeometry.ASPECT
         assertTrue("knob di atas VFD", knobBottom < TvGeometry.VFD.top)
         assertTrue(knobTop > TvGeometry.PANEL.top)
+        // Urutan kolom kontrol dari atas: kisi speaker, knob penala, knob SEEK, VFD, lampu & tombol daya
+        val tunerTop = TvGeometry.TUNER_CY - TvGeometry.TUNER_R * TvGeometry.ASPECT
+        val tunerBottom = TvGeometry.TUNER_CY + TvGeometry.TUNER_R * TvGeometry.ASPECT
+        assertTrue("kisi di atas knob penala", TvGeometry.GRILLE.bottom < tunerTop)
+        assertTrue("knob penala di atas knob SEEK", tunerBottom < knobTop)
+        assertTrue("lampu di bawah VFD", TvGeometry.LED_CY > TvGeometry.VFD.bottom && TvGeometry.POWER_CY < TvGeometry.PANEL.bottom)
+        assertTrue(TvGeometry.SCREEN.left > TvGeometry.BEZEL.left && TvGeometry.SCREEN.right < TvGeometry.BEZEL.right)
     }
 
     // ---------- Kontras teks di atas proyeksi

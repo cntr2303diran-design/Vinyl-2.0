@@ -108,7 +108,7 @@ android {
 }
 
 /*
- * Font (Inter, Instrument Serif, JetBrains Mono — semuanya lisensi OFL) diunduh otomatis
+ * Font (Inter, Instrument Serif, JetBrains Mono, VT323 — lisensi OFL; Permanent Marker — Apache 2.0) diunduh otomatis
  * dari repositori google/fonts saat build pertama, lalu disimpan di res/font.
  */
 val fetchFonts by tasks.registering {
@@ -116,10 +116,15 @@ val fetchFonts by tasks.registering {
     outputs.dir(fontDir)
     doLast {
         val base = "https://github.com/google/fonts/raw/main/ofl"
+        val apache = "https://github.com/google/fonts/raw/main/apache"
         val fonts = mapOf(
             "inter.ttf" to "$base/inter/Inter%5Bopsz,wght%5D.ttf",
             "instrument_serif.ttf" to "$base/instrumentserif/InstrumentSerif-Regular.ttf",
             "jetbrains_mono.ttf" to "$base/jetbrainsmono/JetBrainsMono%5Bwght%5D.ttf",
+            // Teks layar kamera VHS (OSD) — OFL
+            "vt323.ttf" to "$base/vt323/VT323-Regular.ttf",
+            // Tulisan spidol di label kaset — Apache 2.0
+            "permanent_marker.ttf" to "$apache/permanentmarker/PermanentMarker-Regular.ttf",
         )
         fontDir.mkdirs()
         fonts.forEach { (name, url) ->

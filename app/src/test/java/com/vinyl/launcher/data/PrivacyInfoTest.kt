@@ -24,9 +24,12 @@ class PrivacyInfoTest {
             .toSet()
     }
 
-    @Test fun `izin jaringan dari library pemutar video dibuang`() {
-        assertTrue(Regex("""<uses-permission[^>]*ACCESS_NETWORK_STATE[^>]*tools:node="remove"""").containsMatchIn(manifest))
-        assertFalse("android.permission.ACCESS_NETWORK_STATE" in manifestPermissions)
+    @Test fun `status jaringan diminta untuk OSD tanpa izin lokasi`() {
+        assertTrue("android.permission.ACCESS_NETWORK_STATE" in manifestPermissions)
+        // Nama Wi-Fi butuh lokasi; OSD tidak memintanya
+        assertFalse("android.permission.ACCESS_FINE_LOCATION" in manifestPermissions)
+        assertFalse("android.permission.ACCESS_COARSE_LOCATION" in manifestPermissions)
+        assertFalse("android.permission.READ_PHONE_STATE" in manifestPermissions)
     }
 
     @Test fun `setiap izin di manifest punya alasan tertulis`() {

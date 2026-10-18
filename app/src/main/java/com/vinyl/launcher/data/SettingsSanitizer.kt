@@ -139,6 +139,11 @@ object SettingsSanitizer {
     private fun retro(r: RetroSettings) = r.copy(
         crtStrength = r.crtStrength.fix(0f, 1f, 0.6f),
         glowIntensity = r.glowIntensity.fix(0f, 1f, 0.7f),
+        projector = r.projector.copy(
+            brightness = r.projector.brightness.fix(0.1f, 1f, 0.6f),
+            size = r.projector.size.fix(0.6f, 1.2f, 1f),
+            focus = r.projector.focus.fix(0f, 1f, 0.75f),
+        ),
     )
 
     private fun binding(b: GestureBinding) = b.copy(packageName = b.packageName?.takeIf { isPackageName(it) })

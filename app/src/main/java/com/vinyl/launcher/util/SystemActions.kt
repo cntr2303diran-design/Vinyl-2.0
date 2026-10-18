@@ -87,6 +87,25 @@ object SystemActions {
         }
     }
 
+    /**
+     * Panel pengaturan cepat (Wi-Fi, Bluetooth, dering…), untuk OSD beranda yang menggantikan status bar. Lewat layanan
+     * aksesibilitas bila aktif; cadangannya panel Internet resmi (Android 10+), yang selalu ada.
+     */
+    fun expandQuickSettings(context: Context) {
+        val svc = VinylAccessibilityService.instance
+        if (svc != null) {
+            svc.performGlobalAction(AccessibilityService.GLOBAL_ACTION_QUICK_SETTINGS)
+            return
+        }
+        startSafe(context, Intent(Settings.Panel.ACTION_INTERNET_CONNECTIVITY))
+    }
+
+    /** Daftar alarm di aplikasi jam bawaan (ketuk jam/tanggal di OSD). */
+    fun openAlarms(context: Context) = startSafe(context, Intent(android.provider.AlarmClock.ACTION_SHOW_ALARMS))
+
+    /** Penggunaan baterai (ketuk ikon baterai di OSD). */
+    fun openBatteryUsage(context: Context) = startSafe(context, Intent(Intent.ACTION_POWER_USAGE_SUMMARY))
+
     fun openAccessibilitySettings(context: Context) = startSafe(context, Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
 
     fun openNotificationAccessSettings(context: Context) =

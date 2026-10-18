@@ -2,25 +2,10 @@ package com.vinyl.launcher.ui.home
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import android.media.AudioManager
-import androidx.compose.ui.platform.LocalContext
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.lifecycle.repeatOnLifecycle
 import com.vinyl.launcher.audio.AudioSnapshot
 import com.vinyl.launcher.audio.Source
 import com.vinyl.launcher.media.NowPlaying
-import com.vinyl.launcher.ui.room.VfdTicker
-import kotlinx.coroutines.delay
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
-import java.util.Locale
-import kotlin.math.roundToInt
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import com.vinyl.launcher.data.BackgroundSettings
@@ -28,6 +13,8 @@ import com.vinyl.launcher.data.BackgroundType
 import com.vinyl.launcher.data.RoomTone
 import com.vinyl.launcher.ui.room.RoomInk
 import com.vinyl.launcher.ui.room.rememberWorstCoverPixel
+import com.vinyl.launcher.ui.room.stage.DeckDisplay
+import com.vinyl.launcher.system.StatusText
 
 /*
  * Penghubung pengaturan latar lama (ALBUM / SOLID / GRADIENT / IMAGE) dengan ruang TV:
@@ -81,56 +68,24 @@ private fun mid(a: Long, b: Long): Long {
 /** Nada ruang efektif untuk partikel/debu (gelap di ruang terang). */
 fun dustColor(tone: RoomTone): Color = if (tone == RoomTone.LIGHT) Color(0xFF6E6254) else Color.White
 
-/** Teks TIME seperti referensi: "10:09 AM" (12 jam) atau "22:09" (24 jam). */
-fun clockText(now: LocalDateTime, use24h: Boolean): String =
-    now.format(DateTimeFormatter.ofPattern(if (use24h) "HH:mm" else "h:mm a", Locale.US))
-
-/** Teks Output: nama keluaran aktif; "≈" bila hanya perkiraan; jujur bila tidak diketahui. */
-fun outputText(s: AudioSnapshot): String = when (s.active.reading.source) {
-    Source.REPORTED, Source.MEASURED -> s.active.reading.display
-    Source.ESTIMATED -> "≈ " + s.active.reading.display
-    Source.UNAVAILABLE -> "Tidak diketahui"
+/** Durasi lagu untuk label kaset, mis. "4:18"; kosong bila tidak diketahui. */
+fun tapeTime(np: NowPlaying): String {
+    if (np.durationMs <= 0L) return ""
+    val s = np.durationMs / 1000L
+    return if (s >= 3600) "%d:%02d:%02d".format(s / 3600, (s % 3600) / 60, s % 60) else "%d:%02d".format(s / 60, s % 60)
 }
 
 /**
- * Tiga baris VFD: status putar, sample rate keluaran BAWAAN sistem (diberi awalan OUT, bukan format lagu), dan nama
- * keluaran. Nilai yang tidak diketahui ditulis "--", tidak ditebak.
+ * Isi VFD deck: mode pita (+ "HI-FI"/"SP") dan keluaran audio — nama perangkat dan sample rate keluaran BAWAAN sistem
+ * (diberi awalan OUT, bukan format lagu). Nilai yang tidak diketahui ditulis "--", tidak ditebak.
  */
-fun vfdLines(np: NowPlaying, s: AudioSnapshot): List<String> = listOf(
-    VfdTicker.playback(np.hasTrack, np.isPlaying),
-    "OUT " + (s.nativeRate.text ?: "--"),
-    (s.active.device?.name ?: "--").uppercase().take(VfdTicker.MAX_CHARS),
-)
-
-/**
- * Volume media perangkat (0..1) dan pengaturnya, lewat API standar AudioManager (tanpa izin). Dibaca ulang tiap detik
- * hanya selama layar aktif, karena tombol volume fisik bisa mengubahnya kapan saja. Null bila sistem menolak.
- */
-@Composable
-fun rememberMediaVolume(): Pair<Float?, (Float) -> Unit> {
-    val context = LocalContext.current
-    val am = remember(context) { context.applicationContext.getSystemService(AudioManager::class.java) }
-    var value by remember { mutableStateOf<Float?>(null) }
-    fun read(): Float? = am?.let {
-        runCatching {
-            val max = it.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
-            if (max > 0) it.getStreamVolume(AudioManager.STREAM_MUSIC).toFloat() / max else null
-        }.getOrNull()
+fun deckDisplay(transport: StatusText.Transport, tapeMode: String?, s: AudioSnapshot): DeckDisplay {
+    val device = when (s.active.reading.source) {
+        Source.REPORTED, Source.MEASURED -> s.active.device?.name ?: s.active.reading.display
+        Source.ESTIMATED -> "≈ " + (s.active.device?.name ?: s.active.reading.display)
+        Source.UNAVAILABLE -> "--"
     }
-    val lifecycle = LocalLifecycleOwner.current.lifecycle
-    LaunchedEffect(am, lifecycle) {
-        lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-            while (true) { value = read(); delay(1000) }
-        }
-    }
-    val set: (Float) -> Unit = { f ->
-        am?.let {
-            runCatching {
-                val max = it.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
-                it.setStreamVolume(AudioManager.STREAM_MUSIC, (f.coerceIn(0f, 1f) * max).roundToInt(), 0)
-            }
-        }
-        value = read()
-    }
-    return value to set
+    val rate = s.nativeRate.text
+    val output = listOfNotNull(device.uppercase(), rate?.let { "OUT $it" }).joinToString(" · ")
+    return DeckDisplay(StatusText.modeLine(transport) + (tapeMode?.let { "  $it" } ?: ""), output)
 }

@@ -38,41 +38,39 @@ data class FracRect(val left: Float, val top: Float, val width: Float, val heigh
 }
 
 /**
- * Geometri bodi TV dalam pecahan kotak TV, diukur dari gambar referensi (TV 547 x 407 px): layar cembung lebar di
- * kiri, panel kontrol di kanan berisi knob penala (atas), knob seek (tengah), panel kayu dengan VFD, dan tombol daya.
- * Dipakai bersama oleh gambar TV (Canvas) dan area sentuh knob agar keduanya selalu sejajar.
+ * Geometri muka depan TV (kabinet 62 × 47 cm) dalam pecahan lebar/tinggi muka: layar cembung lebar di kiri, kolom kontrol
+ * di kanan berisi kisi speaker, knob penala, knob SEEK, VFD kecil, lampu dan tombol daya. Dipakai bersama oleh gambar TV
+ * dan area sentuh knob agar keduanya selalu sejajar.
  */
 object TvGeometry {
-    /** Rasio lebar : tinggi bodi TV (referensi 547 : 407). */
-    const val ASPECT = 547f / 407f
+    /** Rasio lebar : tinggi muka depan. */
+    const val ASPECT = 62f / 47f
     /** Kaca layar. */
-    val SCREEN = FracRect(0.077f, 0.108f, 0.707f, 0.749f)
-    /** Ceruk gelap di sekeliling kaca. */
-    val BEZEL = FracRect(0.058f, 0.083f, 0.745f, 0.80f)
-    /** Panel kontrol di kanan layar. */
-    val PANEL = FracRect(0.828f, 0.049f, 0.144f, 0.79f)
-    /** Strip kayu di atas panel. */
-    val WOOD_TOP = FracRect(0.828f, 0.049f, 0.144f, 0.049f)
-    /** Knob penala (dekoratif, atas). Pusat dalam pecahan lebar (x) / tinggi (y); jari-jari dalam pecahan LEBAR. */
-    const val TUNER_CX = 0.901f
-    const val TUNER_CY = 0.204f
-    const val TUNER_R = 0.051f
-    /** Knob seek (tengah). */
-    const val KNOB_CX = 0.901f
-    const val KNOB_CY = 0.459f
-    const val KNOB_R = 0.053f
-    /** Panel kayu bawah yang menampung VFD. */
-    val WOOD_VFD = FracRect(0.832f, 0.58f, 0.138f, 0.24f)
-    /** VFD kecil (tiga baris). */
-    val VFD = FracRect(0.842f, 0.663f, 0.117f, 0.127f)
-    /** Tombol daya kecil / lampu. */
-    const val LED_CX = 0.940f
-    const val LED_CY = 0.876f
-    /** Alas bodi (pita lebih gelap) dan kaki. */
-    const val BASE_TOP = 0.915f
-    /** Jari-jari sudut bodi dan layar (pecahan lebar TV / lebar layar). */
-    const val BODY_CORNER = 0.055f
-    const val SCREEN_CORNER = 0.16f
+    val SCREEN = FracRect(0.058f, 0.090f, 0.700f, 0.775f)
+    /** Bingkai tebal di sekeliling kaca. */
+    val BEZEL = FracRect(0.030f, 0.052f, 0.756f, 0.851f)
+    /** Kolom kontrol di kanan layar. */
+    val PANEL = FracRect(0.810f, 0.058f, 0.158f, 0.884f)
+    /** Kisi speaker di atas kolom kontrol. */
+    val GRILLE = FracRect(0.832f, 0.096f, 0.114f, 0.250f)
+    /** Knob penala (dekoratif). Pusat dalam pecahan lebar (x) / tinggi (y); jari-jari dalam pecahan LEBAR. */
+    const val TUNER_CX = 0.889f
+    const val TUNER_CY = 0.455f
+    const val TUNER_R = 0.040f
+    /** Knob SEEK (putar untuk menggeser posisi lagu). */
+    const val KNOB_CX = 0.889f
+    const val KNOB_CY = 0.640f
+    const val KNOB_R = 0.046f
+    /** VFD kecil satu baris. */
+    val VFD = FracRect(0.828f, 0.770f, 0.122f, 0.062f)
+    /** Lampu daya & tombol daya. */
+    const val LED_CX = 0.852f
+    const val LED_CY = 0.892f
+    const val POWER_CX = 0.918f
+    const val POWER_CY = 0.892f
+    /** Jari-jari sudut kabinet dan layar (pecahan lebar TV / lebar layar). */
+    const val BODY_CORNER = 0.028f
+    const val SCREEN_CORNER = 0.13f
 }
 
 /** Warna teks di ruang TV dan perlindungan kontrasnya terhadap proyeksi. */

@@ -1,0 +1,187 @@
+package com.vinyl.launcher.ui.room.stage
+
+import kotlin.math.PI
+
+/*
+ * Susunan panggung beranda bergaya rekaman VHS: TV tabung di atas meja kayu rendah, deck kaset di rak meja, kaset
+ * berdiri miring di samping TV, dan proyeksi di dinding belakang. Semua benda punya ukuran dunia tetap (cm); kamera
+ * dibingkai ulang untuk setiap ukuran layar (ponsel tegak, tablet mendatar, lipat) sehingga tidak ada yang terpotong
+ * oleh OSD atas/bawah. TV tidak bisa dipindah; yang diatur pengguna hanya ukurannya (sedikit).
+ */
+object StageLayout {
+
+    // ---------- Dunia (cm)
+    const val STAND_H = 46f
+    const val STAND_HALF_W = 80f
+    const val STAND_FRONT_Z = 40f
+    const val STAND_BACK_Z = 88f
+    const val TV_W = 62f
+    const val TV_H = 47f
+    const val TV_D = 44f
+    const val TV_FRONT_Z = 50f
+    const val WALL_Z = 100f
+    /** Kaset diperbesar 1,9× dari ukuran asli (10 × 6,35 × 1,2 cm) supaya labelnya terbaca. */
+    const val CASSETTE_W = 19f
+    const val CASSETTE_H = 12.06f
+    const val CASSETTE_D = 2.3f
+    private const val CASSETTE_YAW_DEG = 24f
+    private const val CASSETTE_TILT_DEG = 11f
+    /** Jarak tepi kanan TV ke pusat kaset. */
+    private const val CASSETTE_GAP = 14.5f
+
+    /** Mata kamera: sedikit di kiri dan di atas meja, seperti duduk di lantai ruangan. */
+    val EYE = V3(-46f, 120f, -155f)
+
+    // ---------- Layar (dp)
+    /** Pita OSD atas/bawah (jam, baterai, tanggal, penghitung pita) yang tidak boleh ditutup benda. */
+    const val OSD_TOP = 64f
+    const val OSD_BOTTOM_LANDSCAPE = 72f
+    const val OSD_BOTTOM_PORTRAIT = 112f
+    const val SIDE = 14f
+    /** Deck: tinggi minimum (tombol 48dp + bingkai) dan lebar minimum (VFD + empat tombol 48dp). */
+    const val DECK_MIN_H = 64f
+    const val DECK_MIN_W = 300f
+    /** Ruang di atas TV yang disisakan untuk proyeksi dinding pada layar tegak (pecahan tinggi layar). */
+    private const val PORTRAIT_PROJECTION_ROOM = 0.13f
+
+    data class Frame(
+        val width: Float,
+        val height: Float,
+        val landscape: Boolean,
+        val camera: StageCamera,
+        val tv: Solid,
+        val stand: Solid,
+        val cassette: Solid,
+        /** Muka depan TV (sejajar layar) dalam dp. */
+        val tvFront: SRect,
+        val standFront: SRect,
+        /** Lubang rak di muka depan meja dan panel depan deck di dalamnya. */
+        val shelf: SRect,
+        val deck: SRect,
+        /** Batas layar kaset (area sentuh ≥ 48dp). */
+        val cassetteBounds: SRect,
+        /** Gambar proyeksi di dinding belakang. */
+        val projection: SRect,
+        /** Garis temu dinding–lantai (y layar). */
+        val floorLine: Float,
+        val osdTop: Float,
+        val osdBottom: Float,
+    ) {
+        /** Dp per cm di bidang muka depan TV / meja. */
+        val tvScale: Float get() = camera.scaleAt(TV_FRONT_Z)
+        val standScale: Float get() = camera.scaleAt(STAND_FRONT_Z)
+    }
+
+    /**
+     * @param width lebar area dalam dp
+     * @param height tinggi area dalam dp
+     * @param size pengaturan ukuran TV (0,5..1; bawaan 0,85 = ukuran rancangan). Hanya mengecilkan, tidak pernah membuat
+     *   benda keluar layar.
+     */
+    fun compute(width: Float, height: Float, size: Float = 0.85f, topInset: Float = 0f, bottomInset: Float = 0f): Frame {
+        val w = width.coerceAtLeast(120f)
+        val h = height.coerceAtLeast(160f)
+        val landscape = w / h >= 1.05f
+        val k = sizeFactor(size)
+        val top = OSD_TOP + topInset.coerceIn(0f, h * 0.25f)
+        val osdBottom = (if (landscape) OSD_BOTTOM_LANDSCAPE else OSD_BOTTOM_PORTRAIT) + bottomInset.coerceIn(0f, h * 0.25f)
+        val tvX = if (landscape) 0f else -9f
+
+        val tv = Solid.axisAligned(tvX - TV_W / 2f, tvX + TV_W / 2f, STAND_H, STAND_H + TV_H, TV_FRONT_Z, TV_FRONT_Z + TV_D)
+        val stand = Solid.axisAligned(-STAND_HALF_W, STAND_HALF_W, 0f, STAND_H, STAND_FRONT_Z, STAND_BACK_Z)
+        val cassette = Solid(
+            CASSETTE_W, CASSETTE_H, CASSETTE_D,
+            origin = V3(tvX + TV_W / 2f + CASSETTE_GAP, STAND_H, TV_FRONT_Z + 1.5f),
+            yaw = (CASSETTE_YAW_DEG * PI / 180.0).toFloat(),
+            tilt = (CASSETTE_TILT_DEG * PI / 180.0).toFloat(),
+        )
+
+        // Deck: ukuran dunia rancangan; dibesarkan bila di layar lebih kecil dari batas minimum (lihat di bawah)
+        var deckW = if (landscape) 52f else 70f
+        var deckH = if (landscape) 16f else 20f
+
+        var cam = frameCamera(w, h, landscape, k, tv, cassette, deckW, deckH, top, osdBottom)
+        fun fitDeck() {
+            val s = cam.scaleAt(STAND_FRONT_Z)
+            val maxW = (w - 2 * SIDE) / s
+            deckW = deckW.coerceAtLeast(DECK_MIN_W / s).coerceAtMost(maxOf(maxW, 1f))
+            deckH = deckH.coerceAtLeast(DECK_MIN_H / s).coerceAtMost(STAND_H - 10f)
+        }
+        repeat(2) {
+            fitDeck()
+            cam = frameCamera(w, h, landscape, k, tv, cassette, deckW, deckH, top, osdBottom)
+        }
+        // Bingkai akhir sedikit berbeda dari putaran sebelumnya: pastikan deck tetap memenuhi batas minimum di layar
+        fitDeck()
+
+        val deckTop = STAND_H - 8f
+        val deck = cam.rectAt(tvX - deckW / 2f, tvX + deckW / 2f, deckTop - deckH, deckTop, STAND_FRONT_Z)
+        val pad = 1.6f
+        val shelf = cam.rectAt(tvX - deckW / 2f - pad, tvX + deckW / 2f + pad, deckTop - deckH - pad, deckTop + pad, STAND_FRONT_Z)
+        val tvFront = cam.rectAt(tv.origin.x - TV_W / 2f, tv.origin.x + TV_W / 2f, STAND_H, STAND_H + TV_H, TV_FRONT_Z)
+        val standFront = cam.rectAt(-STAND_HALF_W, STAND_HALF_W, 0f, STAND_H, STAND_FRONT_Z)
+        val casPts = cassette.corners().map(cam::project)
+        val casRaw = SRect.around(casPts)
+        // Area sentuh kaset minimal 48 × 48 dp walau kaset tergambar kecil
+        val cassetteBounds = growTo(casRaw, 48f, 48f, leftLimit = tvFront.right, rightLimit = w)
+
+        // Proyeksi besar di dinding: TV berdiri di depannya, gambar terlihat di sekeliling TV (dan di atasnya pada layar tegak)
+        val projH = 84f
+        val projW = projH * 16f / 9f
+        val projBottom = STAND_H + 10f
+        val projection = cam.rectAt(tvX - projW / 2f, tvX + projW / 2f, projBottom, projBottom + projH, WALL_Z)
+        val floorLine = cam.project(V3(0f, 0f, WALL_Z)).y
+
+        return Frame(
+            width = w, height = h, landscape = landscape, camera = cam, tv = tv, stand = stand, cassette = cassette,
+            tvFront = tvFront, standFront = standFront, shelf = shelf, deck = deck, cassetteBounds = cassetteBounds,
+            projection = projection, floorLine = floorLine, osdTop = top, osdBottom = h - osdBottom,
+        )
+    }
+
+    /** Pengaturan ukuran 0,5..1 → pengali 0,7..1 (0,85 dan lebih = ukuran rancangan penuh). */
+    fun sizeFactor(size: Float): Float {
+        val s = if (size.isNaN()) 0.85f else size
+        return (0.7f + 0.3f * (s - 0.5f) / 0.35f).coerceIn(0.7f, 1f)
+    }
+
+    /**
+     * Pilih panjang fokus & titik utama agar TV (dengan atapnya), kaset, dan deck muat di antara pita OSD dan tepi layar,
+     * lalu letakkan kelompok itu di tengah. Proyeksi dinding boleh terpotong tepi atas (ia latar belakang).
+     */
+    private fun frameCamera(
+        w: Float, h: Float, landscape: Boolean, k: Float, tv: Solid, cassette: Solid, deckW: Float, deckH: Float,
+        osdTop: Float, osdBottom: Float,
+    ): StageCamera {
+        val e = EYE
+        val deckTop = STAND_H - 8f
+        val tvX = tv.origin.x
+        val pts = tv.corners() + cassette.corners() + listOf(
+            V3(tvX - deckW / 2f, deckTop - deckH - 2f, STAND_FRONT_Z), V3(tvX + deckW / 2f, deckTop - deckH - 2f, STAND_FRONT_Z),
+        )
+        val us = pts.map { (it.x - e.x) / (it.z - e.z) }
+        val vs = pts.map { -(it.y - e.y) / (it.z - e.z) }
+        val uMin = us.min(); val uMax = us.max(); val vMin = vs.min(); val vMax = vs.max()
+        val top = osdTop + if (landscape) 0f else h * PORTRAIT_PROJECTION_ROOM
+        val availW = w - 2 * SIDE
+        val availH = (h - top - osdBottom - 6f).coerceAtLeast(40f)
+        val f = minOf(availW / (uMax - uMin), availH / (vMax - vMin)) * k
+        val cx = SIDE + (availW - f * (uMax - uMin)) / 2f - f * uMin
+        val cy = top + (availH - f * (vMax - vMin)) / 2f - f * vMin
+        return StageCamera(e, f, cx, cy)
+    }
+
+    /**
+     * Besarkan area sentuh ke ATAS saja (kaset berdiri di atas meja; di bawahnya ada deck) dan ke samping tanpa melewati
+     * tepi kanan TV ([leftLimit]) maupun tepi layar ([rightLimit]).
+     */
+    private fun growTo(r: SRect, minW: Float, minH: Float, leftLimit: Float, rightLimit: Float): SRect {
+        val gw = ((minW - r.width) / 2f).coerceAtLeast(0f)
+        val gh = (minH - r.height).coerceAtLeast(0f)
+        var left = r.left - gw
+        var right = r.right + gw
+        if (left < leftLimit) { right += leftLimit - left; left = leftLimit }
+        if (right > rightLimit) { left -= right - rightLimit; right = rightLimit }
+        return SRect(left, r.top - gh, right, r.bottom)
+    }
+}

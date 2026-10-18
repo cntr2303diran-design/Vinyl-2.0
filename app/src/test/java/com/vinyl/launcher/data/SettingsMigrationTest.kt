@@ -157,4 +157,27 @@ class SettingsMigrationTest {
         val old = json.encodeToString(AppSettings.serializer(), AppSettings(cover = CoverSettings(clock = ClockSettings(type = ClockType.BOLD))))
         assertEquals(ClockType.BOLD, json.decodeFromString(AppSettings.serializer(), old).cover.clock.type)
     }
+
+    @Test
+    fun aRetroDocumentWithoutProjectorOrOsdGetsTheirDefaults() {
+        // Dokumen versi TV Launcher 1.0 sebelum proyektor & OSD: kunci "projector"/"osd" belum ada
+        val obj = json.encodeToJsonElement(AppSettings.serializer(), AppSettings()).jsonObject
+        val retro = obj[SettingsMigration.RETRO_KEY]!!.jsonObject
+        val older = JsonObject(obj + (SettingsMigration.RETRO_KEY to JsonObject(retro - "projector" - "osd"))).toString()
+        val back = SettingsMigration.decode(json, older)
+        assertEquals(ProjectorSettings(), back.retro.projector)
+        assertEquals(OsdSettings(), back.retro.osd)
+        assertTrue(back.retro.osd.hideStatusBar)
+        assertEquals(ProjectorSource.AUTO, back.retro.projector.source)
+    }
+
+    @Test
+    fun sanitizerRepairsProjectorNumbers() {
+        val s = SettingsSanitizer.sanitize(
+            AppSettings(retro = RetroSettings(projector = ProjectorSettings(brightness = 0f, size = Float.NaN, focus = 9f))),
+        )
+        assertEquals(0.1f, s.retro.projector.brightness)
+        assertEquals(1f, s.retro.projector.size)
+        assertEquals(1f, s.retro.projector.focus)
+    }
 }

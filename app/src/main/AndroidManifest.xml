@@ -49,10 +49,10 @@
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
     <!--
-      Dibawa library Media3 (ExoPlayer) untuk memperkirakan jenis jaringan saat streaming. Video di layar TV hanya berkas lokal,
-      dan Media3 menangani ketiadaan izin ini (NetworkTypeObserver: SecurityException → jenis jaringan tidak diketahui), jadi dibuang.
+      OSD beranda (pengganti status bar): status Wi-Fi tersambung & kekuatannya, dan apakah internet lewat data seluler.
+      Izin biasa (tanpa dialog). Nama jaringan TIDAK dibaca (butuh lokasi, tidak diminta). Media3 juga memakainya.
     -->
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" tools:node="remove" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- Mikrofon bukan syarat memasang Vinyl: tanpa ini tablet tanpa mikrofon akan disaring dari instalasi -->
     <uses-feature android:name="android.hardware.microphone" android:required="false" />
 
