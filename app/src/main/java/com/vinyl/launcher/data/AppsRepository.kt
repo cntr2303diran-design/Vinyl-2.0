@@ -1,5 +1,6 @@
 package com.vinyl.launcher.data
 
+import android.annotation.SuppressLint
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -233,6 +234,8 @@ class AppsRepository private constructor(private val context: Context) {
     companion object {
         const val MAX_SHORTCUTS = 4
         private const val FORGET_DELAY_MS = 60_000L
+        // Yang disimpan adalah applicationContext (hidup sepanjang proses), bukan Activity: tidak bocor
+        @SuppressLint("StaticFieldLeak")
         @Volatile private var instance: AppsRepository? = null
         fun get(context: Context): AppsRepository =
             instance ?: synchronized(this) {

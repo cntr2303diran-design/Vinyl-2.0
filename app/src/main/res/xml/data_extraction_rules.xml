@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Vinyl tidak memakai backup cloud maupun transfer perangkat (android:allowBackup="false").
+  Aturan ini menuliskan hal yang sama secara eksplisit untuk Android 12+: tidak ada data aplikasi
+  (pengaturan, riwayat pemakaian, gambar latar) yang keluar dari perangkat lewat jalur sistem.
+  Pencadangan manual tetap ada: Pengaturan → "Cadangan & privasi" menyimpan ke berkas yang Anda pilih sendiri.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="root" />
+        <exclude domain="file" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="external" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="root" />
+        <exclude domain="file" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="external" />
+    </device-transfer>
+</data-extraction-rules>

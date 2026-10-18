@@ -67,9 +67,8 @@ jobs:
           set -o pipefail
           ./gradlew testDebugUnitTest --stacktrace --no-daemon 2>&1 | tee build.log
 
-      # Lint belum memblokir: laporan pertama perlu dibaca dulu. Hapus continue-on-error bila sudah bersih.
+      # Lint memblokir bila ada ERROR (build #3: 0 error). Peringatan tetap dilaporkan di build.log, tidak memblokir.
       - name: Lint
-        continue-on-error: true
         run: |
           set -o pipefail
           ./gradlew lintDebug --stacktrace --no-daemon 2>&1 | tee -a build.log

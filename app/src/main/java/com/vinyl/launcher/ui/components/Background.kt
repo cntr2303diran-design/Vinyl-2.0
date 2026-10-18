@@ -14,8 +14,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import com.vinyl.launcher.data.BackgroundSettings
 import com.vinyl.launcher.data.BackgroundType
 import com.vinyl.launcher.data.VisualSettings
@@ -30,9 +29,9 @@ import kotlinx.coroutines.withContext
 /** Muat gambar dari file internal dengan downsampling sesuai ukuran layar. */
 @Composable
 fun rememberFileImage(path: String?): ImageBitmap? {
-    val config = LocalConfiguration.current
-    val density = LocalDensity.current.density
-    val maxPx = (maxOf(config.screenWidthDp, config.screenHeightDp) * density).toInt().coerceAtLeast(512)
+    // Ukuran jendela sebenarnya dalam piksel (bukan dp yang dibulatkan dari Configuration)
+    val container = LocalWindowInfo.current.containerSize
+    val maxPx = maxOf(container.width, container.height).coerceAtLeast(512)
     val img by produceState<ImageBitmap?>(null, path, maxPx) {
         value = if (path == null) null else withContext(Dispatchers.IO) {
             runCatching {

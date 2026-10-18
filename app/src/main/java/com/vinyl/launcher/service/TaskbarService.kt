@@ -406,7 +406,12 @@ class TaskbarService : Service() {
             context.stopService(Intent(context, TaskbarService::class.java))
         }
 
-        /** Apakah izin "Akses penggunaan" sudah diberikan (untuk daftar aplikasi terakhir). */
+        /**
+         * Apakah izin "Akses penggunaan" sudah diberikan (untuk daftar aplikasi terakhir).
+         * Peringatan deprecation ditekan hanya di fungsi ini: pemeriksaan app-op ini satu-satunya cara memeriksa izin
+         * tersebut tanpa memulai kueri statistik, dan saya tidak menemukan penggantinya di dokumentasi resmi.
+         */
+        @Suppress("DEPRECATION")
         fun hasUsageAccess(context: Context): Boolean {
             val ops = context.getSystemService(AppOpsManager::class.java) ?: return false
             val mode = ops.unsafeCheckOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, Process.myUid(), context.packageName)

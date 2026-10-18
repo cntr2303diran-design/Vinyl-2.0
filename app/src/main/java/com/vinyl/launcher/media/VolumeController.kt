@@ -1,5 +1,6 @@
 package com.vinyl.launcher.media
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.media.AudioManager
 
@@ -44,6 +45,7 @@ internal object VolumeController {
  * volume bisa dipulihkan saat aplikasi hidup lagi (keputusan aman-tidaknya ada di VolumeGuardPlan).
  * Berisi dua angka kecil; tidak ada data pribadi.
  */
+@SuppressLint("ApplySharedPref") // commit() disengaja: catatan harus tertulis SEBELUM volume diubah (lihat save())
 internal class VolumeGuardStore(context: Context) {
     class Guard(val original: Int, val lastSet: Int)
 

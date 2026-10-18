@@ -7,7 +7,7 @@ Dokumen ini menjelaskan apa yang dilindungi Vinyl Launcher, apa yang belum, dan 
 
 - Semua pengaturan, riwayat lagu, dan statistik pemakaian disimpan **hanya di perangkat** (DataStore + folder internal aplikasi).
 - Tidak ada akun, iklan, analitik, atau pelacak. Tidak ada server milik pengembang.
-- Cadangan otomatis Android (`allowBackup`) **dimatikan**. Pindah perangkat: Pengaturan → *Cadangan & privasi* → *Simpan cadangan*.
+- Cadangan otomatis Android (`allowBackup`) **dimatikan**, dan `res/xml/data_extraction_rules.xml` menuliskan hal yang sama untuk Android 12+ (tidak ada data yang keluar lewat backup cloud maupun transfer perangkat). Pindah perangkat: Pengaturan → *Cadangan & privasi* → *Simpan cadangan*.
 - Koneksi internet hanya HTTPS (`usesCleartextTraffic=false`, dan `Http.kt` menolak skema selain https) dan hanya untuk:
 
 | Tujuan | Host | Data yang dikirim |

@@ -1,5 +1,6 @@
 package com.vinyl.launcher.data
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.net.Uri
 import androidx.datastore.core.DataStore
@@ -115,6 +116,8 @@ class SettingsRepository private constructor(private val context: Context) {
         private const val IMAGES_DIR = "backgrounds"
         private const val MAX_IMAGE_BYTES = 30L * 1024 * 1024
 
+        // Yang disimpan adalah applicationContext (hidup sepanjang proses), bukan Activity: tidak bocor
+        @SuppressLint("StaticFieldLeak")
         @Volatile private var instance: SettingsRepository? = null
         fun get(context: Context): SettingsRepository =
             instance ?: synchronized(this) {

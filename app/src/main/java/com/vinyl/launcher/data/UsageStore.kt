@@ -1,5 +1,6 @@
 package com.vinyl.launcher.data
 
+import android.annotation.SuppressLint
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
@@ -66,6 +67,8 @@ class UsageStore private constructor(private val context: Context) {
     }
 
     companion object {
+        // Yang disimpan adalah applicationContext (hidup sepanjang proses), bukan Activity: tidak bocor
+        @SuppressLint("StaticFieldLeak")
         @Volatile private var instance: UsageStore? = null
         fun get(context: Context): UsageStore =
             instance ?: synchronized(this) {

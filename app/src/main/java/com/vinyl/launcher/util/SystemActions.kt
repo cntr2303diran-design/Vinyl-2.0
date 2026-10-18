@@ -3,7 +3,6 @@ package com.vinyl.launcher.util
 import android.accessibilityservice.AccessibilityService
 import android.annotation.SuppressLint
 import android.content.Context
-import android.os.Build
 import com.vinyl.launcher.data.SettingsRepository
 import com.vinyl.launcher.media.MediaRepository
 import kotlinx.coroutines.CoroutineScope
@@ -44,8 +43,7 @@ object SystemActions {
             GestureAction.BACK -> global(context, AccessibilityService.GLOBAL_ACTION_BACK)
             GestureAction.RECENTS -> global(context, AccessibilityService.GLOBAL_ACTION_RECENTS)
             GestureAction.QUICK_SETTINGS -> global(context, AccessibilityService.GLOBAL_ACTION_QUICK_SETTINGS)
-            GestureAction.SCREENSHOT ->
-                if (Build.VERSION.SDK_INT >= 28) global(context, AccessibilityService.GLOBAL_ACTION_TAKE_SCREENSHOT)
+            GestureAction.SCREENSHOT -> global(context, AccessibilityService.GLOBAL_ACTION_TAKE_SCREENSHOT)
             GestureAction.EDIT_HOME -> startEdit()
             GestureAction.TASKBAR_TOGGLE -> scope.launch {
                 SettingsRepository.get(context).update { it.copy(dock = it.dock.copy(enabled = !it.dock.enabled)) }

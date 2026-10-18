@@ -57,14 +57,16 @@ Ikon *Vinyl Launcher* di app drawer membuka halaman **Pengaturan** (semua opsi +
 ./gradlew lintDebug              # laporan di app/build/reports/lint-results-debug.html
 ```
 
-GitHub Actions menjalankan tes → lint → build pada setiap push dan mengunggah laporannya (artifact `VinylLauncher-reports`).
+GitHub Actions menjalankan tes → lint → build pada setiap push dan mengunggah laporannya (artifact `VinylLauncher-reports`). Lint memblokir build bila ada *error*; peringatan (versi pustaka yang lebih baru, saran KTX) dilaporkan di `build.log` tetapi tidak memblokir.
 Hal-hal keamanan, privasi, dan **cara mengganti kunci tanda tangan** ada di [SECURITY.md](SECURITY.md).
 Pengaturan bisa disimpan/dipulihkan dari Pengaturan → *Cadangan & privasi*.
 
 ## Unduh APK tanpa laptop
 
 Setiap perubahan di branch `main` otomatis di-build oleh GitHub Actions. APK terbaru selalu tersedia di:
-`https://github.com/cntr2303diran-design/vinyllauncher/releases/download/latest/VinylLauncher.apk`
+`https://github.com/cntr2303diran-design/Vinyl-2.0/releases/download/latest/VinylLauncher.apk`
+
+> Selama Secrets `VINYL_KEYSTORE_*` belum diisi, tiap build memakai kunci debug yang berbeda, sehingga APK baru tidak bisa menimpa APK sebelumnya (copot dulu). Lihat [SECURITY.md](SECURITY.md) → *Kunci tanda tangan*.
 
 ## Catatan teknis
 

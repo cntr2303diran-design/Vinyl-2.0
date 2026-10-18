@@ -2,7 +2,6 @@ package com.vinyl.launcher.fx
 
 import android.graphics.RenderEffect
 import android.graphics.RuntimeShader
-import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.compose.ui.graphics.ShaderBrush
@@ -65,9 +64,8 @@ class GlassDistortion private constructor(private val shader: RuntimeShader) {
         }
 
     companion object {
-        /** Null bila bukan Android 13+ atau shader ditolak. */
+        /** Null bila shader ditolak perangkat. Pemanggil wajib sudah memastikan Android 13+ (lihat FxCompose / FxPlan.AGSL_MIN_API). */
         fun createOrNull(): GlassDistortion? {
-            if (Build.VERSION.SDK_INT < 33) return null
             return try {
                 val s = RuntimeShader(source())
                 // Memaksa uniform diperiksa sekarang, bukan saat frame pertama
@@ -146,7 +144,6 @@ class ReactiveGlow private constructor(private val shader: RuntimeShader) {
 
     companion object {
         fun createOrNull(): ReactiveGlow? {
-            if (Build.VERSION.SDK_INT < 33) return null
             return try {
                 val s = RuntimeShader(source())
                 s.setFloatUniform("peak", Tokens.A11y.FX_PEAK)
