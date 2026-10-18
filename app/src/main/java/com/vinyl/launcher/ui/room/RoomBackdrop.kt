@@ -159,12 +159,13 @@ private fun Projection(image: ImageBitmap, animate: Boolean, light: Boolean, mod
             .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
             .drawWithContent {
                 drawContent()
+                // Keempat tepi memudar (dua masker linear dikalikan), jadi tidak ada sisi persegi yang tegas
                 drawRect(
-                    Brush.radialGradient(
-                        0f to Color.Black, 0.62f to Color.Black, 1f to Color.Transparent,
-                        center = Offset(size.width / 2f, size.height / 2f),
-                        radius = maxOf(size.width, size.height) * 0.62f,
-                    ),
+                    Brush.horizontalGradient(0f to Color.Transparent, 0.22f to Color.Black, 0.78f to Color.Black, 1f to Color.Transparent),
+                    blendMode = BlendMode.DstIn,
+                )
+                drawRect(
+                    Brush.verticalGradient(0f to Color.Transparent, 0.28f to Color.Black, 0.80f to Color.Black, 1f to Color.Transparent),
                     blendMode = BlendMode.DstIn,
                 )
             }

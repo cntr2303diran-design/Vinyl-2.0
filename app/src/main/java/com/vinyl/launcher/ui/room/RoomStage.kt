@@ -3,6 +3,7 @@ package com.vinyl.launcher.ui.room
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
@@ -16,6 +17,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
@@ -56,6 +59,8 @@ fun RoomStage(
     modifier: Modifier = Modifier,
     knobTurns: Float = 0f,
     knobHighlight: Boolean = false,
+    /** Zoom kamera (1 = normal) dengan titik pusat di knob: knob tetap di tempat, ruang membesar di sekitarnya. */
+    zoom: Float = 1f,
     knob: @Composable (tvLeft: Dp, tvTop: Dp, tvWidth: Dp, tvHeight: Dp) -> Unit = { _, _, _, _ -> },
     cassette: @Composable (width: Dp, height: Dp) -> Unit = { _, _ -> },
 ) {
@@ -84,22 +89,38 @@ fun RoomStage(
         val stage = RoomLayout.stage(aspect, landscape, tvSize, align)
         val tv = stage.tv
         val cas = stage.cassette
+        val knobFx = tv.left + tv.width * TvGeometry.KNOB_CX
+        val knobFy = tv.top + tv.height * TvGeometry.KNOB_CY
 
+        Box(
+            Modifier
+                .fillMaxSize()
+                // Posisi dilaporkan SEBELUM zoom kamera, jadi lantai & proyeksi tidak melompat saat mode knob
+                .onGloballyPositioned { c ->
+                    val p = c.positionInRoot()
+                    val sw = c.size.width.toFloat()
+                    val sh = c.size.height.toFloat()
+                    val tvX = p.x + tv.left * sw
+                    val tvY = p.y + tv.top * sh
+                    val tvW = tv.width * sw
+                    val tvH = tv.height * sh
+                    // Proyeksi: lebih lebar dari TV, menempel di dinding tepat di belakangnya (bagian bawahnya tertutup TV)
+                    val projW = tvW * 1.45f
+                    val projH = projW * 0.58f
+                    val projBottom = tvY + tvH * 0.42f
+                    val projTop = (projBottom - projH).coerceAtLeast(0f)
+                    report(RoomFloor(tvY + tvH, tvX + tvW / 2f - projW / 2f, projTop, projW, projBottom - projTop))
+                }
+                .graphicsLayer {
+                    scaleX = zoom
+                    scaleY = zoom
+                    transformOrigin = TransformOrigin(knobFx, knobFy)
+                },
+        ) {
         Box(
             Modifier
                 .offset(wDp * tv.left, hDp * tv.top)
                 .size(wDp * tv.width, hDp * tv.height)
-                .onGloballyPositioned { c ->
-                    val p = c.positionInRoot()
-                    val tvW = c.size.width.toFloat()
-                    val tvH = c.size.height.toFloat()
-                    // Proyeksi: lebih lebar dari TV, menempel di dinding tepat di belakangnya (bagian bawahnya tertutup TV)
-                    val projW = tvW * 1.45f
-                    val projH = projW * 0.58f
-                    val projBottom = p.y + tvH * 0.42f
-                    val projTop = (projBottom - projH).coerceAtLeast(0f)
-                    report(RoomFloor(p.y + tvH, p.x + tvW / 2f - projW / 2f, projTop, projW, projBottom - projTop))
-                }
                 .semantics(mergeDescendants = true) {
                     contentDescription = when (mode) {
                         TvScreenMode.STANDBY -> "TV, siaga. Tidak ada lagu"
@@ -129,10 +150,11 @@ fun RoomStage(
                 knobHighlight = knobHighlight,
             )
         }
-        knob(wDp * tv.left, hDp * tv.top, wDp * tv.width, hDp * tv.height)
         Box(Modifier.offset(wDp * cas.left, hDp * cas.top).size(wDp * cas.width, hDp * cas.height)) {
             cassette(wDp * cas.width, hDp * cas.height)
         }
+        }
+        knob(wDp * tv.left, hDp * tv.top, wDp * tv.width, hDp * tv.height)
     }
 }
 

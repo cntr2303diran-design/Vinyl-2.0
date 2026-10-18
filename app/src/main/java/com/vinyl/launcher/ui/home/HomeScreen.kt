@@ -142,6 +142,12 @@ import com.vinyl.launcher.ui.room.RoomFloor
 import com.vinyl.launcher.ui.room.RoomStage
 import com.vinyl.launcher.ui.room.VfdTicker
 import com.vinyl.launcher.ui.room.RoomInk
+import com.vinyl.launcher.ui.room.KNOB_ZOOM
+import com.vinyl.launcher.ui.room.KnobLayer
+import com.vinyl.launcher.ui.room.KnobState
+import com.vinyl.launcher.ui.cassette.Cassette
+import com.vinyl.launcher.ui.cassette.CassetteLabel
+import com.vinyl.launcher.ui.cassette.KnobSeek
 
 /** Warna netral saat tidak ada musik. */
 private val NeutralBg = Color(0xFF1B1B1F)
@@ -492,6 +498,25 @@ private fun HomeContent(
                 VfdTicker.line("state", VfdTicker.playback(np.hasTrack, np.isPlaying)),
             )
         }
+        // Knob TV (seek) dan kaset (kontrol putar)
+        val knobState = remember { KnobState() }
+        LaunchedEffect(editing, np.hasTrack) { if (editing || !np.hasTrack) knobState.exit() }
+        val zoom by animateFloatAsState(
+            if (knobState.active) KNOB_ZOOM else 1f,
+            tween(
+                if (!motionAllowed) 0 else if (knobState.active) Tokens.Motion.KNOB_ZOOM_IN_MS else Tokens.Motion.KNOB_ZOOM_OUT_MS,
+                easing = Ease.standard,
+            ),
+            label = "knobZoom",
+        )
+        var clockTick by remember { mutableIntStateOf(0) }
+        LaunchedEffect(np) {
+            while (np.isPlaying) { delay(500); clockTick++ }
+        }
+        val posMs = remember(np, clockTick) { np.positionAt() }
+        val cassetteLabel = remember(np.hasTrack, np.title, np.artist, np.art) {
+            CassetteLabel(if (np.hasTrack) "${np.title}\u0000${np.artist}" else null, np.title, np.artist, np.art)
+        }
         Column(
             Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -507,6 +532,32 @@ private fun HomeContent(
                 vfdLines = vfdLines,
                 onScreenTap = { if (editing) Unit else if (np.hasTrack) vm.togglePlay() else vm.openMusic() },
                 onFloor = onFloor,
+                zoom = zoom,
+                knobTurns = knobState.turns,
+                knobHighlight = knobState.active,
+                knob = { l, t, w, h ->
+                    KnobLayer(
+                        knobState, np, l, t, w, h, zoom = zoom, enabled = !editing,
+                        onSeek = vm::seek, onTick = vm::tick,
+                    )
+                },
+                cassette = { _, _ ->
+                    Cassette(
+                        label = cassetteLabel,
+                        hasSession = np.hasSession,
+                        playing = np.isPlaying,
+                        progress = if (np.durationMs > 0) posMs.toFloat() / np.durationMs else 0f,
+                        timeText = if (np.durationMs > 0) KnobSeek.bubble(posMs, np.durationMs) else KnobSeek.clock(posMs),
+                        shell = retro.cassetteShell,
+                        speed = retro.reelSpeed,
+                        accent = accent,
+                        motionAllowed = motionAllowed && !editing,
+                        onPrevious = { if (!editing) vm.previous() },
+                        onPlayPause = { if (!editing) { if (np.hasTrack) vm.togglePlay() else vm.openMusic() } },
+                        onNext = { if (!editing) vm.next() },
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)

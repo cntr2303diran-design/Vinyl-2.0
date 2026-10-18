@@ -30,6 +30,12 @@ import com.vinyl.launcher.data.TurntablePosition
 import com.vinyl.launcher.data.TvBody
 import com.vinyl.launcher.data.VfdColor
 import com.vinyl.launcher.media.NowPlaying
+import com.vinyl.launcher.ui.cassette.Cassette
+import com.vinyl.launcher.ui.cassette.CassetteLabel
+import com.vinyl.launcher.ui.cassette.KnobSeek
+import com.vinyl.launcher.ui.room.KNOB_ZOOM
+import com.vinyl.launcher.ui.room.KnobLayer
+import com.vinyl.launcher.ui.room.KnobState
 import com.vinyl.launcher.ui.room.RoomBackdrop
 import com.vinyl.launcher.ui.room.RoomFloor
 import com.vinyl.launcher.ui.room.RoomStage
@@ -57,8 +63,10 @@ internal fun playing(art: ImageBitmap?) = NowPlaying(
 )
 
 @Composable
-internal fun RoomPreview(np: NowPlaying, retro: RetroSettings, landscape: Boolean) {
+internal fun RoomPreview(np: NowPlaying, retro: RetroSettings, landscape: Boolean, knob: KnobState? = null) {
     var floor by remember { mutableStateOf(RoomFloor.UNKNOWN) }
+    val k = knob ?: remember { KnobState() }
+    val zoom = if (k.active) KNOB_ZOOM else 1f
     Box(Modifier.fillMaxSize()) {
         RoomBackdrop(
             tone = retro.room, floor = floor,
@@ -70,6 +78,19 @@ internal fun RoomPreview(np: NowPlaying, retro: RetroSettings, landscape: Boolea
             accent = Color(0xFFE07A3F), motionAllowed = false,
             vfdLines = listOf(VfdTicker.line("clock", "21:47")),
             onScreenTap = {}, onFloor = { floor = it },
+            zoom = zoom, knobTurns = k.turns, knobHighlight = k.active,
+            knob = { l, t, w, h -> KnobLayer(k, np, l, t, w, h, zoom, enabled = true, onSeek = {}, onTick = {}) },
+            cassette = { _, _ ->
+                Cassette(
+                    label = CassetteLabel(if (np.hasTrack) np.title else null, np.title, np.artist, np.art),
+                    hasSession = np.hasSession, playing = np.isPlaying,
+                    progress = if (np.durationMs > 0) np.positionMs.toFloat() / np.durationMs else 0f,
+                    timeText = if (np.durationMs > 0) KnobSeek.bubble(np.positionMs, np.durationMs) else "00:00",
+                    shell = retro.cassetteShell, speed = retro.reelSpeed, accent = Color(0xFFE07A3F),
+                    motionAllowed = false, onPrevious = {}, onPlayPause = {}, onNext = {},
+                    modifier = Modifier.fillMaxSize(),
+                )
+            },
             modifier = Modifier.fillMaxSize().padding(16.dp),
         )
     }
@@ -87,21 +108,21 @@ class RoomShots {
     @Config(qualifiers = "w411dp-h891dp-xxhdpi")
     fun phoneStandby() {
         compose.setContent { RoomPreview(NowPlaying(), RetroSettings(), landscape = false) }
-        shot("tahap3_ponsel_standby")
+        shot("tahap4_ponsel_standby")
     }
 
     @Test
     @Config(qualifiers = "w411dp-h891dp-xxhdpi")
     fun phoneCover() {
         compose.setContent { RoomPreview(playing(fakeCover()), RetroSettings(), landscape = false) }
-        shot("tahap3_ponsel_cover")
+        shot("tahap4_ponsel_cover")
     }
 
     @Test
     @Config(qualifiers = "w1280dp-h800dp-land-mdpi")
     fun tabletCover() {
         compose.setContent { RoomPreview(playing(fakeCover()), RetroSettings(tvBody = TvBody.WALNUT, knobStyle = KnobStyle.BRASS, vfdColor = VfdColor.GREEN), landscape = true) }
-        shot("tahap3_tablet_cover_walnut")
+        shot("tahap4_tablet_cover_walnut")
     }
 
     @Test
@@ -114,13 +135,21 @@ class RoomShots {
                 landscape = true,
             )
         }
-        shot("tahap3_tablet_spaceage_redup")
+        shot("tahap4_tablet_spaceage_redup")
+    }
+
+    @Test
+    @Config(qualifiers = "w411dp-h891dp-xxhdpi")
+    fun phoneKnobMode() {
+        val k = KnobState().apply { active = true; turns = 0.15f; previewMs = 171_500L }
+        compose.setContent { RoomPreview(playing(fakeCover()), RetroSettings(cassetteShell = CassetteShell.PICTURE), landscape = false, knob = k) }
+        shot("tahap4_ponsel_mode_knob")
     }
 
     @Test
     @Config(qualifiers = "w411dp-h891dp-xxhdpi")
     fun phoneCharcoalNoCover() {
         compose.setContent { RoomPreview(playing(null), RetroSettings(tvBody = TvBody.CHARCOAL), landscape = false) }
-        shot("tahap3_ponsel_charcoal_tanpa_cover")
+        shot("tahap4_ponsel_charcoal_tanpa_cover")
     }
 }
