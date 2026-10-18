@@ -4,9 +4,9 @@
 #  - Laporan tes & lint: artifact "VinylLauncher-reports"
 #  - Gagal? log lengkap disimpan di branch "build-log" (berkas build.log)
 #
-# Kunci tanda tangan: isi 4 GitHub Secrets (Settings → Secrets and variables → Actions) agar APK
-# ditandatangani dengan kunci rahasia. Tanpa itu, build memakai kunci lama di repo yang bersifat publik
-# (ada peringatan di ringkasan run). Langkah lengkap: SECURITY.md.
+# Kunci tanda tangan: isi GitHub Secrets (Settings → Secrets and variables → Actions) agar setiap APK
+# ditandatangani kunci rahasia yang sama. Tanpa itu, APK debug memakai kunci debug acak per build (tidak bisa
+# saling menimpa saat dipasang). Sidik jari sertifikat APK dicetak di log & ringkasan run. Langkah lengkap: SECURITY.md.
 #   VINYL_KEYSTORE_BASE64   isi berkas keystore dalam base64
 #   VINYL_KEYSTORE_PASSWORD password keystore
 #   VINYL_KEY_ALIAS         (opsional) alias kunci, default "vinyl"
