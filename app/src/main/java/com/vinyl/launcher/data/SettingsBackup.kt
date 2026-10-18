@@ -59,7 +59,7 @@ object SettingsBackup {
      * @param isAllowedImage apakah path gambar boleh dipakai (lihat [SettingsSanitizer.sanitize])
      */
     fun parse(text: String, current: AppSettings, isAllowedImage: (String) -> Boolean = { false }): ImportResult {
-        if (text.length > MAX_BYTES) return ImportResult.Error("Berkas terlalu besar untuk sebuah cadangan Vinyl.")
+        if (text.length > MAX_BYTES) return ImportResult.Error("Berkas terlalu besar untuk sebuah cadangan TV Launcher.")
         val (env, incoming) = try {
             val root = json.parseToJsonElement(text).jsonObject
             val env = json.decodeFromJsonElement(Envelope.serializer(), root)
@@ -68,9 +68,9 @@ object SettingsBackup {
             env to (root["settings"] as? JsonObject)?.let { SettingsMigration.migrate(json, it) }
         } catch (e: IllegalArgumentException) {
             // SerializationException turunan IllegalArgumentException; pesan teknisnya sengaja tidak ditampilkan
-            return ImportResult.Error("Berkas rusak atau bukan cadangan Vinyl Launcher.")
+            return ImportResult.Error("Berkas rusak atau bukan cadangan TV Launcher.")
         }
-        if (env.format != FORMAT || incoming == null) return ImportResult.Error("Berkas ini bukan cadangan Vinyl Launcher.")
+        if (env.format != FORMAT || incoming == null) return ImportResult.Error("Berkas ini bukan cadangan TV Launcher.")
         if (env.version < 1) return ImportResult.Error("Versi cadangan tidak dikenali.")
         if (env.version > VERSION) return ImportResult.Error("Cadangan dibuat oleh versi aplikasi yang lebih baru. Perbarui aplikasi dulu.")
 

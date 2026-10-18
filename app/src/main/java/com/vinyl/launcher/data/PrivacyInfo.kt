@@ -61,7 +61,7 @@ object PrivacyInfo {
         Item(
             "android.permission.RECORD_AUDIO", "Mikrofon (visualizer)",
             "Hanya dipakai bila Anda memilih Gambar & efek → Visualizer → Audio asli. Android mewajibkan izin ini untuk membaca spektrum " +
-                "frekuensi keluaran audio perangkat. Vinyl tidak merekam suara, tidak menyimpan apa pun, dan tidak mengirim apa pun; " +
+                "frekuensi keluaran audio perangkat. TV Launcher tidak merekam suara, tidak menyimpan apa pun, dan tidak mengirim apa pun; " +
                 "izin tidak diminta sebelum Anda memilih mode itu, dan tanpa izin visualizer tidak jalan (tidak diganti tiruan).",
             optional = true,
         ),

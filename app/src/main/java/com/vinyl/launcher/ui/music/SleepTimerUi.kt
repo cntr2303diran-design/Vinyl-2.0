@@ -163,7 +163,7 @@ private fun SleepTimerDialog(
                     )
                 }
                 Text(
-                    "Timer berjalan selama Vinyl hidup di latar belakang. Bila sistem menutup Vinyl, timer ikut berhenti (volume tetap aman).",
+                    "Timer berjalan selama TV Launcher hidup di latar belakang. Bila sistem menutup TV Launcher, timer ikut berhenti (volume tetap aman).",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

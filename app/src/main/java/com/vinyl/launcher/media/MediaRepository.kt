@@ -395,7 +395,7 @@ object MediaRepository {
 
     // ===================== Kontrol =====================
 
-    fun togglePlayPause(source: String = "Vinyl") {
+    fun togglePlayPause(source: String = "TV Launcher") {
         val c = active ?: return
         log("$source → ${if (c.playbackState?.state == PlaybackState.STATE_PLAYING) "JEDA" else "PUTAR"} dikirim ke ${appName(c.packageName)}")
         if (c.playbackState?.state == PlaybackState.STATE_PLAYING) c.transportControls.pause()
@@ -414,7 +414,7 @@ object MediaRepository {
      * Jeda secara eksplisit (berbeda dari [togglePlayPause]: tidak pernah memutar). Dipakai sleep timer.
      * Tidak melakukan apa pun bila tidak ada sesi atau sesi sudah berhenti.
      */
-    fun pause(source: String = "Vinyl") {
+    fun pause(source: String = "TV Launcher") {
         val c = active ?: return
         if (c.playbackState?.state != PlaybackState.STATE_PLAYING && !_state.value.isPlaying) return
         log("$source → JEDA dikirim ke ${appName(c.packageName)}")
@@ -422,8 +422,8 @@ object MediaRepository {
         _state.update { it.copy(isPlaying = false, positionMs = it.positionAt(), positionUpdateTime = SystemClock.elapsedRealtime()) }
     }
 
-    fun next() { log("Vinyl → lagu berikutnya"); skip { it.skipToNext() } }
-    fun previous() { log("Vinyl → lagu sebelumnya"); skip { it.skipToPrevious() } }
+    fun next() { log("TV Launcher → lagu berikutnya"); skip { it.skipToNext() } }
+    fun previous() { log("TV Launcher → lagu sebelumnya"); skip { it.skipToPrevious() } }
 
     /** Kirim perintah ganti lagu, dengan volume memudar di sekelilingnya bila pergantian lembut menyala. */
     private fun skip(command: (MediaController.TransportControls) -> Unit) {
@@ -433,7 +433,7 @@ object MediaRepository {
 
     fun seekTo(ms: Long) {
         val c = active ?: return
-        log("Vinyl → lompat ke ${ms / 1000} dtk")
+        log("TV Launcher → lompat ke ${ms / 1000} dtk")
         val target = if (_state.value.durationMs > 0) ms.coerceIn(0, _state.value.durationMs) else ms.coerceAtLeast(0)
         c.transportControls.seekTo(target)
         _state.update { it.copy(positionMs = target, positionUpdateTime = SystemClock.elapsedRealtime()) }

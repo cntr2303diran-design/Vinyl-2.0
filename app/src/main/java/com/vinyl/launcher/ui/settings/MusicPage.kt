@@ -27,7 +27,7 @@ fun MusicPlaybackControls(m: MusicSettings, onChange: (MusicSettings) -> Unit) {
     Column {
         SwitchRow(
             "Fade kaset (pergantian lembut)", m.softSkip, { onChange(m.copy(softSkip = it)) },
-            subtitle = "Volume media turun sebentar lalu naik lagi saat Anda menekan lagu berikutnya atau sebelumnya. Ini bukan crossfade: Vinyl tidak memutar audio, jadi tidak bisa menumpuk dua lagu. Volume selalu dikembalikan, dan bila Anda menekan tombol volume, Vinyl berhenti menyentuhnya.",
+            subtitle = "Volume media turun sebentar lalu naik lagi saat Anda menekan lagu berikutnya atau sebelumnya. Ini bukan crossfade: TV Launcher tidak memutar audio, jadi tidak bisa menumpuk dua lagu. Volume selalu dikembalikan, dan bila Anda menekan tombol volume, TV Launcher berhenti menyentuhnya.",
         )
         // Pilihan sekarang ikut ditampilkan walau bukan salah satu preset (mis. dari berkas cadangan)
         val options = (SleepTimerPlan.PRESET_MINUTES + m.sleepMinutes).distinct().sorted()

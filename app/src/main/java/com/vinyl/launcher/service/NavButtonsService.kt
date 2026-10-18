@@ -170,7 +170,7 @@ class NavButtonsService : Service() {
     private fun startAsForeground() {
         val nm = getSystemService(NotificationManager::class.java)
         nm.createNotificationChannel(
-            NotificationChannel(CHANNEL, "Tombol navigasi Vinyl", NotificationManager.IMPORTANCE_MIN).apply { setShowBadge(false) }
+            NotificationChannel(CHANNEL, "Tombol navigasi TV", NotificationManager.IMPORTANCE_MIN).apply { setShowBadge(false) }
         )
         val pi = PendingIntent.getActivity(
             this, 2, Intent(this, SettingsActivity::class.java),
@@ -178,7 +178,7 @@ class NavButtonsService : Service() {
         )
         val notif = NotificationCompat.Builder(this, CHANNEL)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setContentTitle("Tombol navigasi Vinyl aktif")
+            .setContentTitle("Tombol navigasi TV aktif")
             .setContentIntent(pi)
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_MIN)

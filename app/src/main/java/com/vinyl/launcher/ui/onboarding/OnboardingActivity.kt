@@ -78,7 +78,7 @@ import android.content.pm.PackageManager
 /**
  * Onboarding: launcher default, akses notifikasi, kalender (opsional), layar kunci vinyl.
  * Jika onboarding sudah selesai, activity ini langsung meneruskan ke Pengaturan
- * (karena ia juga menjadi ikon "Vinyl Launcher" di daftar aplikasi).
+ * (karena ia juga menjadi ikon "TV Launcher" di daftar aplikasi).
  */
 class OnboardingActivity : ComponentActivity() {
 
@@ -177,7 +177,7 @@ fun PermissionSteps(coverEnabled: Boolean, onCoverEnabled: (Boolean) -> Unit) {
     val a11y = remember(refresh) { SystemActions.isAccessibilityEnabled() }
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        PermissionStep(1, "Jadikan launcher default", "Vinyl Launcher tampil saat tombol Home ditekan.", isHome, "Atur") {
+        PermissionStep(1, "Jadikan launcher default", "TV Launcher tampil saat tombol Home ditekan.", isHome, "Atur") {
             val rm = context.getSystemService(RoleManager::class.java)
             if (rm != null && rm.isRoleAvailable(RoleManager.ROLE_HOME)) roleLauncher.launch(rm.createRequestRoleIntent(RoleManager.ROLE_HOME))
             else SystemActions.openHomeSettings(context)
@@ -229,7 +229,7 @@ private fun OnboardingScreen(onFinish: () -> Unit) {
                 modifier = Modifier.size(240.dp, 240.dp / TvGeometry.ASPECT).clearAndSetSemantics { },
             )
             Spacer(Modifier.height(20.dp))
-            Text("Selamat datang di Vinyl Launcher", fontSize = 28.sp, fontWeight = FontWeight.Light)
+            Text("Selamat datang di TV Launcher", fontSize = 28.sp, fontWeight = FontWeight.Light)
             Text(
                 "Beberapa langkah singkat agar TV dan kaset Anda siap diputar.",
                 color = MaterialTheme.colorScheme.onSurfaceVariant,

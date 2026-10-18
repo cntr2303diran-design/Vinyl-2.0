@@ -139,7 +139,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: VinylLauncher-apk
+          name: TVLauncher-apk
           path: app/build/outputs/apk/debug/*.apk
 
       # APK juga dipasang di halaman Releases supaya bisa diunduh langsung dari tablet tanpa login
@@ -148,6 +148,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cp app/build/outputs/apk/debug/app-debug.apk VinylLauncher.apk
+          # TVLauncher.apk = nama baru; VinylLauncher.apk (berkas yang sama) agar tautan lama tetap berfungsi
+          cp app/build/outputs/apk/debug/app-debug.apk TVLauncher.apk
+          cp TVLauncher.apk VinylLauncher.apk
           gh release delete latest --yes --cleanup-tag || true
-          gh release create latest VinylLauncher.apk --title "Vinyl Launcher (build terbaru)" --notes "APK debug otomatis dari commit ${GITHUB_SHA::7}."
+          gh release create latest TVLauncher.apk VinylLauncher.apk --title "TV Launcher (build terbaru)" --notes "APK debug otomatis dari commit ${GITHUB_SHA::7}."

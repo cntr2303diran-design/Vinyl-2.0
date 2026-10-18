@@ -189,7 +189,7 @@ fun VisualizerControls(v: VisualSettings, onChange: (VisualSettings) -> Unit) {
         }
         Note(
             "Audio asli membaca spektrum frekuensi keluaran audio perangkat lewat Visualizer Android. Android mewajibkan izin " +
-                "mikrofon untuk ini, tetapi Vinyl tidak merekam suara, tidak menyimpan apa pun, dan tidak mengirim apa pun ke internet. " +
+                "mikrofon untuk ini, tetapi TV Launcher tidak merekam suara, tidak menyimpan apa pun, dan tidak mengirim apa pun ke internet. " +
                 "Izin tidak pernah diminta kecuali Anda memilih mode ini.",
         )
     }

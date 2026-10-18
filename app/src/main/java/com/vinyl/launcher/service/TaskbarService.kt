@@ -358,7 +358,7 @@ class TaskbarService : Service() {
     private fun startAsForeground() {
         val nm = getSystemService(NotificationManager::class.java)
         nm.createNotificationChannel(
-            NotificationChannel(CHANNEL, "Taskbar Vinyl", NotificationManager.IMPORTANCE_MIN).apply { setShowBadge(false) }
+            NotificationChannel(CHANNEL, "Taskbar TV", NotificationManager.IMPORTANCE_MIN).apply { setShowBadge(false) }
         )
         val pi = PendingIntent.getActivity(
             this, 1, Intent(this, SettingsActivity::class.java),
@@ -366,7 +366,7 @@ class TaskbarService : Service() {
         )
         val notif = NotificationCompat.Builder(this, CHANNEL)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setContentTitle("Taskbar Vinyl aktif")
+            .setContentTitle("Taskbar TV aktif")
             .setContentIntent(pi)
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_MIN)

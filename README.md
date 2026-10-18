@@ -1,4 +1,6 @@
-# Vinyl Launcher
+# TV Launcher 1.0
+
+*(sebelumnya Vinyl Launcher; package id tetap `com.vinyl.launcher` agar pembaruan bisa menimpa versi lama)*
 
 Launcher Android untuk tablet dengan tema **TV tabung analog** (sebelumnya "tablet sebagai turntable") — Kotlin + Jetpack Compose, minSdk 29, targetSdk 36. Dioptimalkan untuk landscape; portrait tetap didukung dengan tata letak yang menyesuaikan. Bahasa desain & token: [DESIGN.md](DESIGN.md).
 
@@ -43,13 +45,13 @@ Build lewat terminal:
 
 Aplikasi pertama kali membuka **onboarding**:
 
-1. **Jadikan launcher default** — pilih Vinyl Launcher sebagai aplikasi Home.
+1. **Jadikan launcher default** — pilih TV Launcher sebagai aplikasi Home.
 2. **Akses notifikasi** — wajib agar launcher bisa membaca & mengontrol lagu (isi notifikasi tidak dibaca atau disimpan).
 3. **Kalender** *(opsional)* — untuk titik acara di kalender layar kunci.
 4. **Layar kunci TV** *(opsional)* — izinkan "Tampilkan di atas aplikasi lain" & notifikasi, lalu aktifkan.
 5. **Aksi gestur** *(opsional)* — layanan aksesibilitas untuk gestur "kunci layar" dan "buka notifikasi".
 
-Ikon *Vinyl Launcher* di app drawer membuka halaman **Pengaturan** (semua opsi + reset ke default).
+Ikon *TV Launcher* di app drawer membuka halaman **Pengaturan** (semua opsi + reset ke default).
 
 ## Tes, lint, dan keamanan
 
@@ -65,7 +67,8 @@ Pengaturan bisa disimpan/dipulihkan dari Pengaturan → *Cadangan & privasi*.
 ## Unduh APK tanpa laptop
 
 Setiap perubahan di branch `main` otomatis di-build oleh GitHub Actions. APK terbaru selalu tersedia di:
-`https://github.com/cntr2303diran-design/Vinyl-2.0/releases/download/latest/VinylLauncher.apk`
+`https://github.com/cntr2303diran-design/Vinyl-2.0/releases/download/latest/TVLauncher.apk`
+(tautan lama `.../latest/VinylLauncher.apk` tetap berisi APK yang sama)
 
 > Selama Secrets `VINYL_KEYSTORE_*` belum diisi, tiap build memakai kunci debug yang berbeda, sehingga APK baru tidak bisa menimpa APK sebelumnya (copot dulu). Lihat [SECURITY.md](SECURITY.md) → *Kunci tanda tangan*.
 
@@ -83,19 +86,19 @@ Setiap perubahan di branch `main` otomatis di-build oleh GitHub Actions. APK ter
 
 ## Keterbatasan yang perlu diketahui
 
-- One UI menonaktifkan taskbar Samsung saat launcher pihak ketiga aktif — gunakan **Taskbar Vinyl** (Pengaturan → Taskbar).
-- Tombol navigasi Vinyl memakai layanan aksesibilitas untuk Kembali & Terbaru. Agar tombol bawaan hilang, ubah navigasi sistem ke *Gestur geser*.
+- One UI menonaktifkan taskbar Samsung saat launcher pihak ketiga aktif — gunakan **Taskbar TV** (Pengaturan → Taskbar).
+- Tombol navigasi TV memakai layanan aksesibilitas untuk Kembali & Terbaru. Agar tombol bawaan hilang, ubah navigasi sistem ke *Gestur geser*.
 - "Buka sebagai jendela" hanya berfungsi bila sistem mengizinkan jendela bentuk bebas (Opsi pengembang).
-- Pintasan aplikasi (menu tekan-lama) hanya tersedia bila Vinyl Launcher adalah launcher **default**; sistem menolaknya untuk launcher biasa.
+- Pintasan aplikasi (menu tekan-lama) hanya tersedia bila TV Launcher adalah launcher **default**; sistem menolaknya untuk launcher biasa.
 - Lencana notifikasi dihitung per nama paket, jadi aplikasi yang sama di profil kerja dan pribadi berbagi hitungan.
 - Seek (knob, garis progres, mundur 10 dtk) hanya aktif bila aplikasi musik mendukung `ACTION_SEEK_TO`.
 - **Equalizer** hanya bekerja pada sesi audio yang dibuka aplikasi musik (atau yang terdeteksi lewat Akses lanjutan); mode "semua audio" (sesi 0) eksperimental. Bisa bentrok dengan efek pabrikan (Dolby/Samsung) atau aplikasi EQ lain — statusnya ditampilkan apa adanya.
 - **Codec, format keluaran, dan resampling** hanya terbaca dengan Akses lanjutan; format laporan sistem OEM bisa berbeda dari AOSP (yang tidak cocok tampil *Tidak tersedia*). **Baterai earphone Bluetooth** tidak ditampilkan karena laporan sistem AOSP tidak memuatnya.
 - **Video YouTube tidak didukung**: kebijakan YouTube API melarang memisahkan audio dan video kontennya.
 - **Audio Console, EQ, Akses lanjutan, video, layar kunci TV, dan bunyi kaset belum diuji di perangkat nyata** (hanya tes unit & tangkapan layar otomatis).
-- **Antrean** hanya tampil bila aplikasi musik membagikannya ke sesi media; Vinyl tidak bisa mengubah atau mengacak antrean itu.
-- **Tidak ada crossfade sungguhan**: Vinyl tidak memutar audio, jadi tidak bisa menumpuk dua lagu. *Pergantian lembut* hanya mengatur volume media.
-- **Timer tidur** hidup di proses Vinyl. Bila sistem menutup prosesnya, timer berhenti (volume tetap dipulihkan saat Vinyl hidup lagi).
+- **Antrean** hanya tampil bila aplikasi musik membagikannya ke sesi media; TV Launcher tidak bisa mengubah atau mengacak antrean itu.
+- **Tidak ada crossfade sungguhan**: TV Launcher tidak memutar audio, jadi tidak bisa menumpuk dua lagu. *Pergantian lembut* hanya mengatur volume media.
+- **Timer tidur** hidup di proses TV Launcher. Bila sistem menutup prosesnya, timer berhenti (volume tetap dipulihkan saat TV Launcher hidup lagi).
 - Pengaburan baris lirik jauh memakai `Modifier.blur`, yang hanya berefek di Android 12+ (di bawahnya baris tetap tajam).
 - Lirik tersinkron mengikuti versi lagu di LRCLIB; versi dengan durasi berbeda dari lagu yang diputar (selisih > 8 dtk) dibuang agar tidak meleset.
 - **Efek visual belum diuji di perangkat nyata**: shader AGSL (butuh Android 13+; di bawahnya distorsi tidak tampil, cahaya memakai cadangan Canvas), arah parallax, dan Visualizer pada sesi audio 0 bisa berbeda antarpabrikan. Bila Audio asli ditolak sistem, hasilnya ditulis apa adanya, bukan diganti animasi.

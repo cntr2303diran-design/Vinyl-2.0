@@ -48,7 +48,7 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
         val bytes = runCatching {
             getApplication<Application>().contentResolver.openInputStream(uri)?.use { it.readAtMost(SettingsBackup.MAX_BYTES) }
         }.getOrNull()
-            ?: return@withContext "Berkas tidak bisa dibaca atau terlalu besar untuk sebuah cadangan Vinyl."
+            ?: return@withContext "Berkas tidak bisa dibaca atau terlalu besar untuk sebuah cadangan TV Launcher."
         repo.importBackup(bytes.toString(Charsets.UTF_8)) ?: "Pengaturan dipulihkan. Latar gambar dan foto widget perlu dipilih ulang."
     }
 }

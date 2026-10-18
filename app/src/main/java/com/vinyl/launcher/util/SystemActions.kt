@@ -64,7 +64,7 @@ object SystemActions {
         if (svc != null) {
             svc.performGlobalAction(action)
         } else {
-            Toast.makeText(context, "Aktifkan layanan aksesibilitas Vinyl Launcher dulu", Toast.LENGTH_LONG).show()
+            Toast.makeText(context, "Aktifkan layanan aksesibilitas TV Launcher dulu", Toast.LENGTH_LONG).show()
             openAccessibilitySettings(context)
         }
     }
@@ -83,7 +83,7 @@ object SystemActions {
                 .getMethod("expandNotificationsPanel")
                 .invoke(sbm)
         }.onFailure {
-            Toast.makeText(context, "Aktifkan layanan aksesibilitas Vinyl Launcher", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Aktifkan layanan aksesibilitas TV Launcher", Toast.LENGTH_SHORT).show()
         }
     }
 

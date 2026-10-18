@@ -198,7 +198,7 @@ private fun SettingsScreen(vm: SettingsViewModel, onBack: () -> Unit) {
             Page.TASKBAR -> ControlCard {
 
         SwitchRow(
-            "Aktifkan Taskbar Vinyl", s.dock.enabled,
+            "Aktifkan Taskbar TV", s.dock.enabled,
             { on ->
                 if (on && !Settings.canDrawOverlays(context)) SystemActions.openOverlaySettings(context)
                 vm.update { it.copy(dock = it.dock.copy(enabled = on)) }
@@ -254,7 +254,7 @@ private fun SettingsScreen(vm: SettingsViewModel, onBack: () -> Unit) {
         )
         if (s.nav.enabled) {
             if (!SystemActions.isAccessibilityEnabled()) TextButton(onClick = { SystemActions.openAccessibilitySettings(context) }) {
-                Text("Nyalakan layanan aksesibilitas Vinyl (agar Kembali & Terbaru berfungsi)")
+                Text("Nyalakan layanan aksesibilitas TV Launcher (agar Kembali & Terbaru berfungsi)")
             }
             Text(
                 "Agar tombol bawaan sistem hilang: Pengaturan tablet → Tampilan → Bilah navigasi → Gestur geser.",
@@ -379,7 +379,7 @@ private fun SettingsScreen(vm: SettingsViewModel, onBack: () -> Unit) {
 
             val log by MediaRepository.log.collectAsStateWithLifecycle()
             Text(
-                "Catatan ini membantu melacak musik yang berhenti sendiri: baris \"Vinyl → …\" berarti perintah dari launcher, baris lain berasal dari aplikasi musik.",
+                "Catatan ini membantu melacak musik yang berhenti sendiri: baris \"TV Launcher → …\" berarti perintah dari launcher, baris lain berasal dari aplikasi musik.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(vertical = 8.dp),
@@ -455,7 +455,7 @@ private fun Sidebar(selected: Page?, onSelect: (Page) -> Unit, onBack: () -> Uni
         }
         Text("Pengaturan", style = MaterialTheme.typography.displaySmall, modifier = Modifier.padding(start = 10.dp, top = 12.dp))
         Text(
-            "Vinyl Launcher", style = MaterialTheme.typography.bodyLarge,
+            "TV Launcher", style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 12.dp, bottom = 18.dp),
         )
         Page.entries.forEach { p ->
@@ -528,7 +528,7 @@ private fun AboutCard() {
             }
             Spacer(Modifier.width(16.dp))
             Column {
-                Text("Vinyl Launcher", style = MaterialTheme.typography.titleLarge)
+                Text("TV Launcher", style = MaterialTheme.typography.titleLarge)
                 Text("Versi $version", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
