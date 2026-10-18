@@ -159,7 +159,7 @@ object EqSessions {
     fun originLabel(o: SessionOrigin): String = when (o) {
         SessionOrigin.APP -> "dibuka aplikasi musik"
         SessionOrigin.DETECTED -> "terdeteksi lewat Akses lanjutan"
-        SessionOrigin.GLOBAL -> "keluaran gabungan, eksperimental"
+        SessionOrigin.GLOBAL -> "keluaran gabungan (sesi 0)"
     }
 
     /**
@@ -186,11 +186,12 @@ object EqSessions {
         if (!enabled) return Reading.unavailable("EQ mati")
         val active = list.filter { it.state == SessionState.ACTIVE }
         if (active.isNotEmpty()) {
-            val names = active.joinToString(", ") { it.packageName.ifBlank { "sesi ${it.id}" } }
-            val experimental = active.any { it.origin == SessionOrigin.GLOBAL }
+            val global = active.any { it.origin == SessionOrigin.GLOBAL }
+            val names = active.joinToString(", ") { if (it.origin == SessionOrigin.GLOBAL) "semua audio (sesi 0)" else it.packageName.ifBlank { "sesi ${it.id}" } }
             return Reading.reported(
                 "Memproses ${active.size} sesi",
-                "Sesi: $names" + if (experimental) ". Efek keluaran gabungan bersifat eksperimental: belum tentu terdengar di perangkat ini" else "",
+                "Sesi: $names" + if (global) ". Keluaran gabungan adalah cara lama Android: di sebagian perangkat tidak terdengar; " +
+                    "putar lagu di aplikasi yang membuka sesi efek, atau pakai pemutar bawaan, untuk EQ yang pasti bekerja" else "",
             )
         }
         if (list.any { it.state == SessionState.NO_CONTROL }) {

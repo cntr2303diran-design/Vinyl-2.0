@@ -15,11 +15,14 @@ import kotlinx.coroutines.launch
 import java.util.concurrent.Executors
 
 /**
- * Memasang EQ (DynamicsProcessing: pre-EQ 3 pita + penguatan masukan per kanal) ke sesi audio aplikasi lain.
- * Launcher tidak memutar musik sendiri, jadi efek hanya bisa dipasang ke sesi yang:
+ * Memasang EQ (DynamicsProcessing: pre-EQ 31 pita 1/3 oktaf + penguatan masukan per kanal) ke sesi audio aplikasi lain.
+ * Bentuk EQ (3 pita, 10 pita grafis, atau profil parametrik/AutoEQ) dipetakan ke 31 pita itu oleh [Eq.bandGains]. Efek
+ * dipasang ke sesi yang:
  *  1. dibuka aplikasi musik lewat siaran standar [AudioEffect.ACTION_OPEN_AUDIO_EFFECT_CONTROL_SESSION] ([SessionOrigin.APP]);
  *  2. dideteksi lewat Akses lanjutan ([SessionOrigin.DETECTED]);
- *  3. sesi 0 = keluaran gabungan ([SessionOrigin.GLOBAL]) — sudah usang di Android dan tidak dijamin; eksperimental.
+ *  3. sesi 0 = keluaran gabungan ([SessionOrigin.GLOBAL]) — sebagai cadangan bila tidak ada sesi aplikasi
+ *     ([AudioConsoleSettings.globalFallback]) atau selalu (eksperimental). Cara ini usang di Android dan tidak dijamin.
+ * (Pemutar bawaan launcher memakai EQ parametriknya sendiri di dalam pemutar, bukan efek ini.)
  *
  * Semua kerja efek (panggilan binder ke audioserver) berjalan di satu thread khusus, bukan di main thread. Status tiap sesi
  * (aktif / dikendalikan aplikasi lain / gagal) diterbitkan apa adanya di [sessions].
@@ -34,8 +37,10 @@ object EqEngine {
     private val _sessions = MutableStateFlow<List<EqSession>>(emptyList())
     val sessions: StateFlow<List<EqSession>> = _sessions.asStateFlow()
 
-    /** Hanya disentuh di thread "vinyl-eq". */
-    private val effects = HashMap<Int, DynamicsProcessing>()
+    /** Efek per sesi beserta batas atas pita-pitanya. Hanya disentuh di thread "vinyl-eq". */
+    private class Fx(val dp: DynamicsProcessing, val cutoffs: FloatArray)
+
+    private val effects = HashMap<Int, Fx>()
     private var config = AudioConsoleSettings()
 
     fun open(id: Int, packageName: String, origin: SessionOrigin) = scope.launch {
@@ -49,9 +54,11 @@ object EqEngine {
     }
 
     fun close(id: Int) = scope.launch {
-        if (id == 0) return@launch // sesi 0 hanya diatur oleh sakelar eksperimental, bukan oleh siaran aplikasi lain
+        if (id == 0) return@launch // sesi 0 hanya diatur pengaturan (cadangan/eksperimental), bukan oleh siaran aplikasi lain
         release(id)
         _sessions.update { EqSessions.close(it, id) }
+        // Sesi aplikasi terakhir tertutup → cadangan keluaran gabungan bisa dipasang lagi
+        sync()
     }
 
     /**
@@ -73,16 +80,27 @@ object EqEngine {
     /** Terapkan pengaturan terbaru (dipanggil setiap pengaturan Audio Console berubah). */
     fun update(settings: AudioConsoleSettings) = scope.launch {
         config = settings
-        if (settings.eqEnabled && settings.globalExperimental) {
-            _sessions.update { EqSessions.open(it, 0, "", SessionOrigin.GLOBAL) }
-        } else {
-            release(0)
-            _sessions.update { EqSessions.close(it, 0) }
-        }
         sync()
     }
 
+    /**
+     * Sesi 0 dipasang bila diminta selalu (eksperimental), atau sebagai cadangan selama tidak ada sesi aplikasi —
+     * dilepas begitu aplikasi musik membuka sesinya sendiri, agar EQ tidak terpasang dua kali.
+     */
+    private fun syncGlobal() {
+        val s = config
+        val appSessions = _sessions.value.any { it.origin != SessionOrigin.GLOBAL }
+        val want = s.eqEnabled && (s.globalExperimental || (s.globalFallback && !appSessions))
+        val has = _sessions.value.any { it.id == 0 }
+        if (want && !has) _sessions.update { EqSessions.open(it, 0, "", SessionOrigin.GLOBAL) }
+        if (!want && has) {
+            release(0)
+            _sessions.update { EqSessions.close(it, 0) }
+        }
+    }
+
     private fun sync() {
+        syncGlobal()
         val s = config
         // Sesi yang sudah ditutup: lepaskan efeknya
         val ids = _sessions.value.map { it.id }.toSet()
@@ -96,47 +114,60 @@ object EqEngine {
             // Sesi yang sudah ditolak sistem tidak dicoba ulang di setiap perubahan nilai (mis. saat fader digeser);
             // percobaan ulang terjadi saat EQ dinyalakan ulang atau sesi dibuka lagi.
             if (session.state == SessionState.FAILED && effects[session.id] == null) continue
-            val dp = effects[session.id] ?: create(session.id) ?: continue
-            val ok = runCatching { applyValues(dp, s) }.isSuccess
+            val fx = effects[session.id] ?: create(session.id) ?: continue
+            val ok = runCatching { applyValues(fx, s) }.isSuccess
             val state = when {
                 !ok -> SessionState.FAILED
-                runCatching { dp.hasControl() }.getOrDefault(false) -> SessionState.ACTIVE
+                runCatching { fx.dp.hasControl() }.getOrDefault(false) -> SessionState.ACTIVE
                 else -> SessionState.NO_CONTROL
             }
             _sessions.update { EqSessions.withState(it, session.id, state, if (ok) "" else "nilai ditolak") }
         }
     }
 
-    private fun create(id: Int): DynamicsProcessing? {
-        return try {
-            val cfg = DynamicsProcessing.Config.Builder(
-                DynamicsProcessing.VARIANT_FAVOR_FREQUENCY_RESOLUTION,
-                /* channelCount = */ 2,
-                /* preEqInUse = */ true, /* preEqBandCount = */ Eq.CUTOFFS.size,
-                /* mbcInUse = */ false, 0,
-                /* postEqInUse = */ false, 0,
-                /* limiterInUse = */ false,
-            ).build()
-            val dp = DynamicsProcessing(PRIORITY, id, cfg)
-            dp.setControlStatusListener { _, granted ->
-                scope.launch {
-                    if (effects[id] === dp) _sessions.update { EqSessions.withState(it, id, if (granted) SessionState.ACTIVE else SessionState.NO_CONTROL) }
+    /** Tata letak pita yang dicoba, dari yang paling halus; perangkat yang menolak 31 pita mendapat 10 lalu 3. */
+    private val LAYOUTS = listOf(Eq.DP_CUTOFFS, Eq.GRAPHIC_FREQS.mapIndexed { i, f -> if (i == Eq.GRAPHIC_FREQS.lastIndex) 20_000f else kotlin.math.sqrt(f * Eq.GRAPHIC_FREQS[i + 1]) }.toFloatArray(), Eq.CUTOFFS)
+
+    private fun create(id: Int): Fx? {
+        var last: Exception? = null
+        for (cutoffs in LAYOUTS) {
+            try {
+                val cfg = DynamicsProcessing.Config.Builder(
+                    DynamicsProcessing.VARIANT_FAVOR_FREQUENCY_RESOLUTION,
+                    /* channelCount = */ 2,
+                    /* preEqInUse = */ true, /* preEqBandCount = */ cutoffs.size,
+                    /* mbcInUse = */ false, 0,
+                    /* postEqInUse = */ false, 0,
+                    /* limiterInUse = */ false,
+                ).build()
+                val dp = DynamicsProcessing(PRIORITY, id, cfg)
+                val fx = Fx(dp, cutoffs)
+                dp.setControlStatusListener { _, granted ->
+                    scope.launch {
+                        if (effects[id] === fx) _sessions.update { EqSessions.withState(it, id, if (granted) SessionState.ACTIVE else SessionState.NO_CONTROL) }
+                    }
                 }
+                val status = dp.setEnabled(true)
+                if (status != AudioEffect.SUCCESS) {
+                    dp.release()
+                    _sessions.update { EqSessions.withState(it, id, SessionState.FAILED, "kode $status") }
+                    return null
+                }
+                effects[id] = fx
+                return fx
+            } catch (e: UnsupportedOperationException) {
+                // Efek tidak ada sama sekali di perangkat ini: tata letak lain tidak akan membantu
+                last = e
+                break
+            } catch (e: Exception) {
+                last = e
             }
-            val status = dp.setEnabled(true)
-            if (status != AudioEffect.SUCCESS) {
-                dp.release()
-                _sessions.update { EqSessions.withState(it, id, SessionState.FAILED, "kode $status") }
-                return null
-            }
-            effects[id] = dp
-            dp
-        } catch (e: Exception) {
-            // Hanya jenis galat yang dicatat; nama paket aplikasi lain tidak ditulis ke log
-            Log.w(TAG, "Efek tidak bisa dipasang: ${e.javaClass.simpleName}")
-            _sessions.update { EqSessions.withState(it, id, SessionState.FAILED, failure(e)) }
-            null
         }
+        val e = last ?: IllegalStateException()
+        // Hanya jenis galat yang dicatat; nama paket aplikasi lain tidak ditulis ke log
+        Log.w(TAG, "Efek tidak bisa dipasang: ${e.javaClass.simpleName}")
+        _sessions.update { EqSessions.withState(it, id, SessionState.FAILED, failure(e)) }
+        return null
     }
 
     private fun failure(e: Exception): String = when (e) {
@@ -145,20 +176,20 @@ object EqEngine {
         else -> "ditolak sistem"
     }
 
-    private fun applyValues(dp: DynamicsProcessing, s: AudioConsoleSettings) {
-        val bands = Eq.bands(s.values)
-        for (i in bands.indices) {
-            dp.setPreEqBandAllChannelsTo(i, DynamicsProcessing.EqBand(true, Eq.CUTOFFS[i], bands[i]))
+    private fun applyValues(fx: Fx, s: AudioConsoleSettings) {
+        val gains = Eq.bandGains(s, fx.cutoffs)
+        for (i in gains.indices) {
+            fx.dp.setPreEqBandAllChannelsTo(i, DynamicsProcessing.EqBand(true, fx.cutoffs[i], gains[i]))
         }
-        val (left, right) = Eq.inputGains(s.values, s.safeHeadroom)
-        dp.setInputGainbyChannel(0, left)
-        dp.setInputGainbyChannel(1, right)
+        val (left, right) = Eq.inputGainsFor(s, gains)
+        fx.dp.setInputGainbyChannel(0, left)
+        fx.dp.setInputGainbyChannel(1, right)
     }
 
     private fun release(id: Int) {
-        effects.remove(id)?.let { dp ->
-            runCatching { dp.setControlStatusListener(null) }
-            runCatching { dp.release() }
+        effects.remove(id)?.let { fx ->
+            runCatching { fx.dp.setControlStatusListener(null) }
+            runCatching { fx.dp.release() }
         }
     }
 }

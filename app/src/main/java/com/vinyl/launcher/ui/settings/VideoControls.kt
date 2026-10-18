@@ -46,7 +46,7 @@ import kotlinx.coroutines.withContext
  * lihat video yang cocok dengan lagu sekarang, dan tautkan video secara manual.
  */
 @Composable
-fun VideoControls(v: VideoSettings, onChange: ((VideoSettings) -> VideoSettings) -> Unit) {
+fun VideoControls(v: VideoSettings, musicFolder: String?, onChange: ((VideoSettings) -> VideoSettings) -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val lib by VideoLibrary.state.collectAsStateWithLifecycle()
@@ -62,7 +62,7 @@ fun VideoControls(v: VideoSettings, onChange: ((VideoSettings) -> VideoSettings)
         scope.launch {
             val name = withContext(Dispatchers.IO) { VideoLibrary.folderName(context, uri) }
             onChange { VideoRules.changeFolder(it, uri.toString(), name).copy(enabled = true) }
-            if (old != null && old != uri.toString()) VideoLibrary.releasePermission(context, old)
+            if (old != null && old != uri.toString()) VideoLibrary.releaseIfUnused(context, old, listOf(musicFolder))
         }
     }
 
@@ -74,7 +74,7 @@ fun VideoControls(v: VideoSettings, onChange: ((VideoSettings) -> VideoSettings)
         TextButton(onClick = { picker.launch(null) }) { Text(if (v.folderUri == null) "Pilih folder video" else "Ganti folder") }
         if (v.folderUri != null) {
             TextButton(onClick = {
-                v.folderUri?.let { VideoLibrary.releasePermission(context, it) }
+                v.folderUri?.let { VideoLibrary.releaseIfUnused(context, it, listOf(musicFolder)) }
                 onChange { VideoRules.changeFolder(it, null, "") }
             }) { Text("Lepas folder") }
         }

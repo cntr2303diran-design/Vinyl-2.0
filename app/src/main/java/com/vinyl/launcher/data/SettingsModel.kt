@@ -309,6 +309,8 @@ data class AppSettings(
     val audio: AudioConsoleSettings = AudioConsoleSettings(),
     /** Video milik pengguna di layar TV (folder SAF). */
     val video: VideoSettings = VideoSettings(),
+    /** Pemutar bawaan untuk berkas musik lokal (folder SAF) dan rantai suaranya. */
+    val player: PlayerSettings = PlayerSettings(),
     /** Paket aplikasi musik default (null = pilih otomatis). */
     val defaultMusicPackage: String? = null,
     val hiddenApps: Set<String> = emptySet(),

@@ -53,6 +53,13 @@
       Izin biasa (tanpa dialog). Nama jaringan TIDAK dibaca (butuh lokasi, tidak diminta). Media3 juga memakainya.
     -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!--
+      Pemutar musik bawaan (berkas di folder pilihan pengguna): layanan latar jenis mediaPlayback agar lagu tetap berjalan
+      saat layar mati, dan wake lock CPU selama memutar (ExoPlayer WAKE_MODE_LOCAL). Keduanya izin biasa (tanpa dialog).
+      MODIFY_AUDIO_SETTINGS (di atas) juga dipakai untuk "Laju sampel USB cocok" (Android 14+, opsional, mati bawaan).
+    -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- Mikrofon bukan syarat memasang Vinyl: tanpa ini tablet tanpa mikrofon akan disaring dari instalasi -->
     <uses-feature android:name="android.hardware.microphone" android:required="false" />
 
@@ -159,6 +166,19 @@
         </service>
 
         <!-- Memantau layar mati untuk memunculkan layar kunci TV -->
+        <!--
+          Pemutar bawaan (Media3). Tidak diekspor: hanya launcher ini yang mengikatnya; kendali sistem (notifikasi, layar
+          kunci, headset, Bluetooth) lewat sesi media platform.
+        -->
+        <service
+            android:name=".player.PlayerService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback">
+            <intent-filter>
+                <action android:name="androidx.media3.session.MediaSessionService" />
+            </intent-filter>
+        </service>
+
         <service
             android:name=".service.CoverService"
             android:exported="false"

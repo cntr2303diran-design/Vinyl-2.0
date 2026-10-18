@@ -29,6 +29,8 @@ import com.vinyl.launcher.audio.ChannelTest
 import com.vinyl.launcher.audio.EqEngine
 import com.vinyl.launcher.audio.SystemAudioShortcuts
 import com.vinyl.launcher.data.AudioConsoleSettings
+import com.vinyl.launcher.data.PlayerSettings
+import com.vinyl.launcher.player.HiFi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -43,6 +45,8 @@ import kotlinx.coroutines.withContext
 @Composable
 fun ConsoleRoute(
     audio: AudioConsoleSettings,
+    player: PlayerSettings,
+    onSavePlayer: (PlayerSettings) -> Unit,
     /** Paket aplikasi musik yang sesinya sedang tampil (untuk memilih pemutar yang benar di laporan sistem). */
     musicPackage: String?,
     onSave: (AudioConsoleSettings) -> Unit,
@@ -112,6 +116,19 @@ fun ConsoleRoute(
     }
     LaunchedEffect(audio) { if (audio == draft) draft = null }
 
+    // Pemutar bawaan: perubahan langsung terdengar (rantai suara dibangun ulang), disimpan sesaat kemudian
+    var playerDraft by remember { mutableStateOf<PlayerSettings?>(null) }
+    LaunchedEffect(playerDraft) {
+        val d = playerDraft ?: return@LaunchedEffect
+        HiFi.apply(d)
+        delay(350)
+        onSavePlayer(d)
+        delay(1_000)
+        if (playerDraft == d) playerDraft = null
+    }
+    LaunchedEffect(player) { if (player == playerDraft) playerDraft = null }
+    val path by HiFi.path.collectAsStateWithLifecycle()
+
     val effectsPanel = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { }
     val mic = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
 
@@ -130,6 +147,8 @@ fun ConsoleRoute(
             copied = copied,
             btPermission = btPermission,
             btLevels = btLevels,
+            player = playerDraft ?: player,
+            path = path,
         ),
         actions = ConsoleActions(
             onBack = onBack,
@@ -147,6 +166,7 @@ fun ConsoleRoute(
             onCheckAccess = AdvancedAccess::refresh,
             onGrantShizuku = AdvancedAccess::grantViaShizuku,
             onRequestBluetooth = { btRequest.launch(BluetoothBattery.permission) },
+            onPlayer = { f -> playerDraft = f(playerDraft ?: player) },
         ),
         modifier = modifier,
         vu = vu,

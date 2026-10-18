@@ -16,6 +16,8 @@ import com.vinyl.launcher.ui.room.RoomInk
 import com.vinyl.launcher.ui.room.rememberWorstCoverPixel
 import com.vinyl.launcher.ui.room.stage.DeckDisplay
 import com.vinyl.launcher.system.StatusText
+import com.vinyl.launcher.player.HiFi
+import com.vinyl.launcher.player.LocalFormat
 
 /*
  * Penghubung pengaturan latar lama (ALBUM / SOLID / GRADIENT / IMAGE) dengan ruang TV:
@@ -80,7 +82,10 @@ fun tapeTime(np: NowPlaying): String {
  * Isi VFD deck: mode pita (+ "HI-FI"/"SP") dan keluaran audio — nama perangkat dan sample rate keluaran BAWAAN sistem
  * (diberi awalan OUT, bukan format lagu). Nilai yang tidak diketahui ditulis "--", tidak ditebak.
  */
-fun deckDisplay(transport: StatusText.Transport, tapeMode: String?, s: AudioSnapshot): DeckDisplay {
+fun deckDisplay(transport: StatusText.Transport, tapeMode: String?, s: AudioSnapshot, own: HiFi.PathState? = null): DeckDisplay {
+    val status = StatusText.modeLine(transport) + (tapeMode?.let { " $it" } ?: "")
+    // Pemutar bawaan: format sumber sebenarnya ("FLAC 24/96") — diketahui pasti, bukan perkiraan
+    if (own != null && own.codec.isNotBlank()) return DeckDisplay(status, ownSourceLine(own))
     val device = when (s.active.reading.source) {
         Source.REPORTED, Source.MEASURED -> s.active.device?.name ?: s.active.reading.display
         Source.ESTIMATED -> "≈ " + (s.active.device?.name ?: s.active.reading.display)
@@ -89,5 +94,16 @@ fun deckDisplay(transport: StatusText.Transport, tapeMode: String?, s: AudioSnap
     // Ringkas untuk jendela VFD kecil: laju keluaran dulu ("48K"), lalu nama perangkat (yang terpotong bila sempit)
     val rate = s.nativeRate.text?.replace(" kHz", "K")
     val output = listOfNotNull(rate, device.uppercase()).joinToString(" ")
-    return DeckDisplay(StatusText.modeLine(transport) + (tapeMode?.let { " $it" } ?: ""), output)
+    return DeckDisplay(status, output)
+}
+
+/** "FLAC 24/96" / "MP3 44,1" untuk baris VFD deck. */
+fun ownSourceLine(p: HiFi.PathState): String {
+    val rate = if (p.sourceRate > 0) LocalFormat.khz(p.sourceRate) else null
+    val res = when {
+        p.lossless && p.sourceBits > 0 && rate != null -> "${p.sourceBits}/$rate"
+        rate != null -> rate
+        else -> null
+    }
+    return listOfNotNull(p.codec, res).joinToString(" ")
 }

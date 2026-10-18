@@ -294,7 +294,7 @@ private fun SettingsScreen(vm: SettingsViewModel, onBack: () -> Unit) {
                     VisualizerControls(s.visual) { v -> vm.update { it.copy(visual = v) } }
                 }
                 Group("Video di layar TV") {
-                    VideoControls(s.video) { f -> vm.update { it.copy(video = f(it.video)) } }
+                    VideoControls(s.video, s.player.folderUri) { f -> vm.update { it.copy(video = f(it.video)) } }
                 }
             }
             Page.FX -> ControlCard {

@@ -94,6 +94,14 @@ object VideoLibrary {
         context.contentResolver.takePersistableUriPermission(tree, Intent.FLAG_GRANT_READ_URI_PERMISSION)
     }.isSuccess
 
+    /**
+     * Lepaskan izin folder lama kecuali folder yang sama masih dipakai fitur lain ([stillUsed]: folder video & folder
+     * musik pemutar bawaan bisa sama).
+     */
+    fun releaseIfUnused(context: Context, folderUri: String, stillUsed: Collection<String?>) {
+        if (folderUri !in stillUsed) releasePermission(context, folderUri)
+    }
+
     /** Lepaskan izin folder lama (saat ganti/lepas folder) agar launcher tidak menyimpan akses yang tak dipakai. */
     fun releasePermission(context: Context, folderUri: String) {
         runCatching { context.contentResolver.releasePersistableUriPermission(folderUri.toUri(), Intent.FLAG_GRANT_READ_URI_PERMISSION) }

@@ -143,6 +143,13 @@ object AudioRoutes {
     }
 }
 
+/**
+ * Bentuk EQ untuk aplikasi lain: 3 pita sederhana (dengan preset & profil perangkat), 10 pita grafis, atau profil
+ * parametrik (mis. impor AutoEQ) yang didekati dengan 31 pita 1/3 oktaf DynamicsProcessing.
+ */
+@Serializable
+enum class EqMode { THREE, GRAPHIC10, PROFILE }
+
 /** EQ tiga pita + preamp + balance. Nilai dalam dB; balance −1 (kiri) .. 1 (kanan). */
 @Serializable
 data class EqValues(
@@ -193,6 +200,71 @@ object Eq {
     }
 
     fun bands(v: EqValues): FloatArray = clamp(v).let { floatArrayOf(it.lowDb, it.midDb, it.highDb) }
+
+    /** Pusat 10 pita EQ grafis (oktaf). */
+    val GRAPHIC_FREQS = floatArrayOf(31f, 62f, 125f, 250f, 500f, 1000f, 2000f, 4000f, 8000f, 16000f)
+    val GRAPHIC_LABELS = listOf("31", "62", "125", "250", "500", "1k", "2k", "4k", "8k", "16k")
+
+    /** 31 pita 1/3 oktaf untuk DynamicsProcessing: frekuensi pusat (standar ISO) dan batas atas tiap pita. */
+    val DP_CENTERS = floatArrayOf(
+        20f, 25f, 31.5f, 40f, 50f, 63f, 80f, 100f, 125f, 160f, 200f, 250f, 315f, 400f, 500f, 630f,
+        800f, 1000f, 1250f, 1600f, 2000f, 2500f, 3150f, 4000f, 5000f, 6300f, 8000f, 10000f, 12500f, 16000f, 20000f,
+    )
+    val DP_CUTOFFS = FloatArray(DP_CENTERS.size) { i ->
+        if (i == DP_CENTERS.lastIndex) 20_000f else kotlin.math.sqrt(DP_CENTERS[i] * DP_CENTERS[i + 1])
+    }
+
+    /** Nilai 10 pita grafis dibersihkan: tepat 10 nilai, masing-masing di ±12 dB. */
+    fun cleanGraphic(g: List<Float>): List<Float> = List(GRAPHIC_FREQS.size) { i ->
+        g.getOrNull(i)?.takeIf { !it.isNaN() }?.coerceIn(MIN_DB, MAX_DB) ?: 0f
+    }
+
+    /** Kurva 10 pita di [f]: interpolasi linear terhadap log frekuensi, datar di luar ujung. */
+    fun graphicAt(graphic: List<Float>, f: Float): Float {
+        val g = cleanGraphic(graphic)
+        val x = f.coerceIn(GRAPHIC_FREQS.first(), GRAPHIC_FREQS.last())
+        val i = GRAPHIC_FREQS.indexOfLast { it <= x }.coerceIn(0, GRAPHIC_FREQS.size - 2)
+        val f0 = GRAPHIC_FREQS[i]
+        val f1 = GRAPHIC_FREQS[i + 1]
+        val t = (kotlin.math.ln(x / f0) / kotlin.math.ln(f1 / f0)).coerceIn(0f, 1f)
+        return g[i] + (g[i + 1] - g[i]) * t
+    }
+
+    /** Penguatan EQ (dB) pada frekuensi [f] untuk mode yang dipilih. */
+    fun gainAt(s: com.vinyl.launcher.data.AudioConsoleSettings, f: Float): Float = when (s.eqMode) {
+        EqMode.THREE -> {
+            val b = bands(s.values)
+            if (f <= CUTOFFS[0]) b[0] else if (f <= CUTOFFS[1]) b[1] else b[2]
+        }
+        EqMode.GRAPHIC10 -> graphicAt(s.graphic, f)
+        EqMode.PROFILE -> s.profile?.let {
+            com.vinyl.launcher.audio.dsp.EqMath.responseDb(
+                com.vinyl.launcher.audio.dsp.ParametricProfile.clamp(it).bands.filter { b -> b.enabled }, f.toDouble(),
+            ).toFloat().coerceIn(-24f, 24f)
+        } ?: 0f
+    }
+
+    /**
+     * Penguatan tiap pita DynamicsProcessing dengan batas atas [cutoffs]: nilai kurva di pusat geometris pita
+     * (pita pertama mulai 10 Hz).
+     */
+    fun bandGains(s: com.vinyl.launcher.data.AudioConsoleSettings, cutoffs: FloatArray): FloatArray = FloatArray(cutoffs.size) { i ->
+        val lo = if (i == 0) 10f else cutoffs[i - 1]
+        gainAt(s, kotlin.math.sqrt(lo * cutoffs[i]))
+    }
+
+    /**
+     * Penguatan masukan per kanal untuk [gains] yang dipasang: preamp (3/10 pita: preamp konsol; profil: preamp profil
+     * ditambah preamp konsol), balance, dan pengaman clipping sebesar penguatan pita terbesar.
+     */
+    fun inputGainsFor(s: com.vinyl.launcher.data.AudioConsoleSettings, gains: FloatArray): Pair<Float, Float> {
+        val (l, r) = channelGains(s.values)
+        val profilePre = if (s.eqMode == EqMode.PROFILE) s.profile?.preampDb?.takeIf { !it.isNaN() }?.coerceIn(-30f, 12f) ?: 0f else 0f
+        // Profil AutoEQ sudah membawa preamp-nya sendiri sebagai headroom; pengaman hanya menambah yang masih kurang
+        val maxBoost = gains.maxOrNull()?.coerceAtLeast(0f) ?: 0f
+        val drop = if (!s.safeHeadroom) 0f else (maxBoost + minOf(profilePre, 0f)).coerceAtLeast(0f)
+        return (l + profilePre - drop) to (r + profilePre - drop)
+    }
 
     fun isFlat(v: EqValues): Boolean = clamp(v) == EqValues()
 

@@ -45,6 +45,8 @@ object SettingsBackup {
         presets = s.presets.map { it.copy(home = stripHome(it.home), cover = stripCover(it.cover)) },
         // Izin folder video melekat pada perangkat ini; URI & tautannya tidak berarti di perangkat lain
         video = VideoSettings(),
+        // Sama untuk folder musik pemutar bawaan; pengaturan suaranya (EQ, ReplayGain, crossfeed) ikut dicadangkan
+        player = s.player.copy(folderUri = null, folderName = ""),
     )
 
     private fun stripHome(h: HomeSettings) = h.copy(
@@ -85,6 +87,8 @@ object SettingsBackup {
                 drawer = clean.drawer.copy(searchContacts = current.drawer.searchContacts),
                 // Folder video bergantung pada izin akses folder di perangkat ini
                 video = current.video,
+                // Folder musik juga; pengaturan suara pemutar diambil dari cadangan
+                player = clean.player.copy(folderUri = current.player.folderUri, folderName = current.player.folderName),
                 // Visualizer audio asli bergantung pada izin mikrofon di perangkat ini: cadangan tidak boleh
                 // menyalakannya diam-diam. Mode itu hanya aktif lewat alur izin di Pengaturan → Efek.
                 visual = clean.visual.copy(

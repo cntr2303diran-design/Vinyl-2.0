@@ -1,7 +1,9 @@
 package com.vinyl.launcher.data
 
 import com.vinyl.launcher.audio.Eq
+import com.vinyl.launcher.audio.EqMode
 import com.vinyl.launcher.audio.EqValues
+import com.vinyl.launcher.audio.dsp.ParametricProfile
 import com.vinyl.launcher.audio.OutputDevice
 import kotlinx.serialization.Serializable
 
@@ -36,6 +38,17 @@ data class AudioConsoleSettings(
      * sesi yang dibuka aplikasi musik. Tidak berpengaruh tanpa izin DUMP atau saat EQ mati.
      */
     val detectSessions: Boolean = true,
+    /** Bentuk EQ: 3 pita (preset & profil perangkat), 10 pita grafis, atau profil parametrik. */
+    val eqMode: EqMode = EqMode.THREE,
+    /** Nilai 10 pita grafis (dB) di [Eq.GRAPHIC_FREQS]. */
+    val graphic: List<Float> = List(10) { 0f },
+    /** Profil parametrik (mis. impor AutoEQ, sama dengan pemutar bawaan) untuk mode [EqMode.PROFILE]. */
+    val profile: ParametricProfile? = null,
+    /**
+     * Bila EQ menyala tetapi tidak ada sesi aplikasi yang bisa diproses, pasang ke keluaran gabungan (sesi 0) sebagai
+     * cadangan — dilepas lagi begitu aplikasi musik membuka sesinya, agar EQ tidak terpasang dua kali.
+     */
+    val globalFallback: Boolean = true,
 ) {
     companion object {
         const val BUILT_IN_DEFAULT = "Datar"
@@ -56,9 +69,9 @@ object AudioConsoleRules {
 
     fun valuesOf(s: AudioConsoleSettings, name: String): EqValues? = allPresets(s).firstOrNull { it.first == name }?.second
 
-    /** Pakai preset [name] (bila ada). */
+    /** Pakai preset [name] (bila ada). Preset adalah EQ 3 pita, jadi mode kembali ke 3 pita. */
     fun applyPreset(s: AudioConsoleSettings, name: String): AudioConsoleSettings =
-        valuesOf(s, name)?.let { s.copy(values = Eq.clamp(it), preset = name) } ?: s
+        valuesOf(s, name)?.let { s.copy(values = Eq.clamp(it), preset = name, eqMode = EqMode.THREE) } ?: s
 
     /** Ubah nilai manual: preset dilepas kecuali nilainya kebetulan sama persis dengan preset yang dipakai. */
     fun edit(s: AudioConsoleSettings, values: EqValues): AudioConsoleSettings {
@@ -124,6 +137,9 @@ object AudioConsoleRules {
             preset = s.preset?.takeIf { it in names },
             customPresets = presets,
             profiles = profiles,
+            graphic = Eq.cleanGraphic(s.graphic),
+            profile = s.profile?.let(ParametricProfile::clamp),
+            eqMode = if (s.eqMode == EqMode.PROFILE && s.profile == null) EqMode.THREE else s.eqMode,
         )
     }
 }

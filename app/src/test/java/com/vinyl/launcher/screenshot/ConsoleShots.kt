@@ -19,6 +19,13 @@ import com.vinyl.launcher.audio.SessionState
 import com.vinyl.launcher.audio.SystemAudioShortcuts
 import com.vinyl.launcher.data.AudioConsoleRules
 import com.vinyl.launcher.data.AudioConsoleSettings
+import com.vinyl.launcher.data.PlayerSettings
+import com.vinyl.launcher.audio.EqMode
+import com.vinyl.launcher.audio.dsp.CrossfeedLevel
+import com.vinyl.launcher.audio.dsp.EqBand
+import com.vinyl.launcher.audio.dsp.FilterType
+import com.vinyl.launcher.audio.dsp.ParametricProfile
+import com.vinyl.launcher.player.HiFi
 import com.vinyl.launcher.ui.console.ConsoleActions
 import com.vinyl.launcher.ui.console.ConsoleScreen
 import com.vinyl.launcher.ui.console.ConsoleUi
@@ -118,6 +125,32 @@ class ConsoleShots {
     fun phoneLargeFont() {
         compose.setContent { VinylTheme { ConsoleScreen(consoleUi(), actions) } }
         shot("tahap6_console_ponsel_font200")
+    }
+
+    /** Pemutar bawaan memutar FLAC 24/96 dengan profil EQ hasil impor & ReplayGain (data rekaan). */
+    @Test
+    @Config(qualifiers = "w1280dp-h1900dp-mdpi")
+    fun tabletPlayerChain() {
+        val profile = ParametricProfile(
+            "Headphone uji", preampDb = -6.2f,
+            bands = listOf(
+                EqBand(FilterType.LOW_SHELF, 105f, 6.2f, 0.7f), EqBand(FilterType.PEAK, 2245f, -3.4f, 1.29f),
+                EqBand(FilterType.PEAK, 5600f, 4.1f, 3f), EqBand(FilterType.HIGH_SHELF, 10_000f, -2f, 0.7f),
+            ),
+        )
+        val ui = consoleUi().let { base ->
+            base.copy(
+                audio = base.audio.copy(eqMode = EqMode.PROFILE, profile = profile),
+                player = PlayerSettings(eqEnabled = true, eq = profile, savedEqs = listOf(profile), crossfeed = CrossfeedLevel.NATURAL),
+                path = HiFi.PathState(
+                    active = true, trackId = "x", codec = "FLAC", sourceRate = 96_000, sourceBits = 24, channels = 2, lossless = true,
+                    decoded = "float 32-bit", output = "float 32-bit", replayGainDb = -7.2f, eqName = profile.name,
+                    crossfeed = CrossfeedLevel.NATURAL, limiter = false, transparent = false,
+                ),
+            )
+        }
+        compose.setContent { VinylTheme { ConsoleScreen(ui, actions) } }
+        shot("tahap11_console_pemutar")
     }
 
     @Test

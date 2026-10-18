@@ -128,6 +128,7 @@ import androidx.compose.ui.unit.sp
 import com.vinyl.launcher.ui.library.LibraryCatalog
 import com.vinyl.launcher.ui.library.rememberLibraryState
 import com.vinyl.launcher.ui.room.stage.RoomStage
+import com.vinyl.launcher.player.HiFi
 import com.vinyl.launcher.ui.room.stage.SeekState
 import com.vinyl.launcher.ui.room.stage.StageActions
 import com.vinyl.launcher.ui.room.stage.StageInfo
@@ -445,6 +446,9 @@ fun HomeScreen(vm: HomeViewModel) {
                     onToggleFavorite = { key ->
                         vm.updateSettings { it.copy(music = it.music.copy(favorites = LibraryCatalog.toggleFavorite(it.music.favorites, key))) }
                     },
+                    player = settings.player,
+                    videoFolder = settings.video.folderUri,
+                    onPlayer = { f -> vm.updateSettings { it.copy(player = f(it.player)) } },
                 )
             }
         }
@@ -459,6 +463,19 @@ fun HomeScreen(vm: HomeViewModel) {
             if (pageVisible(indexOf(RoomPage.CONSOLE), pagePosition)) {
                 ConsoleRoute(
                     audio = settings.audio,
+                    player = settings.player,
+                    // Hanya bagian suara pemutar yang disimpan dari konsol (folder & urutan diatur di Perpustakaan)
+                    onSavePlayer = { p ->
+                        vm.updateSettings {
+                            it.copy(
+                                player = it.player.copy(
+                                    replayGain = p.replayGain, eqEnabled = p.eqEnabled, eq = p.eq, savedEqs = p.savedEqs,
+                                    autoHeadroom = p.autoHeadroom, crossfeed = p.crossfeed, hiResOutput = p.hiResOutput,
+                                    usbRateMatch = p.usbRateMatch,
+                                ),
+                            )
+                        }
+                    },
                     musicPackage = np.packageName,
                     onSave = { a -> vm.updateSettings { it.copy(audio = a) } },
                     onBack = { vm.showPage(RoomPage.ROOM) },
@@ -587,6 +604,8 @@ private fun HomeContent(
     }
     val posMs = remember(np, clockTick) { np.positionAt() }
     val audio by AudioMonitor.state.collectAsStateWithLifecycle()
+    val hifi by HiFi.path.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     val brightest = rememberWorstCoverPixel(np.art, RoomTone.DIM)
     val scrim = remember(brightest) {
         // Cover sedikit diredam seperti tabung; judul memakai kotak teks hitam sendiri
@@ -596,7 +615,7 @@ private fun HomeContent(
     val transport = StatusText.transport(np.hasTrack, np.isPlaying, seek.deltaMs?.takeIf { seek.touching })
     val info = StageInfo(
         tvVfd = VfdTicker.playback(np.hasTrack, np.isPlaying),
-        deck = deckDisplay(transport, tapeMode(np), audio),
+        deck = deckDisplay(transport, tapeMode(np, context.packageName, hifi), audio, hifi.takeIf { np.packageName == context.packageName && it.active }),
         tapeTime = tapeTime(np),
     )
     val actions = remember(vm) {

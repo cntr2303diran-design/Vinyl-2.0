@@ -74,6 +74,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import com.vinyl.launcher.data.MusicSettings
+import com.vinyl.launcher.data.PlayerSettings
 import com.vinyl.launcher.data.PlayRecord
 import com.vinyl.launcher.data.ShelfStyle
 import com.vinyl.launcher.ui.components.blockTouchesBehind
@@ -102,6 +103,7 @@ import java.util.concurrent.TimeUnit
  * - Deck: antrean milik aplikasi musik; ketuk untuk melompat ke lagunya
  * - Log: daftar lagu yang pernah diputar, dikelompokkan per hari
  * - Koleksi: statistik & semua lagu yang pernah didengarkan
+ * - Lokal: berkas musik di folder pilihan pengguna, diputar pemutar bawaan ([LocalTab])
  * Di bawah tab ada tombol SLEEP (timer tidur) dan (di tab Rak) pilihan gaya rak.
  */
 @OptIn(ExperimentalLayoutApi::class)
@@ -116,6 +118,9 @@ fun CrateSheet(
     onClearHistory: () -> Unit,
     state: LibraryState,
     onToggleFavorite: (String) -> Unit,
+    player: PlayerSettings,
+    videoFolder: String?,
+    onPlayer: ((PlayerSettings) -> PlayerSettings) -> Unit,
 ) {
     // Tab, pencarian, saringan, dan posisi rak hidup di [state] (dibuat di beranda) sehingga bertahan saat halaman
     // ditinggalkan, layar diputar, atau proses dipulihkan
@@ -147,7 +152,7 @@ fun CrateSheet(
                 ) { Icon(Icons.Rounded.Close, "Kembali ke ruang TV", tint = Color.White) }
             }
             Box(Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 6.dp), contentAlignment = Alignment.Center) {
-                Segmented(listOf("Rak", "Deck", "Log", "Koleksi"), tab) { state.tab = it }
+                Segmented(listOf("Rak", "Deck", "Log", "Koleksi", "Lokal"), tab) { state.tab = it }
             }
             FlowRow(
                 Modifier.fillMaxWidth().padding(horizontal = 36.dp),
@@ -165,7 +170,8 @@ fun CrateSheet(
                 }
                 1 -> QueueList(np, queue)
                 2 -> HistoryList(history, onClearHistory)
-                else -> Collection(history, onClearHistory)
+                3 -> Collection(history, onClearHistory)
+                else -> LocalTab(np, player, videoFolder, onPlayer)
             }
         }
     }

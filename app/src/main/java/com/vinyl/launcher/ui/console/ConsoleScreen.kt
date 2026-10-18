@@ -66,6 +66,13 @@ import com.vinyl.launcher.audio.SystemAudioShortcuts.Kind
 import com.vinyl.launcher.audio.ToneSynth
 import com.vinyl.launcher.data.AudioConsoleRules
 import com.vinyl.launcher.data.AudioConsoleSettings
+import com.vinyl.launcher.data.PlayerRules
+import com.vinyl.launcher.data.PlayerSettings
+import com.vinyl.launcher.audio.EqMode
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.height
+import com.vinyl.launcher.ui.theme.MonoFamily
+import com.vinyl.launcher.player.HiFi
 import java.text.DateFormat
 import java.util.Date
 import kotlin.math.abs
@@ -90,6 +97,10 @@ data class ConsoleUi(
     val btPermission: Boolean = false,
     /** Level baterai Bluetooth per alamat dari siaran sistem. */
     val btLevels: Map<String, Int> = emptyMap(),
+    /** Pengaturan pemutar bawaan (EQ parametrik, ReplayGain, crossfeed, profil AutoEQ tersimpan). */
+    val player: PlayerSettings = PlayerSettings(),
+    /** Jalur suara pemutar bawaan saat ini. */
+    val path: HiFi.PathState = HiFi.PathState(),
 )
 
 class ConsoleActions(
@@ -104,6 +115,8 @@ class ConsoleActions(
     /** Dipanggil setelah pengguna menyetujui dialog yang menampilkan perintah Shizuku. */
     val onGrantShizuku: () -> Unit = {},
     val onRequestBluetooth: () -> Unit = {},
+    /** Ubah pengaturan pemutar bawaan (dipratinjau langsung ke rantai suara, disimpan sesaat kemudian). */
+    val onPlayer: ((PlayerSettings) -> PlayerSettings) -> Unit = {},
 )
 
 /**
@@ -127,11 +140,12 @@ fun ConsoleScreen(ui: ConsoleUi, actions: ConsoleActions, modifier: Modifier = M
             { AutomationPanel(ui, actions) },       // 5
             { DevicePanel(ui, actions) },           // 6
             { AdvancedPanel(ui, actions) },         // 7
+            { PlayerPanel(ui, actions) },           // 8
         )
         val layout = when (columns) {
-            3 -> listOf(listOf(0, 2, 3), listOf(1, 5), listOf(4, 7, 6))
-            2 -> listOf(listOf(0, 1, 5), listOf(2, 3, 4, 7, 6))
-            else -> listOf(listOf(0, 1, 2, 3, 4, 5, 7, 6))
+            3 -> listOf(listOf(0, 8, 2), listOf(1, 3, 5), listOf(4, 7, 6))
+            2 -> listOf(listOf(0, 8, 5), listOf(1, 2, 3, 4, 7, 6))
+            else -> listOf(listOf(0, 8, 1, 2, 3, 4, 5, 7, 6))
         }
         Column(
             Modifier
@@ -233,52 +247,118 @@ private fun SoundPanel(ui: ConsoleUi, actions: ConsoleActions) {
     var saving by rememberSaveable { mutableStateOf(false) }
     var deleting by rememberSaveable { mutableStateOf<String?>(null) }
 
-    ConsolePanel("Suara", lit = a.eqEnabled) {
+    var importNote by rememberSaveable { mutableStateOf<String?>(null) }
+    val importer = rememberEqImporter { result ->
+        if (result == null) {
+            importNote = "Berkas bukan ParametricEQ.txt (AutoEQ / Equalizer APO) yang dikenali."
+        } else {
+            actions.onPlayer { PlayerRules.saveEq(it, result.profile) }
+            actions.onAudio { it.copy(eqMode = EqMode.PROFILE, profile = result.profile) }
+            importNote = "Profil \"${result.profile.name}\" dipakai untuk semua aplikasi (juga tersimpan untuk pemutar bawaan)."
+        }
+    }
+
+    ConsolePanel("Suara aplikasi lain", lit = a.eqEnabled) {
         ConsoleSwitch(
             "Equalizer", a.eqEnabled, { on -> actions.onAudio { it.copy(eqEnabled = on) } },
-            detail = "Dipasang ke sesi audio aplikasi musik; launcher sendiri tidak memutar musik",
+            detail = "Efek DynamicsProcessing 31 pita pada sesi audio aplikasi musik lain (Spotify, YouTube Music, …)",
         )
         ReadingRow("Diproses", EqSessions.summary(a.eqEnabled, ui.sessions))
-        // Sumbu frekuensi EQ selalu rendah → tinggi dari kiri, juga pada bahasa RTL (seperti equalizer fisik)
-        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-            val subs = listOf("≤ 250 Hz", "0,25–4 kHz", "≥ 4 kHz")
-            val values = Eq.bands(a.values)
-            Eq.BAND_NAMES.forEachIndexed { i, name ->
-                Fader(name, subs[i], values[i], Eq.MIN_DB..Eq.MAX_DB, Eq::dbText, { v ->
-                    edit { when (i) { 0 -> it.copy(lowDb = v); 1 -> it.copy(midDb = v); else -> it.copy(highDb = v) } }
-                })
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            for ((m, label) in listOf(EqMode.THREE to "3 pita", EqMode.GRAPHIC10 to "10 pita", EqMode.PROFILE to "Profil / AutoEQ")) {
+                ConsoleButton(label, {
+                    actions.onAudio { s ->
+                        // Mode profil tanpa profil: pakai profil pemutar bawaan yang sedang dipilih (bila ada)
+                        if (m == EqMode.PROFILE && s.profile == null) s.copy(eqMode = m, profile = ui.player.eq.takeIf { it.bands.isNotEmpty() } ?: ui.player.savedEqs.firstOrNull())
+                        else s.copy(eqMode = m)
+                    }
+                }, selected = a.eqMode == m)
             }
-            Fader("Preamp", "masukan", a.values.preampDb, Eq.PREAMP_MIN_DB..Eq.PREAMP_MAX_DB, Eq::dbText, { v -> edit { it.copy(preampDb = v) } })
-        } }
+        }
+        when (a.eqMode) {
+            EqMode.THREE -> {
+                // Sumbu frekuensi EQ selalu rendah → tinggi dari kiri, juga pada bahasa RTL (seperti equalizer fisik)
+                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                    val subs = listOf("≤ 250 Hz", "0,25–4 kHz", "≥ 4 kHz")
+                    val values = Eq.bands(a.values)
+                    Eq.BAND_NAMES.forEachIndexed { i, name ->
+                        Fader(name, subs[i], values[i], Eq.MIN_DB..Eq.MAX_DB, Eq::dbText, { v ->
+                            edit { when (i) { 0 -> it.copy(lowDb = v); 1 -> it.copy(midDb = v); else -> it.copy(highDb = v) } }
+                        })
+                    }
+                    Fader("Preamp", "masukan", a.values.preampDb, Eq.PREAMP_MIN_DB..Eq.PREAMP_MAX_DB, Eq::dbText, { v -> edit { it.copy(preampDb = v) } })
+                } }
+            }
+            EqMode.GRAPHIC10 -> {
+                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())) {
+                        val g = Eq.cleanGraphic(a.graphic)
+                        Eq.GRAPHIC_LABELS.forEachIndexed { i, label ->
+                            Fader(label, "Hz", g[i], Eq.MIN_DB..Eq.MAX_DB, Eq::dbText, { v ->
+                                actions.onAudio { s -> s.copy(graphic = Eq.cleanGraphic(s.graphic).mapIndexed { j, x -> if (j == i) v else x }) }
+                            })
+                        }
+                        Fader("Preamp", "masukan", a.values.preampDb, Eq.PREAMP_MIN_DB..Eq.PREAMP_MAX_DB, Eq::dbText, { v -> edit { it.copy(preampDb = v) } })
+                    }
+                }
+                ConsoleButton("Datarkan 10 pita", { actions.onAudio { it.copy(graphic = List(10) { 0f }) } })
+            }
+            EqMode.PROFILE -> {
+                val prof = a.profile
+                EqCurve(prof?.bands.orEmpty(), Modifier.fillMaxWidth().height(110.dp))
+                Text(
+                    prof?.let { "${it.name} · preamp ${Eq.dbText(it.preampDb)}" } ?: "Belum ada profil",
+                    color = ConsoleColors.Text, style = MaterialTheme.typography.bodyMedium, fontFamily = MonoFamily,
+                )
+                ProfileChips(
+                    saved = ui.player.savedEqs, current = prof?.name.orEmpty(),
+                    onPick = { p -> actions.onAudio { it.copy(profile = p) } },
+                    onImport = importer, onSave = null, onDelete = null, onFlat = null,
+                )
+                ConsoleNote(
+                    "Profil parametrik didekati dengan 31 pita 1/3 oktaf (batas efek sistem). Untuk ketepatan penuh, putar berkas " +
+                        "dengan pemutar bawaan: EQ-nya biquad persis.",
+                )
+            }
+        }
+        importNote?.let { ConsoleNote(it) }
         LineSlider(
             "Balance", a.values.balance, -1f..1f, balanceText(a.values.balance), "Kiri", "Kanan",
             { v -> edit { it.copy(balance = v) } },
         )
-        ConsoleDivider()
-        Text("Preset", color = ConsoleColors.TextSecondary, style = MaterialTheme.typography.labelMedium)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            AudioConsoleRules.allPresets(a).forEach { (name, _) ->
-                ConsoleButton(
-                    name, { actions.onAudio { AudioConsoleRules.applyPreset(it, name) } }, selected = name == a.preset,
-                    description = "Preset $name" + if (name == a.preset) ", dipakai" else "",
-                )
+        if (a.eqMode == EqMode.THREE) {
+            ConsoleDivider()
+            Text("Preset", color = ConsoleColors.TextSecondary, style = MaterialTheme.typography.labelMedium)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                AudioConsoleRules.allPresets(a).forEach { (name, _) ->
+                    ConsoleButton(
+                        name, { actions.onAudio { AudioConsoleRules.applyPreset(it, name) } }, selected = name == a.preset,
+                        description = "Preset $name" + if (name == a.preset) ", dipakai" else "",
+                    )
+                }
             }
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                ConsoleButton("Simpan sebagai preset", { saving = true })
+                val p = a.preset
+                if (p != null && !AudioConsoleRules.isBuiltIn(p)) ConsoleButton("Hapus \"$p\"", { deleting = p })
+            }
+            ProfileLine(ui, actions)
         }
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            ConsoleButton("Simpan sebagai preset", { saving = true })
-            val p = a.preset
-            if (p != null && !AudioConsoleRules.isBuiltIn(p)) ConsoleButton("Hapus \"$p\"", { deleting = p })
-        }
-        ProfileLine(ui, actions)
         ConsoleDivider()
         ConsoleSwitch(
             "Pengaman clipping", a.safeHeadroom, { on -> actions.onAudio { it.copy(safeHeadroom = on) } },
             detail = "Masukan diturunkan sebesar penguatan pita terbesar agar suara tidak pecah",
         )
         ConsoleSwitch(
-            "Semua audio (eksperimental)", a.globalExperimental, { on -> actions.onAudio { it.copy(globalExperimental = on) } },
+            "Cadangan: semua audio bila tidak ada sesi", a.globalFallback, { on -> actions.onAudio { it.copy(globalFallback = on) } },
             enabled = a.eqEnabled,
-            detail = "Mencoba EQ pada keluaran gabungan (sesi 0). Cara ini sudah usang di Android dan di banyak perangkat tidak berpengaruh.",
+            detail = "Bila aplikasi musik tidak membuka sesi efek, EQ dipasang ke keluaran gabungan (sesi 0) dan dilepas lagi saat " +
+                "sesi aplikasi muncul. Cara lama Android: di sebagian perangkat tidak terdengar.",
+        )
+        ConsoleSwitch(
+            "Selalu pasang ke semua audio", a.globalExperimental, { on -> actions.onAudio { it.copy(globalExperimental = on) } },
+            enabled = a.eqEnabled,
+            detail = "Sesi 0 tetap dipasang walau ada sesi aplikasi (EQ bisa terdengar dua kali). Eksperimental.",
         )
         ConsoleSwitch(
             "Deteksi sesi lewat Akses lanjutan", a.detectSessions, { on -> actions.onAudio { it.copy(detectSessions = on) } },

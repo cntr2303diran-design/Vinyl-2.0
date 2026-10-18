@@ -174,6 +174,7 @@ dependencies {
     implementation(libs.shizuku.api)
     implementation(libs.shizuku.provider)
     implementation(libs.media3.exoplayer)
+    implementation(libs.media3.session)
     debugImplementation(libs.androidx.ui.tooling)
 
     testImplementation(libs.junit)

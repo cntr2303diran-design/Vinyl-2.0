@@ -32,6 +32,9 @@ object PrivacyInfo {
             "diminta saat Anda memilih mode itu.",
         "Video di layar TV (opsional) hanya membaca folder yang Anda pilih sendiri lewat pemilih folder Android, tanpa izin " +
             "penyimpanan. Video diputar di perangkat tanpa suara; tidak ada yang diunggah. Folder dan tautannya tidak ikut berkas cadangan.",
+        "Pemutar musik bawaan (opsional) juga hanya membaca folder musik yang Anda pilih sendiri, tanpa izin penyimpanan. Daftar lagu " +
+            "(judul, artis, album, format) disimpan di memori internal aplikasi agar pemindaian berikutnya cepat; berkas musik tidak " +
+            "disalin, tidak diubah, dan tidak diunggah. Folder musik tidak ikut berkas cadangan.",
         "Sleep timer dan pergantian lembut hanya mengatur volume media dan menjeda sesi musik di perangkat; keduanya tidak butuh izin tambahan.",
         "Cadangan otomatis ke akun Google dimatikan. Gunakan Simpan cadangan di atas bila ingin memindahkan pengaturan.",
     )
@@ -66,10 +69,11 @@ object PrivacyInfo {
             optional = true,
         ),
         Item(
-            "android.permission.MODIFY_AUDIO_SETTINGS", "Pengaturan audio (visualizer & equalizer)",
-            "Syarat teknis Android untuk membuka Visualizer pada keluaran audio sistem dan untuk memasang equalizer Audio Console " +
-                "ke sesi audio yang dibuka aplikasi musik. Izin biasa yang diberikan saat pemasangan. Equalizer mati secara default; " +
-                "launcher tidak mengubah volume atau setelan suara sistem Anda.",
+            "android.permission.MODIFY_AUDIO_SETTINGS", "Pengaturan audio (visualizer, equalizer, DAC USB)",
+            "Syarat teknis Android untuk membuka Visualizer pada keluaran audio sistem, untuk memasang equalizer Audio Console " +
+                "ke sesi audio yang dibuka aplikasi musik, dan (Android 14+, opsional) untuk meminta mixer DAC USB berjalan di laju " +
+                "sampel lagu pemutar bawaan. Izin biasa yang diberikan saat pemasangan. Equalizer dan pencocokan laju sampel mati " +
+                "secara default; launcher tidak mengubah volume atau setelan suara sistem Anda.",
         ),
         Item(
             "android.permission.DUMP", "Laporan diagnostik sistem (Akses lanjutan)",
@@ -92,6 +96,16 @@ object PrivacyInfo {
             "Padanan lama izin di atas untuk Android 10 dan 11 (diberikan saat pemasangan). Dipakai untuk hal yang sama, dan untuk " +
                 "membaca apakah Bluetooth menyala (ikon di OSD beranda).",
             optional = true,
+        ),
+        Item(
+            "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK", "Layanan latar (pemutaran media)",
+            "Agar lagu dari pemutar bawaan tetap berjalan saat layar mati atau Anda membuka aplikasi lain, dengan notifikasi " +
+                "pemutaran seperti aplikasi musik biasa. Hanya aktif selama pemutar bawaan memutar lagu.",
+        ),
+        Item(
+            "android.permission.WAKE_LOCK", "Mencegah ponsel tidur",
+            "Menjaga prosesor tetap bangun selama pemutar bawaan memutar lagu, supaya musik tidak terputus saat layar mati. " +
+                "Dilepas begitu lagu dijeda atau berhenti.",
         ),
         Item(
             "android.permission.ACCESS_NETWORK_STATE", "Melihat status jaringan",

@@ -442,7 +442,8 @@ object MediaRepository {
     /** Buka aplikasi musik: default → sesi aktif → pemilih aplikasi musik sistem. */
     fun openMusicApp(context: Context) {
         val pm = context.packageManager
-        val pkg = defaultMusicPackage ?: _state.value.packageName
+        // Pemutar bawaan milik launcher sendiri tidak punya aplikasi terpisah untuk dibuka
+        val pkg = (defaultMusicPackage ?: _state.value.packageName)?.takeIf { it != context.packageName }
         val intent = pkg?.let { pm.getLaunchIntentForPackage(it) }
             ?: Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_MUSIC)
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)

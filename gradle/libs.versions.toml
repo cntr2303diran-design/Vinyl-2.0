@@ -12,7 +12,7 @@ coroutines = "1.10.2"
 junit = "4.13.2"
 # Akses lanjutan opsional lewat Shizuku (github.com/RikkaApps/Shizuku-API, versi rilis terakhir 13.1.5)
 shizuku = "13.1.5"
-# Video milik pengguna di layar TV (rilis stabil Juli 2025, tag resmi github.com/androidx/media)
+# Video milik pengguna di layar TV & pemutar musik bawaan (rilis stabil Juli 2025, tag resmi github.com/androidx/media)
 media3 = "1.8.0"
 # Tangkapan layar tanpa HP (hanya untuk tes)
 roborazzi = "1.74.0"
@@ -49,6 +49,8 @@ kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-
 shizuku-api = { group = "dev.rikka.shizuku", name = "api", version.ref = "shizuku" }
 shizuku-provider = { group = "dev.rikka.shizuku", name = "provider", version.ref = "shizuku" }
 media3-exoplayer = { group = "androidx.media3", name = "media3-exoplayer", version.ref = "media3" }
+# Sesi media untuk pemutar bawaan (notifikasi, layar kunci, tombol headset/Bluetooth)
+media3-session = { group = "androidx.media3", name = "media3-session", version.ref = "media3" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

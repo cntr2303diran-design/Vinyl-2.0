@@ -125,6 +125,9 @@ class ConsoleModelTest {
         assertEquals("Memproses 1 sesi", ok.text)
         assertEquals("Sesi: com.music", ok.note)
         val g = EqSessions.withState(EqSessions.open(emptyList(), 0, "", SessionOrigin.GLOBAL), 0, SessionState.ACTIVE)
-        assertTrue(EqSessions.summary(true, g).note.contains("eksperimental"))
+        // Keluaran gabungan disebut jujur: cara lama yang belum tentu terdengar
+        val gn = EqSessions.summary(true, g).note
+        assertTrue(gn.contains("semua audio (sesi 0)"))
+        assertTrue(gn.contains("tidak terdengar"))
     }
 }

@@ -19,6 +19,7 @@ import com.vinyl.launcher.data.OsdSettings
 import com.vinyl.launcher.media.NowPlaying
 import com.vinyl.launcher.media.SleepTimer
 import com.vinyl.launcher.music.SleepPhase
+import com.vinyl.launcher.player.HiFi
 import com.vinyl.launcher.system.DeviceStatusMonitor
 import com.vinyl.launcher.system.NotificationIcons
 import com.vinyl.launcher.system.StatusText
@@ -29,8 +30,15 @@ import com.vinyl.launcher.ui.room.vhs.OsdState
 import com.vinyl.launcher.ui.room.vhs.VhsOsd
 import com.vinyl.launcher.util.SystemActions
 
-/** Mode pita di OSD/deck: "SP" untuk sumber dari aplikasi musik (format sumbernya tidak dibagikan). */
-fun tapeMode(np: NowPlaying): String? = if (np.hasTrack) "SP" else null
+/**
+ * Mode pita di OSD/deck: "HI-FI" untuk berkas lossless yang diputar pemutar bawaan (formatnya diketahui pasti), "SP"
+ * untuk sumber lain (aplikasi musik lain tidak membagikan format sumbernya).
+ */
+fun tapeMode(np: NowPlaying, ownPackage: String, path: HiFi.PathState): String? = when {
+    !np.hasTrack -> null
+    np.packageName == ownPackage && path.active && path.lossless -> "HI-FI"
+    else -> "SP"
+}
 
 /**
  * OSD beranda (pengganti status bar): jam & tanggal tiap detik, status perangkat dari [DeviceStatusMonitor],
@@ -51,6 +59,7 @@ fun RoomOsd(
     val now by rememberNow()
     val status by DeviceStatusMonitor.state.collectAsStateWithLifecycle()
     val icons by NotificationIcons.icons.collectAsStateWithLifecycle()
+    val path by HiFi.path.collectAsStateWithLifecycle()
     val sleep by SleepTimer.state.collectAsStateWithLifecycle()
     val sleepMs = (sleep as? SleepTimer.State.Running)?.phase?.let {
         when (it) {
@@ -68,7 +77,7 @@ fun RoomOsd(
         notifications = if (osd.notifications) icons else emptyList(),
         showNotifications = osd.notifications,
         transport = StatusText.transport(np.hasTrack, np.isPlaying, seek.deltaMs?.takeIf { seek.touching }),
-        tapeMode = tapeMode(np),
+        tapeMode = tapeMode(np, context.packageName, path),
         sleepLine = StatusText.sleepLine(sleepMs),
         hasTrack = np.hasTrack,
         positionMs = seek.previewMs ?: positionMs,
