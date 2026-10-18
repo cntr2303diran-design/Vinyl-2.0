@@ -86,7 +86,8 @@ fun deckDisplay(transport: StatusText.Transport, tapeMode: String?, s: AudioSnap
         Source.ESTIMATED -> "≈ " + (s.active.device?.name ?: s.active.reading.display)
         Source.UNAVAILABLE -> "--"
     }
-    val rate = s.nativeRate.text
-    val output = listOfNotNull(device.uppercase(), rate?.let { "OUT $it" }).joinToString(" · ")
-    return DeckDisplay(StatusText.modeLine(transport) + (tapeMode?.let { "  $it" } ?: ""), output)
+    // Ringkas untuk jendela VFD kecil: laju keluaran dulu ("48K"), lalu nama perangkat (yang terpotong bila sempit)
+    val rate = s.nativeRate.text?.replace(" kHz", "K")
+    val output = listOfNotNull(rate, device.uppercase()).joinToString(" ")
+    return DeckDisplay(StatusText.modeLine(transport) + (tapeMode?.let { " $it" } ?: ""), output)
 }

@@ -416,11 +416,11 @@ private fun DrawScope.drawGlyph(g: Glyph, level: Int, dim: Boolean) {
 
 /**
  * Peredam lembut di belakang satu blok OSD sudut: inti di bawah teks berlapis hingga alpha ≥ [Tokens.Vhs.OSD_SCRIM_ALPHA]
- * (teks putih tetap ≥ 4,5:1 di atas proyeksi putih), tepinya memudar 24 dp sehingga tidak tampak seperti kotak.
+ * (teks putih tetap ≥ 4,5:1 di atas proyeksi putih), tepinya memudar 28 dp sehingga tidak tampak seperti kotak.
  */
 private fun Modifier.osdScrim(): Modifier = drawBehind {
     val layers = Tokens.Vhs.SCRIM_LAYERS
-    val feather = 24.dp.toPx()
+    val feather = 28.dp.toPx()
     val c = Color.Black.copy(alpha = Tokens.Vhs.SCRIM_LAYER_ALPHA.toFloat())
     for (i in 0 until layers) {
         val grow = feather * (layers - 1 - i) / (layers - 1)

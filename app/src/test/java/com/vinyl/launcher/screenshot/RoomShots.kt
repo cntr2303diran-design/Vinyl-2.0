@@ -96,7 +96,7 @@ internal fun StagePreview(np: NowPlaying, retro: RetroSettings, seek: SeekState?
                 editing = false, positionMs = np.positionMs, titleScrimAlpha = 0.25f, seek = s,
                 info = StageInfo(
                     tvVfd = if (np.hasTrack) "PLAY" else "STANDBY",
-                    deck = DeckDisplay(StatusText.modeLine(transport) + if (np.hasTrack) "  SP" else "", "BUDS PRO · OUT 48 kHz"),
+                    deck = DeckDisplay(StatusText.modeLine(transport) + if (np.hasTrack) " SP" else "", "48K BUDS PRO"),
                     tapeTime = if (np.durationMs > 0) "4:18" else "",
                 ),
                 actions = StageActions({}, {}, {}, {}, {}, {}, {}),

@@ -100,11 +100,12 @@ internal fun DrawScope.drawStageBackdrop(
             while (true) {
                 val x = x0 + i * step
                 if (x > w) break
-                if (i % 2 == 0) drawRect(Color.Black.copy(alpha = 0.07f), topLeft = Offset(x, 0f), size = Size(step, baseY))
-                drawLine(Color.Black.copy(alpha = 0.42f), Offset(x, 0f), Offset(x, baseY), strokeWidth = 1.6f * d)
-                drawLine(Color.White.copy(alpha = 0.045f), Offset(x + 1.6f * d, 0f), Offset(x + 1.6f * d, baseY), strokeWidth = 0.8f * d)
+                if (i % 2 == 0) drawRect(Color.Black.copy(alpha = 0.10f), topLeft = Offset(x, 0f), size = Size(step, baseY))
+                // Alur antarpapan: celah gelap lebar dengan bibir terang di sisi kanannya (cahaya dari kiri)
+                drawLine(Color.Black.copy(alpha = 0.62f), Offset(x, 0f), Offset(x, baseY), strokeWidth = 2.4f * d)
+                drawLine(Color.White.copy(alpha = 0.08f), Offset(x + 2f * d, 0f), Offset(x + 2f * d, baseY), strokeWidth = 1f * d)
                 // Alur tipis di tengah papan (papan lambrisering bermotif)
-                drawLine(Color.Black.copy(alpha = 0.16f), Offset(x + step / 2f, 0f), Offset(x + step / 2f, baseY), strokeWidth = 0.8f * d)
+                drawLine(Color.Black.copy(alpha = 0.28f), Offset(x + step / 2f, 0f), Offset(x + step / 2f, baseY), strokeWidth = 1f * d)
                 i++
             }
         }
@@ -300,7 +301,8 @@ private fun DrawScope.drawGrille(r: Rect, pal: StagePalette, weave: Brush?) {
     drawRect(lerp(pal.woodDark, Color.Black, 0.25f), topLeft = r.topLeft, size = r.size)
     val inner = Rect(r.left + frame, r.top + frame, r.right - frame, r.bottom - frame)
     if (inner.width <= 0f || inner.height <= 0f) return
-    drawRect(Color(0xFF16120F), topLeft = inner.topLeft, size = inner.size)
+    // Kain speaker cokelat-abu tua (bukan lubang hitam), tenunannya terlihat samar
+    drawRect(Brush.verticalGradient(listOf(Color(0xFF3A322B), Color(0xFF2A241F)), startY = inner.top, endY = inner.bottom), topLeft = inner.topLeft, size = inner.size)
     if (weave != null) drawRect(weave, topLeft = inner.topLeft, size = inner.size)
     drawRect(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.5f), Color.Transparent), startY = inner.top, endY = inner.top + 8f * d), topLeft = inner.topLeft, size = Size(inner.width, 8f * d))
     drawRect(Brush.horizontalGradient(listOf(Color.Black.copy(alpha = 0.35f), Color.Transparent), startX = inner.left, endX = inner.left + 6f * d), topLeft = inner.topLeft, size = Size(6f * d, inner.height))
@@ -315,12 +317,13 @@ internal fun weaveBrush(): Brush {
         val y = i / n
         val warp = x % 3 == 0
         val weft = y % 3 == 0
+        // Benang lusi & pakan gelap di atas dasar kain, simpulnya paling gelap
         val a = when {
-            warp && weft -> 70
-            warp || weft -> 34
+            warp && weft -> 150
+            warp || weft -> 90
             else -> 0
         }
-        val v = if ((x + y) % 2 == 0) 120 else 60
+        val v = 8
         (a shl 24) or (v shl 16) or (v shl 8) or v
     }
     val bmp = android.graphics.Bitmap.createBitmap(px, n, n, android.graphics.Bitmap.Config.ARGB_8888).asImageBitmap()

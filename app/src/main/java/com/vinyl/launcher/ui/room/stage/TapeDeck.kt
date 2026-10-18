@@ -136,7 +136,9 @@ private fun DeckVfd(display: DeckDisplay, vfdColor: VfdColor, modifier: Modifier
         // Ukuran huruf mengikuti tinggi jendela; skala huruf sistem ikut sampai 1,3× (lebih dari itu teks keluar jendela)
         val density = LocalDensity.current
         val scale = density.fontScale.coerceAtMost(1.3f) / density.fontScale
-        val textSize = ((maxHeight.value * 0.27f).coerceIn(9f, 17f) * scale).sp
+        // …dan tidak lebih besar dari yang muat untuk ±11 karakter huruf monospace selebar jendela
+        val byWidth = ((maxWidth.value - 16f) / (0.62f * 11f)).coerceAtLeast(7f)
+        val textSize = (minOf((maxHeight.value * 0.27f).coerceIn(9f, 17f), byWidth / density.fontScale) * scale).sp
         // Kilau kaca & ruas mati samar (VFD sungguhan tetap memperlihatkan segmen yang tidak menyala)
         Canvas(Modifier.fillMaxSize()) {
             drawRect(Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.06f), Color.Transparent), endY = size.height * 0.5f))
