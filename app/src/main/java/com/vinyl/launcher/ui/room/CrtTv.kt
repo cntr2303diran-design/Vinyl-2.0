@@ -79,7 +79,7 @@ private data class KnobPalette(val face: Color, val rim: Color, val bar: Color)
 private fun knobPalette(style: KnobStyle): KnobPalette = when (style) {
     KnobStyle.BAKELITE -> KnobPalette(Color(0xFF2E2A27), Color(0xFF4A433D), Color(0xFF181614))
     // Referensi: knob logam abu dengan palang gelap
-    KnobStyle.CHROME -> KnobPalette(Color(0xFFA9AAA6), Color(0xFF6F706C), Color(0xFF2B2B29))
+    KnobStyle.CHROME -> KnobPalette(Color(0xFF85867F), Color(0xFF3F403C), Color(0xFF262624))
     KnobStyle.BRASS -> KnobPalette(Color(0xFFC9A55A), Color(0xFF8F6E2F), Color(0xFF3A2A10))
 }
 
@@ -200,14 +200,14 @@ private fun ScreenTitle(title: String, artist: String, tvWidth: Dp) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        val big = (tvWidth.value * 0.072f).coerceIn(16f, 64f).sp
+        val big = (tvWidth.value * 0.094f).coerceIn(16f, 80f).sp
         Text(
             title.uppercase(),
             color = Color.White,
             fontFamily = InterDisplay,
             fontWeight = FontWeight.Bold,
             fontSize = big,
-            lineHeight = big * 0.98f,
+            lineHeight = big * 0.94f,
             letterSpacing = 0.01.em,
             textAlign = TextAlign.Center,
             maxLines = 2,
@@ -219,12 +219,12 @@ private fun ScreenTitle(title: String, artist: String, tvWidth: Dp) {
                 artist.uppercase(),
                 color = Color.White,
                 fontWeight = FontWeight.Medium,
-                fontSize = (big.value * 0.26f).coerceAtLeast(9f).sp,
+                fontSize = (big.value * 0.27f).coerceAtLeast(9f).sp,
                 letterSpacing = 0.06.em,
                 textAlign = TextAlign.Center,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = tvWidth * 0.045f),
+                modifier = Modifier.padding(top = tvWidth * 0.07f),
             )
         }
     }
@@ -315,6 +315,18 @@ private fun DrawScope.drawTvBody(p: BodyPalette, knob: KnobPalette, turns: Float
         Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.35f), Color.Transparent), endY = h * 0.06f),
         size = Size(w, h * 0.06f), cornerRadius = corner,
     )
+    // Volume bodi: sisi kiri/kanan lebih gelap (plastik melengkung), sorotan lembut di sepertiga kiri atas
+    drawRoundRect(
+        Brush.horizontalGradient(
+            0f to Color.Black.copy(alpha = 0.20f), 0.07f to Color.Transparent, 0.35f to Color.White.copy(alpha = 0.06f),
+            0.9f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.26f),
+        ),
+        size = Size(w, h * 0.985f), cornerRadius = corner,
+    )
+    drawRoundRect(
+        Brush.verticalGradient(0f to Color.Transparent, 0.75f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.18f)),
+        size = Size(w, h * 0.985f), cornerRadius = corner,
+    )
     // Bingkai dalam (sedikit lebih gelap dari bodi) mengelilingi layar
     val b = TvGeometry.BEZEL
     drawRoundRect(
@@ -381,7 +393,7 @@ private fun DrawScope.drawKnob(c: Offset, r: Float, k: KnobPalette, angle: Float
     if (highlight) drawCircle(Color(Tokens.Retro.AMBER).copy(alpha = 0.6f), r * 1.2f, c, style = Stroke(width = r * 0.09f))
     // Palang penunjuk
     rotate(angle, c) {
-        drawLine(k.bar, Offset(c.x, c.y - r * 0.78f), Offset(c.x, c.y + r * 0.78f), strokeWidth = r * 0.30f, cap = StrokeCap.Round)
+        drawLine(k.bar, Offset(c.x, c.y - r * 0.74f), Offset(c.x, c.y + r * 0.74f), strokeWidth = r * 0.24f, cap = StrokeCap.Round)
         drawLine(Color.White.copy(alpha = 0.25f), Offset(c.x - r * 0.06f, c.y - r * 0.7f), Offset(c.x - r * 0.06f, c.y + r * 0.1f), strokeWidth = r * 0.05f, cap = StrokeCap.Round)
     }
 }

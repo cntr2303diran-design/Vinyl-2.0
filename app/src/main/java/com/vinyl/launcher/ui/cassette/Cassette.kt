@@ -195,7 +195,8 @@ private data class ShellPalette(val body: Color, val edge: Color, val see: Boole
 
 private fun shellPalette(shell: CassetteShell, accent: Color): ShellPalette = when (shell) {
     CassetteShell.BLACK -> ShellPalette(Color(0xFF232323), Color(0xFF3A3A3A), see = false)
-    CassetteShell.TRANSPARENT -> ShellPalette(Color(0x8C9AA3A6), Color(0xFF7F8A8D), see = true)
+    // Referensi: plastik bening berasap kecokelatan
+    CassetteShell.TRANSPARENT -> ShellPalette(Color(0xB83D3631), Color(0xFF6A5F55), see = true)
     CassetteShell.COLORED -> ShellPalette(accent, accent.copy(red = accent.red * 0.7f, green = accent.green * 0.7f, blue = accent.blue * 0.7f), see = false)
     CassetteShell.PICTURE -> ShellPalette(Color(0xFF2A2A2A), Color(0xFF444444), see = false)
 }

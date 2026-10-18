@@ -52,6 +52,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
@@ -297,7 +298,7 @@ fun RoomScene(
         if (volume != null) {
             VolumeLine(
                 volume, colors,
-                Modifier.offset(w * sc.volume.left - 30.dp, h * sc.volume.top - 24.dp).size(w * sc.volume.width + 60.dp, 48.dp),
+                Modifier.offset(w * sc.volume.left, h * sc.volume.top - 24.dp).size(w * sc.volume.width, 48.dp),
                 enabled = !editing, onVolume = onVolume,
             )
         }
@@ -511,23 +512,35 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawRoom(
     val side = w * 0.2f
     drawRect(Brush.horizontalGradient(listOf(c.sideWall.copy(alpha = 0.75f), Color.Transparent), endX = side), size = Size(side, h))
     drawRect(Brush.horizontalGradient(listOf(Color.Transparent, c.sideWall.copy(alpha = 0.75f)), startX = w - side, endX = w), topLeft = Offset(w - side, 0f), size = Size(side, h))
-    drawLine(c.cornerLine.copy(alpha = 0.5f), Offset(side * 1.05f, 0f), Offset(side * 1.05f, backFloor), strokeWidth = 1f)
-    drawLine(c.cornerLine.copy(alpha = 0.5f), Offset(w - side * 1.05f, 0f), Offset(w - side * 1.05f, backFloor), strokeWidth = 1f)
+    drawLine(c.cornerLine.copy(alpha = 0.18f), Offset(side * 1.05f, 0f), Offset(side * 1.05f, backFloor), strokeWidth = 1f)
+    drawLine(c.cornerLine.copy(alpha = 0.18f), Offset(w - side * 1.05f, 0f), Offset(w - side * 1.05f, backFloor), strokeWidth = 1f)
     // Lantai mengilap
     drawRect(Brush.verticalGradient(listOf(c.floorFar, c.floorNear), startY = backFloor, endY = h), topLeft = Offset(0f, backFloor), size = Size(w, h - backFloor))
-    drawLine(c.cornerLine.copy(alpha = 0.6f), Offset(0f, backFloor), Offset(w, backFloor), strokeWidth = 1f)
+    drawLine(c.cornerLine.copy(alpha = 0.3f), Offset(0f, backFloor), Offset(w, backFloor), strokeWidth = 1f)
     // Kilap lantai di depan TV
     drawOval(
         Brush.radialGradient(listOf(Color.White.copy(alpha = 0.05f), Color.Transparent), center = Offset(tvCx, sc.floorY * h), radius = sc.tv.width * w * 0.8f),
         topLeft = Offset(tvCx - sc.tv.width * w * 0.8f, backFloor), size = Size(sc.tv.width * w * 1.6f, (h - backFloor) * 0.9f),
     )
-    // Cahaya layar: halo di sekitar TV (hanya menerangkan)
+    // Cahaya layar: halo terang tepat di sekitar bodi TV (referensi) + cahaya lebar yang menerangi dinding
     val g = glowIntensity.coerceIn(0f, 1f)
     if (g > 0f) {
-        val r = sc.tv.width * w * 0.85f
+        val r = sc.tv.width * w * 0.95f
         drawCircle(
-            Brush.radialGradient(listOf(Color(0xFFFFF4E2).copy(alpha = 0.16f * g), glow.copy(alpha = 0.07f * g), Color.Transparent), center = Offset(tvCx, tvCy), radius = r),
+            Brush.radialGradient(listOf(Color(0xFFFFF4E2).copy(alpha = 0.14f * g), glow.copy(alpha = 0.06f * g), Color.Transparent), center = Offset(tvCx, tvCy), radius = r),
             r, Offset(tvCx, tvCy), blendMode = BlendMode.Screen,
         )
+        // Halo rapat: elips seukuran TV sedikit lebih besar, memudar cepat di luar bodi
+        val hw = sc.tv.width * w * 0.62f
+        val hh = sc.tv.height * h * 0.64f
+        scale(hw / hh, 1f, Offset(tvCx, tvCy)) {
+            drawCircle(
+                Brush.radialGradient(
+                    0f to Color(0xFFFFF6E6).copy(alpha = 0.34f * g), 0.72f to Color(0xFFFFF0DA).copy(alpha = 0.18f * g), 1f to Color.Transparent,
+                    center = Offset(tvCx, tvCy), radius = hh,
+                ),
+                hh, Offset(tvCx, tvCy), blendMode = BlendMode.Screen,
+            )
+        }
     }
 }
