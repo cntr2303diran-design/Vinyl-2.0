@@ -131,6 +131,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 import com.vinyl.launcher.ui.console.ConsoleRoute
 import com.vinyl.launcher.data.VideoRules
+import com.vinyl.launcher.data.TurntablePosition
 import com.vinyl.launcher.media.VideoLibrary
 import com.vinyl.launcher.media.VideoMatch
 import com.vinyl.launcher.ui.room.ScreenVideo
@@ -586,6 +587,13 @@ private fun HomeContent(
             wallGradient = if (home.background.type == BackgroundType.GRADIENT)
                 home.background.gradientStart.toColor() to home.background.gradientEnd.toColor() else null,
             wallPicture = wallPicture,
+            tvPosition = when (home.turntablePosition) {
+                TurntablePosition.LEFT -> -1f
+                TurntablePosition.CENTER -> 0f
+                TurntablePosition.RIGHT -> 1f
+            },
+            showCover = home.coverVisible,
+            showTitle = home.trackInfoVisible,
             modifier = Modifier.fxForeground(fx, fxPlan, visual.parallax, visual.parallaxStrength),
             screenVideo = screenVideo,
         ) { zoomed ->

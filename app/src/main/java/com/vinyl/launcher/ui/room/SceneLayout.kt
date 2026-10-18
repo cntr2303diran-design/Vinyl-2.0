@@ -29,14 +29,33 @@ object SceneLayout {
         val landscape: Boolean,
     )
 
+    /** Geser mendatar maksimum seluruh susunan untuk posisi kiri/kanan (pecahan lebar layar). */
+    const val MAX_SHIFT = 0.16f
+
     /**
      * @param aspect lebar / tinggi area
      * @param size skala TV pilihan pengguna 0,3..1,2 (1 = seperti referensi pada ukuran bawaan 0,85)
+     * @param position posisi pilihan pengguna −1 (kiri) .. 1 (kanan); hanya berlaku di layar mendatar (di ponsel tegak
+     *   susunan sudah memenuhi lebar layar)
      */
-    fun compute(aspect: Float, size: Float = 0.85f): Scene {
+    fun compute(aspect: Float, size: Float = 0.85f, position: Float = 0f): Scene {
         val a = aspect.coerceIn(0.4f, 3f)
         val k = (size.coerceIn(0.3f, 1.2f) / 0.85f)
-        return if (a >= 1.05f) landscape(a, k) else portrait(a, k)
+        return if (a >= 1.05f) shifted(landscape(a, k), position) else portrait(a, k)
+    }
+
+    /** Geser TV, kaset, tombol, progres, dan volume bersama-sama, tanpa keluar dari layar. */
+    private fun shifted(s: Scene, position: Float): Scene {
+        val want = position.coerceIn(-1f, 1f) * MAX_SHIFT
+        if (want == 0f) return s
+        val minX = minOf(s.tv.left, s.cassette.left, s.controlsX.first() - 0.03f)
+        val maxX = maxOf(s.tv.right, s.volume.right, s.controlsX.last() + 0.03f)
+        val dx = want.coerceIn(0.02f - minX, 0.98f - maxX)
+        fun FracRect.move() = copy(left = this.left + dx)
+        return s.copy(
+            tv = s.tv.move(), cassette = s.cassette.move(), controlsX = s.controlsX.map { it + dx },
+            progress = s.progress.move(), volume = s.volume.move(),
+        )
     }
 
     private fun landscape(a: Float, k: Float): Scene {

@@ -107,7 +107,7 @@ class SettingsActivity : ComponentActivity() {
 /** Kategori pengaturan (sidebar kiri di tablet, daftar di layar sempit). */
 private enum class Page(val title: String, val subtitle: String, val icon: ImageVector, val tint: Color) {
     PERMISSIONS("Izin & status", "Launcher default, notifikasi, aksesibilitas", Icons.Rounded.VerifiedUser, Color(0xFF30D158)),
-    HOME("Layar utama", "Latar, turntable, jam, widget", Icons.Rounded.Home, Color(0xFF0A84FF)),
+    HOME("Layar utama", "TV, kaset, dinding, jam, widget", Icons.Rounded.Home, Color(0xFF0A84FF)),
     DRAWER("App drawer", "Sering dipakai, kategori, lencana, pencarian", Icons.Rounded.GridView, Color(0xFF34C759)),
     LOCK("Layar kunci", "Layar kunci vinyl & tampilannya", Icons.Rounded.Lock, Color(0xFF5E5CE6)),
     MUSIC("Musik", "Aplikasi default, lirik, rak, timer tidur", Icons.Rounded.MusicNote, Color(0xFFFF375F)),
@@ -140,7 +140,11 @@ private fun SettingsScreen(vm: SettingsViewModel, onBack: () -> Unit) {
     val pageBody: @Composable (Page) -> Unit = { p ->
         when (p) {
             Page.PERMISSIONS -> PermissionSteps(s.coverEnabled) { on -> vm.update { it.copy(coverEnabled = on) } }
-            Page.HOME -> HomeStyleControls(s.home) { h -> vm.update { it.copy(home = h) } }
+            Page.HOME -> HomeStyleControls(
+                s.home, s.retro,
+                onChange = { h -> vm.update { it.copy(home = h) } },
+                onRetro = { r -> vm.update { it.copy(retro = r) } },
+            )
             Page.DRAWER -> {
                 Group("Tampilan") { DrawerDisplayControls(s.drawer) { d -> vm.update { it.copy(drawer = d) } } }
                 Group("Pencarian") { DrawerSearchControls(s.drawer) { d -> vm.update { it.copy(drawer = d) } } }

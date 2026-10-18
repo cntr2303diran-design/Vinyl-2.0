@@ -160,6 +160,12 @@ fun RoomScene(
     wallColor: Color? = null,
     wallGradient: Pair<Color, Color>? = null,
     wallPicture: ImageBitmap? = null,
+    /** Posisi mendatar susunan −1 (kiri) .. 1 (kanan); lihat [SceneLayout.compute]. */
+    tvPosition: Float = 0f,
+    /** Tampilkan cover di layar TV (mati: warna aksen saja). */
+    showCover: Boolean = true,
+    /** Tampilkan judul & artis di layar TV. */
+    showTitle: Boolean = true,
     /** Video milik pengguna untuk layar TV (hanya TV utama; pantulan di lantai tetap memakai cover). */
     screenVideo: (@Composable () -> Unit)? = null,
     /** Isi tambahan di layar TV (batang visualizer, lirik saat TV didekatkan); menerima status zoom TV. Lambda terakhir. */
@@ -177,7 +183,7 @@ fun RoomScene(
         val w = maxWidth
         val h = maxHeight
         val aspect = if (h.value > 0f) w.value / h.value else 1f
-        val sc = SceneLayout.compute(aspect, tvSize)
+        val sc = SceneLayout.compute(aspect, tvSize, tvPosition)
         val tv = sc.tv
         val cas = sc.cassette
         val wPx = with(LocalDensity.current) { w.roundToPx() }
@@ -216,7 +222,7 @@ fun RoomScene(
             // Pantulan TV di lantai mengilap (hanya ruang gelap)
             if (tone == RoomTone.DIM) {
                 Reflection(Modifier.offset(w * tv.left, h * sc.floorY).size(w * tv.width, h * tv.height), alpha = 0.16f) {
-                    TvFor(np, retro, mode, accent, status, motionAllowed, titleScrimAlpha, knobState)
+                    TvFor(np, retro, mode, accent, status, motionAllowed, titleScrimAlpha, knobState, showCover, showTitle)
                 }
             }
             // TV
@@ -236,7 +242,7 @@ fun RoomScene(
                         role = Role.Button,
                     ) { tvZoomed = !tvZoomed },
             ) {
-                TvFor(np, retro, mode, accent, status, motionAllowed, titleScrimAlpha, knobState, video = screenVideo) {
+                TvFor(np, retro, mode, accent, status, motionAllowed, titleScrimAlpha, knobState, showCover, showTitle, video = screenVideo) {
                     screenOverlay(tvZoomed)
                     if (tvZoomed) LyricsHint(onOpenLyrics)
                 }
@@ -332,11 +338,14 @@ private fun TvFor(
     motionAllowed: Boolean,
     titleScrimAlpha: Float,
     knobState: KnobState,
+    showCover: Boolean,
+    showTitle: Boolean,
     video: (@Composable () -> Unit)? = null,
     overlay: @Composable () -> Unit = {},
 ) {
     CrtTv(
-        mode = mode, art = np.art, title = np.title, artist = np.artist, accent = accent,
+        mode = mode, art = np.art.takeIf { showCover }, title = if (showTitle) np.title else "",
+        artist = if (showTitle) np.artist else "", accent = accent,
         body = retro.tvBody, knob = retro.knobStyle, vfdColor = retro.vfdColor, vfdLines = status.vfdLines,
         crtStrength = retro.crtStrength, motion = retro.albumMotion, reduceMotion = !motionAllowed,
         titleScrimAlpha = titleScrimAlpha, knobTurns = knobState.turns, knobHighlight = knobState.active,

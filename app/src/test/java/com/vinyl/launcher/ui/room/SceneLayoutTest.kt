@@ -59,4 +59,28 @@ class SceneLayoutTest {
             assertTrue(x.zipWithNext().all { (p, q) -> p < q })
         }
     }
+
+    @Test
+    fun positionShiftsTheWholeStageTogetherAndStaysOnScreen() {
+        for (a in aspects) for (s in sizes) for (p in listOf(-1f, -0.5f, 0.5f, 1f)) {
+            val base = SceneLayout.compute(a, s)
+            val sc = SceneLayout.compute(a, s, p)
+            val tag = "a=$a s=$s p=$p"
+            if (!sc.landscape) {
+                assertEquals(tag, base, sc) // ponsel tegak: tidak digeser
+                continue
+            }
+            val dx = sc.tv.left - base.tv.left
+            assertEquals(tag, dx, sc.cassette.left - base.cassette.left, 1e-5f)
+            assertEquals(tag, dx, sc.volume.left - base.volume.left, 1e-5f)
+            assertEquals(tag, dx, sc.progress.left - base.progress.left, 1e-5f)
+            sc.controlsX.zip(base.controlsX).forEach { (x, b) -> assertEquals(tag, dx, x - b, 1e-5f) }
+            assertTrue(tag, if (p < 0) dx <= 0f else dx >= 0f)
+            assertTrue(tag, sc.tv.inside() && sc.cassette.inside() && sc.volume.right <= 1f)
+            assertEquals(tag, base.tv.top, sc.tv.top, 0f)
+        }
+        // Di referensi, kanan penuh benar-benar menggeser
+        val r = SceneLayout.compute(SceneLayout.REF_ASPECT, 0.85f, 1f)
+        assertTrue(r.tv.left - SceneLayout.compute(SceneLayout.REF_ASPECT).tv.left > 0.1f)
+    }
 }

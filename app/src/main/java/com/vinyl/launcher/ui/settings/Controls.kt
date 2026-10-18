@@ -78,10 +78,16 @@ import com.vinyl.launcher.data.GestureBinding
 import com.vinyl.launcher.data.GestureSettings
 import com.vinyl.launcher.data.HomeSettings
 import com.vinyl.launcher.data.SettingsRepository
-import com.vinyl.launcher.data.TonearmStyle
 import com.vinyl.launcher.data.TurntablePosition
-import com.vinyl.launcher.data.VinylStyle
 import com.vinyl.launcher.data.WidgetConfig
+import com.vinyl.launcher.data.AlbumMotion
+import com.vinyl.launcher.data.CassetteShell
+import com.vinyl.launcher.data.KnobStyle
+import com.vinyl.launcher.data.ReelSpeed
+import com.vinyl.launcher.data.RetroSettings
+import com.vinyl.launcher.data.RoomTone
+import com.vinyl.launcher.data.TvBody
+import com.vinyl.launcher.data.VfdColor
 import com.vinyl.launcher.data.WidgetType
 import com.vinyl.launcher.ui.theme.label
 import com.vinyl.launcher.ui.theme.toColor
@@ -368,19 +374,6 @@ fun BackgroundControls(bg: BackgroundSettings, allowGradient: Boolean, pickerNam
     }
 }
 
-fun VinylStyle.label() = when (this) {
-    VinylStyle.CLASSIC -> "Klasik hitam"
-    VinylStyle.COLORED -> "Berwarna"
-    VinylStyle.TRANSPARENT -> "Transparan"
-    VinylStyle.PICTURE_DISC -> "Picture disc"
-}
-
-fun TonearmStyle.label() = when (this) {
-    TonearmStyle.SILVER -> "Perak"
-    TonearmStyle.BLACK -> "Hitam"
-    TonearmStyle.GOLD -> "Emas"
-}
-
 fun TurntablePosition.label() = when (this) {
     TurntablePosition.LEFT -> "Kiri"
     TurntablePosition.CENTER -> "Tengah"
@@ -411,56 +404,141 @@ fun rememberMultiImagePicker(onPicked: (List<String>) -> Unit): () -> Unit {
 
 /** Bagian editor home screen (dipakai sebagai tab di panel edit). */
 enum class HomeSection(val title: String) {
-    BACKGROUND("Latar"), TURNTABLE("Turntable"), CLOCK("Jam"), WIDGETS("Widget")
+    TV("TV & kaset"), BACKGROUND("Dinding"), CLOCK("Jam"), WIDGETS("Widget")
 }
 
-/** Kontrol untuk satu bagian gaya home screen, dibungkus kartu. */
+/**
+ * Kontrol untuk satu bagian gaya layar utama, dibungkus kartu. Pengaturan gaya TV ([RetroSettings]) disimpan langsung
+ * lewat [onRetro]; pengaturan [HomeSettings] lewat [onChange] (di panel edit beranda: draf yang disimpan dengan tombol Simpan).
+ */
 @Composable
-fun HomeSectionControls(section: HomeSection, home: HomeSettings, onChange: (HomeSettings) -> Unit) {
+fun HomeSectionControls(
+    section: HomeSection,
+    home: HomeSettings,
+    retro: RetroSettings,
+    onChange: (HomeSettings) -> Unit,
+    onRetro: (RetroSettings) -> Unit,
+) {
     when (section) {
+        HomeSection.TV -> TvSectionControls(home, retro, onChange, onRetro)
         HomeSection.BACKGROUND -> {
-            SectionTitle("Latar")
-            ControlCard { BackgroundControls(home.background, allowGradient = true, pickerName = "home") { onChange(home.copy(background = it)) } }
-        }
-        HomeSection.TURNTABLE -> {
-            SectionTitle("Turntable")
+            SectionTitle("Dinding ruang")
             ControlCard {
-                SliderRow("Ukuran", home.turntableSize, 0.5f..1f, { onChange(home.copy(turntableSize = it)) })
-                ChipRow("Posisi", TurntablePosition.entries, home.turntablePosition, { it.label() }) { onChange(home.copy(turntablePosition = it)) }
-                ChipRow("Kecepatan", listOf(33, 45), home.rpm, { "$it RPM" }) { onChange(home.copy(rpm = it)) }
-            }
-            SectionTitle("Piringan & lengan")
-            ControlCard {
-                ChipRow("Gaya vinyl", VinylStyle.entries, home.vinylStyle, { it.label() }) { onChange(home.copy(vinylStyle = it)) }
-                ChipRow("Gaya tonearm", TonearmStyle.entries, home.tonearmStyle, { it.label() }) { onChange(home.copy(tonearmStyle = it)) }
-            }
-            SectionTitle("Sampul album")
-            ControlCard {
-                SwitchRow("Tampilkan sampul", home.coverVisible, { onChange(home.copy(coverVisible = it)) })
-                SwitchRow("Sudut membulat", home.coverRounded, { onChange(home.copy(coverRounded = it)) })
-                SwitchRow("Bayangan", home.coverShadow, { onChange(home.copy(coverShadow = it)) })
-                SwitchRow("Judul & progress di bawah turntable", home.trackInfoVisible, { onChange(home.copy(trackInfoVisible = it)) })
-                if (home.trackInfoVisible) SwitchRow(
-                    "Lirik berjalan", home.lyricsVisible, { onChange(home.copy(lyricsVisible = it)) },
-                    subtitle = "Dari LRCLIB, butuh internet",
+                ChipRow("Ruang", RoomTone.entries, retro.room, { it.label() }) { onRetro(retro.copy(room = it)) }
+                BackgroundControls(home.background, allowGradient = true, pickerName = "home") { onChange(home.copy(background = it)) }
+                Text(
+                    "Album: cahaya layar mengikuti warna cover. Warna/gradien: dinding diwarnai. Gambar: gambar Anda diproyeksikan samar di dinding.",
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 6.dp),
                 )
             }
         }
         HomeSection.CLOCK -> {
-            SectionTitle("Jam & tanggal")
-            ControlCard { ClockControls(home.clock, { onChange(home.copy(clock = it)) }) }
+            SectionTitle("Jam di sudut")
+            ControlCard {
+                SwitchRow("Tampilkan TIME di kiri atas", home.clock.visible, { onChange(home.copy(clock = home.clock.copy(visible = it))) })
+                SwitchRow("Format 24 jam", home.clock.use24h, { onChange(home.copy(clock = home.clock.copy(use24h = it))) })
+                Text(
+                    "Gaya jam besar (tipis, flip, analog, dan lainnya) tetap ada di Layar kunci.",
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 6.dp),
+                )
+            }
         }
         HomeSection.WIDGETS -> {
             SectionTitle("Widget tambahan")
-            ControlCard { WidgetControls(home.widgets) { onChange(home.copy(widgets = it)) } }
+            ControlCard {
+                WidgetControls(home.widgets) { onChange(home.copy(widgets = it)) }
+                ColorRow("Warna teks widget", home.clock.color) { onChange(home.copy(clock = home.clock.copy(color = it))) }
+            }
         }
     }
 }
 
-/** Semua kontrol gaya home screen (halaman Pengaturan). */
+/** TV, kaset, knob, layar CRT, dan VFD (pengganti bagian Turntable, Piringan & lengan, Sampul album). */
 @Composable
-fun HomeStyleControls(home: HomeSettings, onChange: (HomeSettings) -> Unit) {
-    HomeSection.entries.forEach { HomeSectionControls(it, home, onChange) }
+private fun TvSectionControls(home: HomeSettings, retro: RetroSettings, onChange: (HomeSettings) -> Unit, onRetro: (RetroSettings) -> Unit) {
+    SectionTitle("TV")
+    ControlCard {
+        ChipRow("Bodi TV", TvBody.entries, retro.tvBody, { it.label() }) { onRetro(retro.copy(tvBody = it)) }
+        SliderRow("Ukuran", home.turntableSize, 0.5f..1f, { onChange(home.copy(turntableSize = it)) })
+        ChipRow("Posisi (layar mendatar)", TurntablePosition.entries, home.turntablePosition, { it.label() }) { onChange(home.copy(turntablePosition = it)) }
+        ChipRow("Knob", KnobStyle.entries, retro.knobStyle, { it.label() }) { onRetro(retro.copy(knobStyle = it)) }
+        ChipRow("Warna VFD", VfdColor.entries, retro.vfdColor, { it.label() }) { onRetro(retro.copy(vfdColor = it)) }
+    }
+    SectionTitle("Layar CRT")
+    ControlCard {
+        SwitchRow("Tampilkan cover", home.coverVisible, { onChange(home.copy(coverVisible = it)) }, subtitle = "Mati: layar hanya berwarna aksen lagu")
+        SwitchRow("Judul & artis di layar", home.trackInfoVisible, { onChange(home.copy(trackInfoVisible = it)) })
+        SwitchRow(
+            "Lirik saat TV didekatkan", home.lyricsVisible, { onChange(home.copy(lyricsVisible = it)) },
+            subtitle = "Ketuk TV untuk mendekat. Lirik dari LRCLIB, butuh internet",
+        )
+        ChipRow("Gerak cover", AlbumMotion.entries, retro.albumMotion, { it.label() }) { onRetro(retro.copy(albumMotion = it)) }
+        SliderRow("Efek tabung (scanline, tepi gelap)", retro.crtStrength, 0f..1f, { onRetro(retro.copy(crtStrength = it)) })
+        SliderRow("Cahaya layar di dinding", retro.glowIntensity, 0f..1f, { onRetro(retro.copy(glowIntensity = it)) })
+    }
+    SectionTitle("Kaset")
+    ControlCard {
+        ChipRow("Cangkang", CassetteShell.entries, retro.cassetteShell, { it.label() }) { onRetro(retro.copy(cassetteShell = it)) }
+        ChipRow("Gulungan", ReelSpeed.entries, retro.reelSpeed, { it.label() }) { onRetro(retro.copy(reelSpeed = it)) }
+    }
+    SectionTitle("Halaman")
+    ControlCard {
+        SwitchRow(
+            "Tukar halaman kiri & kanan", retro.swapPages, { onRetro(retro.copy(swapPages = it)) },
+            subtitle = if (retro.swapPages) "Audio Console di kiri, perpustakaan kaset di kanan" else "Perpustakaan kaset di kiri, Audio Console di kanan",
+        )
+    }
+}
+
+fun TvBody.label() = when (this) {
+    TvBody.CREAM -> "Krem"
+    TvBody.WALNUT -> "Kayu walnut"
+    TvBody.CHARCOAL -> "Arang"
+    TvBody.SPACE_AGE -> "Oranye space-age"
+}
+
+fun KnobStyle.label() = when (this) {
+    KnobStyle.BAKELITE -> "Bakelit hitam"
+    KnobStyle.CHROME -> "Krom"
+    KnobStyle.BRASS -> "Kuningan"
+}
+
+fun CassetteShell.label() = when (this) {
+    CassetteShell.BLACK -> "Hitam"
+    CassetteShell.TRANSPARENT -> "Bening berasap"
+    CassetteShell.COLORED -> "Warna aksen"
+    CassetteShell.PICTURE -> "Bergambar cover"
+}
+
+fun ReelSpeed.label() = when (this) {
+    ReelSpeed.NORMAL -> "Normal"
+    ReelSpeed.FAST -> "Cepat"
+}
+
+fun AlbumMotion.label() = when (this) {
+    AlbumMotion.OFF -> "Diam"
+    AlbumMotion.ROTATE -> "Berputar"
+    AlbumMotion.ZOOM -> "Zoom pelan"
+    AlbumMotion.PERSPECTIVE -> "Perspektif"
+    AlbumMotion.ANALOG -> "Getar analog"
+}
+
+fun RoomTone.label() = when (this) {
+    RoomTone.DIM -> "Gelap"
+    RoomTone.LIGHT -> "Terang"
+}
+
+fun VfdColor.label() = when (this) {
+    VfdColor.GREEN -> "Hijau"
+    VfdColor.AMBER -> "Amber"
+}
+
+/** Semua kontrol gaya layar utama (halaman Pengaturan). */
+@Composable
+fun HomeStyleControls(home: HomeSettings, retro: RetroSettings, onChange: (HomeSettings) -> Unit, onRetro: (RetroSettings) -> Unit) {
+    HomeSection.entries.forEach { HomeSectionControls(it, home, retro, onChange, onRetro) }
 }
 
 @OptIn(ExperimentalLayoutApi::class)

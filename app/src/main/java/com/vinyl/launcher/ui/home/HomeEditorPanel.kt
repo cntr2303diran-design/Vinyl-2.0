@@ -121,7 +121,12 @@ fun HomeEditorPanel(vm: HomeViewModel, landscape: Boolean, apps: List<AppInfo>) 
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
             when {
                 tab < HomeSection.entries.size ->
-                    HomeSectionControls(HomeSection.entries[tab], home) { new -> vm.updateDraft { new } }
+                    HomeSectionControls(
+                        HomeSection.entries[tab], home, settings.retro,
+                        onChange = { new -> vm.updateDraft { new } },
+                        // Gaya TV langsung tersimpan (bukan bagian draf beranda), seperti gestur
+                        onRetro = { r -> vm.updateSettings { it.copy(retro = r) } },
+                    )
 
                 TABS[tab] == "Gestur" -> {
                     SectionTitle("Gestur layar utama")
