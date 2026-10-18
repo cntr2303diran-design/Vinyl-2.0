@@ -16,8 +16,17 @@ class PrivacyInfoTest {
         f.readText()
     }
 
+    /** Izin yang benar-benar diminta (yang ditandai tools:node="remove" adalah izin library yang sengaja dibuang). */
     private val manifestPermissions: Set<String> by lazy {
-        Regex("""<uses-permission[^>]*android:name="([^"]+)"""").findAll(manifest).map { it.groupValues[1] }.toSet()
+        Regex("""<uses-permission[^>]*>""").findAll(manifest).map { it.value }
+            .filterNot { it.contains("""tools:node="remove"""") }
+            .mapNotNull { Regex("""android:name="([^"]+)"""").find(it)?.groupValues?.get(1) }
+            .toSet()
+    }
+
+    @Test fun `izin jaringan dari library pemutar video dibuang`() {
+        assertTrue(Regex("""<uses-permission[^>]*ACCESS_NETWORK_STATE[^>]*tools:node="remove"""").containsMatchIn(manifest))
+        assertFalse("android.permission.ACCESS_NETWORK_STATE" in manifestPermissions)
     }
 
     @Test fun `setiap izin di manifest punya alasan tertulis`() {

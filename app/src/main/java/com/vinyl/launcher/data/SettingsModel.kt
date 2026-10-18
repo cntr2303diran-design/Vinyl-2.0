@@ -306,6 +306,8 @@ data class AppSettings(
     val retro: RetroSettings = RetroSettings(),
     /** Audio Console: EQ, preset, profil per perangkat, otomasi. */
     val audio: AudioConsoleSettings = AudioConsoleSettings(),
+    /** Video milik pengguna di layar TV (folder SAF). */
+    val video: VideoSettings = VideoSettings(),
     /** Paket aplikasi musik default (null = pilih otomatis). */
     val defaultMusicPackage: String? = null,
     val hiddenApps: Set<String> = emptySet(),

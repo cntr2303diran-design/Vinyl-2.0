@@ -50,6 +50,7 @@ Setiap izin dan alasannya tampil di Pengaturan → *Cadangan & privasi*; daftarn
 | Audio Console: siaran sesi efek | Penerima `OPEN/CLOSE_AUDIO_EFFECT_CONTROL_SESSION` harus diekspor (dikirim aplikasi musik), didaftarkan saat proses berjalan. Nomor sesi divalidasi (> 0), sesi 0 tidak bisa dibuka lewat siaran, jumlah sesi dibatasi 16, nama paket dipotong 200 karakter. EQ mati secara default |
 | Audio Console: Akses lanjutan | Izin `DUMP` hanya bisa diberikan pengguna sendiri (ADB/Shizuku). Laporan `dumpsys` dibaca lewat pipa di memori (maks 4 MB, batas waktu 4 detik), tidak pernah ditulis ke berkas, tidak dicatat ke log, tidak dikirim; pengurai murni dan toleran (`DumpParsers`, diuji dengan contoh sintetis dari format AOSP) |
 | Shizuku | `ShizukuProvider` dilindungi `INTERACT_ACROSS_USERS_FULL` (hanya sistem/Shizuku). `ShellService` (proses shell) hanya punya satu operasi tetap: `pm grant com.vinyl.launcher android.permission.DUMP`; AIDL-nya tidak menerima teks/perintah (dijaga `PrivacyInfoTest`). Dijalankan hanya setelah dialog yang menampilkan perintahnya disetujui |
+| Video di layar TV | Hanya folder yang dipilih pengguna (Storage Access Framework, izin baca persisten untuk folder itu saja; dilepas saat ganti/lepas folder). Hanya nama & jenis berkas tingkat teratas yang dibaca (maks 2000). Diputar tanpa suara, tanpa audio focus, maks 720p, hanya selama ruang TV tampil. URI folder tidak ikut berkas cadangan. `ACCESS_NETWORK_STATE` bawaan Media3 dibuang dari manifest |
 | Komponen | `BootReceiver` tidak diekspor (siaran boot/pembaruan dikirim sistem). Yang tetap diekspor memang harus: Home dan Onboarding (dipanggil sistem/peluncur), serta layanan notifikasi & aksesibilitas yang hanya bisa di-bind sistem lewat izin `BIND_*` |
 
 ## Kunci tanda tangan — perlu keputusan Anda
@@ -102,6 +103,9 @@ Itu butuh langkah penandatanganan manual di luar build ini dan tidak diotomatisk
   Bisa bentrok dengan efek pabrikan (Dolby/Samsung) atau aplikasi EQ lain; status sesi ditampilkan apa adanya. Belum diuji di perangkat nyata.
 - Format `dumpsys` milik OEM (mis. Samsung One UI) bisa berbeda dari AOSP; field yang tidak cocok tampil "Tidak tersedia". Belum diverifikasi
   di perangkat Samsung nyata. Laporan sistem AOSP tidak memuat baterai perangkat Bluetooth, jadi baterai tidak ditampilkan.
+- Video YouTube sengaja tidak dibangun: Kebijakan Pengembang YouTube API Services III.I butir 7 melarang memisahkan atau
+  mengisolasi komponen audio/video konten YouTube (https://developers.google.com/youtube/terms/developer-policies), padahal
+  video di layar TV diputar tanpa suara sementara musik berasal dari aplikasi lain.
 - Overlay (layar kunci, taskbar, tombol navigasi) memerlukan izin "tampil di atas aplikasi lain"; ini inheren pada fiturnya.
 
 ## Melapor kerentanan

@@ -110,6 +110,8 @@ fun CrtTv(
     knobTurns: Float = 0f,
     knobHighlight: Boolean = false,
     screenOverlay: @Composable () -> Unit = {},
+    /** Video milik pengguna di layar (menggantikan cover setelah frame pertamanya tampil); null = cover saja. */
+    screenVideo: (@Composable () -> Unit)? = null,
 ) {
     val palette = bodyPalette(body)
     val knobColors = knobPalette(knob)
@@ -155,6 +157,7 @@ fun CrtTv(
                         },
                 ) {
                     ScreenPicture(art, accent, motion, mode == TvScreenMode.MOTION)
+                    screenVideo?.invoke()
                     // Judul & artis di atas cover (referensi), dengan peredam yang menjamin kontras putih
                     if (titleScrimAlpha > 0f) {
                         Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = titleScrimAlpha.coerceIn(0f, 1f))))

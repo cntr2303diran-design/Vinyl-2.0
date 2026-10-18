@@ -30,6 +30,8 @@ object PrivacyInfo {
             "(tanpa izin), hanya selama layar utama terlihat, dan datanya tidak disimpan. Visualizer \"Audio asli\" hanya membaca spektrum " +
             "frekuensi keluaran audio perangkat — bukan rekaman suara dan bukan mikrofon — dan izin mikrofon yang disyaratkan Android baru " +
             "diminta saat Anda memilih mode itu.",
+        "Video di layar TV (opsional) hanya membaca folder yang Anda pilih sendiri lewat pemilih folder Android, tanpa izin " +
+            "penyimpanan. Video diputar di perangkat tanpa suara; tidak ada yang diunggah. Folder dan tautannya tidak ikut berkas cadangan.",
         "Sleep timer dan pergantian lembut hanya mengatur volume media dan menjeda sesi musik di perangkat; keduanya tidak butuh izin tambahan.",
         "Cadangan otomatis ke akun Google dimatikan. Gunakan Simpan cadangan di atas bila ingin memindahkan pengaturan.",
     )

@@ -43,6 +43,8 @@ object SettingsBackup {
         home = stripHome(s.home),
         cover = stripCover(s.cover),
         presets = s.presets.map { it.copy(home = stripHome(it.home), cover = stripCover(it.cover)) },
+        // Izin folder video melekat pada perangkat ini; URI & tautannya tidak berarti di perangkat lain
+        video = VideoSettings(),
     )
 
     private fun stripHome(h: HomeSettings) = h.copy(
@@ -81,6 +83,8 @@ object SettingsBackup {
                 nav = clean.nav.copy(enabled = current.nav.enabled),
                 // Izin kontak terikat pada perangkat: jangan menyalakan pencarian kontak tanpa izinnya
                 drawer = clean.drawer.copy(searchContacts = current.drawer.searchContacts),
+                // Folder video bergantung pada izin akses folder di perangkat ini
+                video = current.video,
                 // Visualizer audio asli bergantung pada izin mikrofon di perangkat ini: cadangan tidak boleh
                 // menyalakannya diam-diam. Mode itu hanya aktif lewat alur izin di Pengaturan → Efek.
                 visual = clean.visual.copy(

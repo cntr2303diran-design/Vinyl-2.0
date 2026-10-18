@@ -289,6 +289,9 @@ private fun SettingsScreen(vm: SettingsViewModel, onBack: () -> Unit) {
                 Group("Visualizer audio") {
                     VisualizerControls(s.visual) { v -> vm.update { it.copy(visual = v) } }
                 }
+                Group("Video di layar TV") {
+                    VideoControls(s.video) { f -> vm.update { it.copy(video = f(it.video)) } }
+                }
             }
             Page.FX -> ControlCard {
 

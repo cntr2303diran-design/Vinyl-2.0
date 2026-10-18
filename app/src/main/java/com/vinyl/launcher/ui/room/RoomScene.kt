@@ -162,6 +162,8 @@ fun RoomScene(
     wallPicture: ImageBitmap? = null,
     /** Isi tambahan di layar TV (batang visualizer, lirik saat TV didekatkan); menerima status zoom TV. */
     screenOverlay: @Composable (zoomed: Boolean) -> Unit = {},
+    /** Video milik pengguna untuk layar TV (hanya TV utama; pantulan di lantai tetap memakai cover). */
+    screenVideo: (@Composable () -> Unit)? = null,
 ) {
     val colors = SceneTheme.of(tone)
     val mode = TvScreen.mode(np.hasTrack, np.isPlaying, retro.albumMotion, motionAllowed)
@@ -234,7 +236,7 @@ fun RoomScene(
                         role = Role.Button,
                     ) { tvZoomed = !tvZoomed },
             ) {
-                TvFor(np, retro, mode, accent, status, motionAllowed, titleScrimAlpha, knobState) {
+                TvFor(np, retro, mode, accent, status, motionAllowed, titleScrimAlpha, knobState, video = screenVideo) {
                     screenOverlay(tvZoomed)
                     if (tvZoomed) LyricsHint(onOpenLyrics)
                 }
@@ -330,6 +332,7 @@ private fun TvFor(
     motionAllowed: Boolean,
     titleScrimAlpha: Float,
     knobState: KnobState,
+    video: (@Composable () -> Unit)? = null,
     overlay: @Composable () -> Unit = {},
 ) {
     CrtTv(
@@ -337,7 +340,7 @@ private fun TvFor(
         body = retro.tvBody, knob = retro.knobStyle, vfdColor = retro.vfdColor, vfdLines = status.vfdLines,
         crtStrength = retro.crtStrength, motion = retro.albumMotion, reduceMotion = !motionAllowed,
         titleScrimAlpha = titleScrimAlpha, knobTurns = knobState.turns, knobHighlight = knobState.active,
-        modifier = Modifier.fillMaxSize(), screenOverlay = overlay,
+        modifier = Modifier.fillMaxSize(), screenOverlay = overlay, screenVideo = video,
     )
 }
 

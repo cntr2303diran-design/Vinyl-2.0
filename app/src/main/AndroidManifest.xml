@@ -41,6 +41,11 @@
       keluaran, resampling, sesi audio untuk equalizer). Isi laporan hanya dibaca di memori, tidak disimpan/dikirim.
     -->
     <uses-permission android:name="android.permission.DUMP" tools:ignore="ProtectedPermissions" />
+    <!--
+      Dibawa library Media3 (ExoPlayer) untuk memperkirakan jenis jaringan saat streaming. Video di layar TV hanya berkas lokal,
+      dan Media3 menangani ketiadaan izin ini (NetworkTypeObserver: SecurityException → jenis jaringan tidak diketahui), jadi dibuang.
+    -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" tools:node="remove" />
     <!-- Mikrofon bukan syarat memasang Vinyl: tanpa ini tablet tanpa mikrofon akan disaring dari instalasi -->
     <uses-feature android:name="android.hardware.microphone" android:required="false" />
 

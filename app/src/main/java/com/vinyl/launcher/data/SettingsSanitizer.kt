@@ -57,6 +57,7 @@ object SettingsSanitizer {
         visual = s.visual.copy(parallaxStrength = s.visual.parallaxStrength.fix(MIN_PARALLAX, 1f, 0.6f)),
         retro = retro(s.retro),
         audio = AudioConsoleRules.sanitize(s.audio),
+        video = VideoRules.sanitize(s.video),
         customGestures = s.customGestures
             .filter { g -> g.points.size == GESTURE_POINTS * 2 && g.points.all { it.isFinite() && it in -2f..2f } }
             .distinctBy { it.id }

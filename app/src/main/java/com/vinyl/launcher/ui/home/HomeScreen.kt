@@ -130,6 +130,10 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 import com.vinyl.launcher.ui.console.ConsoleRoute
+import com.vinyl.launcher.data.VideoRules
+import com.vinyl.launcher.media.VideoLibrary
+import com.vinyl.launcher.media.VideoMatch
+import com.vinyl.launcher.ui.room.ScreenVideo
 import com.vinyl.launcher.audio.AudioConsoleRuntime
 import com.vinyl.launcher.ui.theme.rememberReduceMotion
 import com.vinyl.launcher.data.BackgroundType
@@ -227,10 +231,33 @@ fun HomeScreen(vm: HomeViewModel) {
     fun indexOf(p: RoomPage) = PageNav.indexOf(p, swapPages, rtl)
 
     // Pemantau perangkat audio (indikator Output & VFD) hanya aktif saat beranda tampil
+    var resumed by remember { mutableStateOf(false) }
     LifecycleResumeEffect(Unit) {
+        resumed = true
         AudioMonitor.acquire(context)
-        onPauseOrDispose { AudioMonitor.release() }
+        onPauseOrDispose {
+            resumed = false
+            AudioMonitor.release()
+        }
     }
+
+    // ----- Video milik pengguna di layar TV (folder SAF). Pemutar hanya ada selama ruang TV benar-benar tampil -----
+    val video = settings.video
+    val videoLib by VideoLibrary.state.collectAsStateWithLifecycle()
+    LaunchedEffect(video.enabled, video.folderUri, resumed) {
+        if (video.enabled && resumed) VideoLibrary.scan(context, video.folderUri)
+    }
+    val videoMatch = remember(video, videoLib, np.artist, np.album, np.title, np.hasTrack) {
+        if (!video.enabled || !np.hasTrack || video.folderUri == null || videoLib.folderUri != video.folderUri) null
+        else VideoMatch.find(videoLib.files, VideoRules.linkMap(video), np.artist, np.album, np.title)
+    }
+    // Berkas yang gagal diputar tidak dicoba terus-menerus; cover tetap tampil
+    var failedVideo by remember { mutableStateOf<String?>(null) }
+    // Video tidak diputar saat "Hapus animasi" atau hemat daya aktif (cover diam yang tampil)
+    val videoMotionOk = !reduceMotion && !rememberPowerSave()
+    val videoUri = videoMatch?.takeIf {
+        resumed && page == RoomPage.ROOM && !drawerOpen && !lyricsOpen && videoMotionOk && it.file.documentId != failedVideo
+    }?.let { VideoLibrary.uriOf(video.folderUri!!, it.file.documentId) }
     // Aturan otomasi "USB DAC tersambung → buka console": dijalankan saat beranda tampil (tidak menarik launcher ke depan)
     val consoleRequested by AudioConsoleRuntime.consoleRequested.collectAsStateWithLifecycle()
     LaunchedEffect(consoleRequested) {
@@ -360,6 +387,9 @@ fun HomeScreen(vm: HomeViewModel) {
                 motionAllowed = motionAllowed,
                 wallPicture = picture,
                 lyricsVisible = home.lyricsVisible,
+                screenVideo = videoUri?.let { uri ->
+                    { ScreenVideo(uri, np.isPlaying, onError = { failedVideo = videoMatch?.file?.documentId }, Modifier.fillMaxSize()) }
+                },
                 onWidgetChange = { updated -> vm.updateDraft { h -> h.copy(widgets = h.widgets.map { if (it.id == updated.id) updated else it }) } },
                 vm = vm,
             )
@@ -504,6 +534,7 @@ private fun HomeContent(
     motionAllowed: Boolean,
     wallPicture: ImageBitmap?,
     lyricsVisible: Boolean,
+    screenVideo: (@Composable () -> Unit)?,
     onWidgetChange: (WidgetConfig) -> Unit,
     vm: HomeViewModel,
 ) {
@@ -556,6 +587,7 @@ private fun HomeContent(
                 home.background.gradientStart.toColor() to home.background.gradientEnd.toColor() else null,
             wallPicture = wallPicture,
             modifier = Modifier.fxForeground(fx, fxPlan, visual.parallax, visual.parallaxStrength),
+            screenVideo = screenVideo,
         ) { zoomed ->
             // Di layar TV: batang visualizer (atau keterangan jujurnya) di bawah, lirik saat TV didekatkan
             Box(Modifier.fillMaxSize().padding(horizontal = 18.dp, vertical = 10.dp)) {

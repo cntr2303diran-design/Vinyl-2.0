@@ -168,6 +168,7 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.shizuku.api)
     implementation(libs.shizuku.provider)
+    implementation(libs.media3.exoplayer)
     debugImplementation(libs.androidx.ui.tooling)
 
     testImplementation(libs.junit)
