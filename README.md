@@ -1,32 +1,33 @@
 # Vinyl Launcher
 
-Launcher Android untuk tablet dengan konsep **"tablet sebagai turntable"** — Kotlin + Jetpack Compose, minSdk 29, targetSdk 36. Dioptimalkan untuk landscape; portrait tetap didukung dengan tata letak yang menyesuaikan.
+Launcher Android untuk tablet dengan tema **TV tabung analog** (sebelumnya "tablet sebagai turntable") — Kotlin + Jetpack Compose, minSdk 29, targetSdk 36. Dioptimalkan untuk landscape; portrait tetap didukung dengan tata letak yang menyesuaikan. Bahasa desain & token: [DESIGN.md](DESIGN.md).
 
-## Fitur (versi 1.0)
+## Fitur
 
 | Bagian | Isi |
 |---|---|
-| Layar utama | Latar ambient dari warna cover (dengan transisi warna sinematik saat cover berganti), turntable Canvas (sampul, vinyl beralur & berkilap, tonearm), jam & widget yang bisa diatur, info lagu + dua baris lirik tersinkron (LRCLIB) |
-| Lirik layar penuh | Ketuk kapsul **Lirik** atau barisnya: baris aktif besar dan terang, baris lain mengecil, baris jauh sedikit mengabur; gulir otomatis mengikuti lagu (berhenti saat disentuh); ketuk baris untuk melompat. Ada status memuat / dimatikan / tidak ditemukan / gagal (*Coba lagi*) / instrumental / lirik tanpa waktu |
-| Timer tidur | Kapsul di rak piringan dan lirik layar penuh: 5–90 menit atau sampai lagu selesai; volume dipudarkan pelan lalu musik dijeda dan **volume dikembalikan**. Tanpa izin tambahan |
-| Pergantian lembut | Opsional (Pengaturan → Musik): volume turun sebentar lalu naik saat lagu berikutnya/sebelumnya. **Bukan crossfade** — Vinyl tidak memutar audio |
-| Animasi | Play: vinyl meluncur keluar → tonearm turun → berputar 33/45 RPM. Pause: tonearm naik → melambat → masuk sebagian ke sampul |
-| Interaksi turntable | Ketuk sampul = putar/jeda · geser sampul = lagu berikut/sebelumnya · seret tonearm = seek · angkat tonearm dari piringan = jeda · putar vinyl dengan jari = maju/mundur |
-| Suara & getar | Bunyi jarum, klik saat vinyl diputar, kibasan ganti lagu, kresek vinyl opsional; volume & kekuatan getar bisa diatur |
-| Rak piringan | Geser ke kiri di layar utama: tab **Rak** (sampul berjajar di atas papan kayu, atau **Tumpukan 3D**), tab **Antrean** (daftar putar milik aplikasi musik, ketuk untuk melompat), tab **Riwayat** per hari, tab **Koleksi** dengan statistik |
-| Layar kunci vinyl | Tampil di atas keyguard, jam, tanggal, kalender, kartu lagu + lirik; geser untuk membuka, tekan lama untuk editor |
-| App drawer | Dikelompokkan **A–Z** dengan bilah lompat, baris **Sering dipakai** (dari riwayat lokal), chip **kategori** (otomatis + bisa dipindah manual), **lencana notifikasi**, menu tekan-lama dengan **pintasan aplikasi**, dan **pencarian universal**: aplikasi · lagu di koleksi · kontak (opsional) · pengaturan sistem |
-| Taskbar Vinyl | Bar gaya PC di atas semua aplikasi: Home, panel semua aplikasi, favorit, aplikasi terakhir, kartu lagu, jam/tanggal/baterai; posisi bawah/atas/kiri/kanan; opsi buka aplikasi sebagai jendela |
-| Tombol navigasi Vinyl | Kembali/Home/Terbaru melayang: posisi bebas, jarak antar tombol, ukuran, transparansi, urutan, susun vertikal |
-| Gestur | Swipe atas/bawah & ketuk dua kali, plus **gestur gambar sendiri** (satu goresan) dengan 16 pilihan aksi |
-| Kustomisasi | Tekan lama area kosong: latar, turntable, jam (5 gaya), widget kalender/cuaca/baterai/foto, gestur, preset tema |
-| Efek visual | Pengaturan → *Efek visual*: **distorsi kaca** (alur kaca bergelombang mengikuti musik + riak dari sentuhan, Android 13+), **cahaya reaktif**, **partikel**, **parallax** sensor gerak/giroskop (seperti jendela / melayang), dan **visualizer audio** (*Audio asli* membaca spektrum keluaran audio dan butuh izin mikrofon; *Animasi dekoratif* diberi label dan tanpa izin). Semua mati otomatis saat animasi sistem dimatikan atau Penghemat baterai aktif, dan teks tetap ≥ 4,5 : 1 di atas latar Album |
-| Pengaturan | Dua panel ala tablet (kategori di kiri, isi di kanan) |
+| Ruang TV (layar utama) | Ruang gelap (atau terang) dengan TV tabung: cover, judul & artis di layar CRT (scanline, tepi gelap, kilau kaca), VFD tiga baris (status, sample rate sistem, keluaran audio). Kaset tergeletak di depan TV dengan gulungan yang berputar saat musik berjalan; tombol sebelumnya · mundur 10 dtk · putar/jeda · berikutnya; garis progres yang bisa digeser; volume media; **TIME** dan **Output** di sudut atas |
+| Knob seek | Ketuk knob kanan TV: kamera mendekat, putar knob untuk maju/mundur dengan gelembung waktu, klik & getar tiap gigi |
+| Ketuk TV | Kamera mendekat ke layar; lirik tampil di layar CRT bila ada, tombol **LIRIK ›** membuka lirik layar penuh |
+| Video di layar TV | Opsional: video milik Anda dari folder pilihan (`Artis - Album.mp4` dicocokkan otomatis, atau ditautkan manual) diputar tanpa suara & berulang di layar TV |
+| Perpustakaan kaset | Geser dari tepi (halaman kiri): tab **Rak** (kaset per abjad, favorit), **Deck** (antrean aplikasi musik), **Log** (riwayat per hari), **Koleksi** (statistik) |
+| Audio Console | Halaman kanan bergaya receiver stereo: perangkat keluaran, **EQ 3 pita** + preamp + balance + preset + profil per perangkat, kualitas (sample rate, kemampuan, bit-perfect USB), spasial & efek, diagnostik (tes kanal kiri/kanan), otomasi. Setiap nilai berlabel sumbernya: *Terukur / Dilaporkan sistem / Perkiraan / Tidak tersedia* |
+| Akses lanjutan | Opsional: izin `DUMP` yang Anda berikan lewat ADB (atau Shizuku) membuka codec Bluetooth aktif, format keluaran, resampling, dan EQ untuk aplikasi musik yang tidak membuka sesi efek |
+| Lirik layar penuh | Baris aktif besar dan terang, baris jauh mengabur; gulir otomatis; ketuk baris untuk melompat; status memuat / dimatikan / tidak ditemukan / gagal (*Coba lagi*) / instrumental / tanpa waktu |
+| Timer tidur | Di perpustakaan kaset dan lirik layar penuh: 5–90 menit atau sampai lagu selesai; volume dipudarkan, musik dijeda, **volume dikembalikan** |
+| Pergantian lembut | Opsional: volume turun sebentar lalu naik saat ganti lagu. **Bukan crossfade** — launcher tidak memutar audio |
+| Suara & getar | Bunyi tombol kaset & motor, desing pita saat ganti lagu, klik knob, desis pita opsional; volume & kekuatan getar bisa diatur |
+| Layar kunci TV | Tampil di atas keyguard: TV dengan cover & VFD (jam, artis), jam besar, tanggal, kalender, kartu lagu + lirik; geser untuk membuka, tekan lama untuk editor |
+| App drawer | **A–Z** dengan bilah lompat, **Sering dipakai**, **kategori**, **lencana notifikasi**, pintasan aplikasi, **pencarian universal** (aplikasi · lagu · kontak opsional · pengaturan sistem) |
+| Taskbar & tombol navigasi | Bar gaya PC di atas semua aplikasi; tombol Kembali/Home/Terbaru melayang yang bisa diatur |
+| Gestur | Swipe atas/bawah & ketuk dua kali, plus gestur gambar sendiri (16 aksi) |
+| Kustomisasi | Tekan lama area kosong: TV & kaset (bodi, ukuran, posisi, knob, VFD, layar CRT, cangkang & gulungan kaset, tukar halaman), dinding, jam sudut, widget, gestur, preset tema |
+| Efek visual | Distorsi kaca, cahaya reaktif, partikel, parallax, visualizer audio (*Audio asli* butuh izin mikrofon; *Animasi dekoratif* diberi label). Mati otomatis saat animasi sistem dimatikan atau Penghemat baterai aktif |
 
 ## Cara build di Android Studio
 
 1. Pasang **Android Studio Narwhal (2025.1) atau lebih baru** dengan **Android SDK Platform 36** dan **JDK 17** (JBR bawaan Android Studio sudah cukup).
-2. Ekstrak `VinylLauncher.zip`, lalu **File → Open** dan pilih folder `VinylLauncher`.
+2. Clone repositori ini, lalu **File → Open** dan pilih foldernya.
 3. Tunggu *Gradle Sync* selesai (Gradle 8.13 dan semua dependensi diunduh otomatis). Jika Android Studio menawarkan upgrade AGP/Kotlin, aman untuk diterima.
 4. Sambungkan tablet (aktifkan **Opsi pengembang → USB debugging**) atau jalankan emulator tablet (mis. *Pixel Tablet*, API 34+).
 5. Klik **Run ▶** (konfigurasi `app`).
@@ -45,7 +46,7 @@ Aplikasi pertama kali membuka **onboarding**:
 1. **Jadikan launcher default** — pilih Vinyl Launcher sebagai aplikasi Home.
 2. **Akses notifikasi** — wajib agar launcher bisa membaca & mengontrol lagu (isi notifikasi tidak dibaca atau disimpan).
 3. **Kalender** *(opsional)* — untuk titik acara di kalender layar kunci.
-4. **Layar kunci vinyl** *(opsional)* — izinkan "Tampilkan di atas aplikasi lain" & notifikasi, lalu aktifkan.
+4. **Layar kunci TV** *(opsional)* — izinkan "Tampilkan di atas aplikasi lain" & notifikasi, lalu aktifkan.
 5. **Aksi gestur** *(opsional)* — layanan aksesibilitas untuk gestur "kunci layar" dan "buka notifikasi".
 
 Ikon *Vinyl Launcher* di app drawer membuka halaman **Pengaturan** (semua opsi + reset ke default).
@@ -70,9 +71,10 @@ Setiap perubahan di branch `main` otomatis di-build oleh GitHub Actions. APK ter
 
 ## Catatan teknis
 
-- **Arsitektur:** MVVM — `data/` (DataStore, LauncherApps, kalender, cuaca), `media/` (MediaSession, sleep timer, pengatur volume), `drawer/` dan `music/` (logika murni tanpa dependensi Android, diuji unit), `service/`, `ui/` (layar + ViewModel), `ui/components/` (komponen Canvas). Desain: lihat [DESIGN.md](DESIGN.md).
+- **Arsitektur:** MVVM — `data/` (DataStore, LauncherApps, kalender, cuaca), `media/` (MediaSession, sleep timer, pengatur volume, video), `audio/` (Audio Console: model murni, pemantau perangkat, EQ, pengurai laporan sistem), `advanced/` (Akses lanjutan & Shizuku), `drawer/` dan `music/` (logika murni, diuji unit), `service/`, `ui/room` (ruang TV), `ui/cassette`, `ui/library`, `ui/console`, `ui/` lainnya (layar + ViewModel). Desain: lihat [DESIGN.md](DESIGN.md).
 - **Penyimpanan:** seluruh pengaturan disimpan sebagai satu dokumen JSON (kotlinx.serialization) di DataStore, sehingga field baru otomatis memakai default dan reset/preset mudah.
-- **Grafis:** vinyl, alur, kilap, label melingkar, tonearm, jam analog/melingkar, dan ikon dock digambar dengan Compose Canvas — tajam di semua ukuran. Loop putaran memakai `withFrameNanos` dan berhenti sendiri saat vinyl diam (hemat baterai).
+- **Grafis:** TV tabung, kaset, gulungan, knob, ruangan, dan jam digambar dengan Compose Canvas — tajam di semua ukuran, tanpa aset bermerek. Animasi gulungan berhenti saat musik berhenti (hemat baterai). Komposisi ruang TV dihitung dari pecahan layar (`SceneLayout`, diuji).
+- **Video di layar TV:** Media3 ExoPlayer 1.8.0, tanpa audio & tanpa audio focus, maks 720p, dilepas saat ruang TV tidak tampil. Folder lewat Storage Access Framework (tanpa izin penyimpanan).
 - **Rotasi layar:** activity menangani `configChanges` sendiri; tata letak dihitung ulang dari `BoxWithConstraints`, posisi widget disimpan sebagai fraksi layar.
 - **Layar kunci:** `CoverActivity` memakai `setShowWhenLocked` + `setTurnScreenOn`; keamanan tetap ditangani PIN/sandi/biometrik sistem via `KeyguardManager.requestDismissKeyguard`. Activity dibuka oleh `CoverService` (foreground service ringan) saat layar mati. Android 10+ membatasi pembukaan activity dari latar belakang, karena itu izin *Tampilkan di atas aplikasi lain* diperlukan.
 - **Font:** Inter, Instrument Serif, dan JetBrains Mono (lisensi OFL) diunduh otomatis dari repositori google/fonts saat build pertama (task Gradle `fetchFonts`), jadi build pertama butuh internet.
@@ -86,7 +88,11 @@ Setiap perubahan di branch `main` otomatis di-build oleh GitHub Actions. APK ter
 - "Buka sebagai jendela" hanya berfungsi bila sistem mengizinkan jendela bentuk bebas (Opsi pengembang).
 - Pintasan aplikasi (menu tekan-lama) hanya tersedia bila Vinyl Launcher adalah launcher **default**; sistem menolaknya untuk launcher biasa.
 - Lencana notifikasi dihitung per nama paket, jadi aplikasi yang sama di profil kerja dan pribadi berbagi hitungan.
-- Seek (seret tonearm / putar vinyl) hanya aktif bila aplikasi musik mendukung `ACTION_SEEK_TO`.
+- Seek (knob, garis progres, mundur 10 dtk) hanya aktif bila aplikasi musik mendukung `ACTION_SEEK_TO`.
+- **Equalizer** hanya bekerja pada sesi audio yang dibuka aplikasi musik (atau yang terdeteksi lewat Akses lanjutan); mode "semua audio" (sesi 0) eksperimental. Bisa bentrok dengan efek pabrikan (Dolby/Samsung) atau aplikasi EQ lain — statusnya ditampilkan apa adanya.
+- **Codec, format keluaran, dan resampling** hanya terbaca dengan Akses lanjutan; format laporan sistem OEM bisa berbeda dari AOSP (yang tidak cocok tampil *Tidak tersedia*). **Baterai earphone Bluetooth** tidak ditampilkan karena laporan sistem AOSP tidak memuatnya.
+- **Video YouTube tidak didukung**: kebijakan YouTube API melarang memisahkan audio dan video kontennya.
+- **Audio Console, EQ, Akses lanjutan, video, layar kunci TV, dan bunyi kaset belum diuji di perangkat nyata** (hanya tes unit & tangkapan layar otomatis).
 - **Antrean** hanya tampil bila aplikasi musik membagikannya ke sesi media; Vinyl tidak bisa mengubah atau mengacak antrean itu.
 - **Tidak ada crossfade sungguhan**: Vinyl tidak memutar audio, jadi tidak bisa menumpuk dua lagu. *Pergantian lembut* hanya mengatur volume media.
 - **Timer tidur** hidup di proses Vinyl. Bila sistem menutup prosesnya, timer berhenti (volume tetap dipulihkan saat Vinyl hidup lagi).

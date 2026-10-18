@@ -1,5 +1,6 @@
 package com.vinyl.launcher.ui.components
 
+import androidx.core.graphics.scale
 import android.os.Build
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
@@ -151,7 +152,7 @@ fun AmbientBackdrop(
     val tiny = remember(art) {
         art?.let {
             runCatching {
-                android.graphics.Bitmap.createScaledBitmap(it.asAndroidBitmap(), 24, 24, true).asImageBitmap()
+                it.asAndroidBitmap().scale(24, 24).asImageBitmap()
             }.getOrNull()
         }
     }

@@ -150,3 +150,12 @@ Dibuktikan `SettingsMigrationTest`.
   `TextDirection.Content` di tipografi aplikasi, jadi teks Latin seperti "-4 dB" tetap terbaca benar.
 - Target sentuh ≥ 48dp (tombol, sakelar baris penuh, fader 48×150dp). Fader dan balance adalah penggeser TalkBack
   (`setProgress`) dengan aksi "Naik/Turun 1 dB" dan "Atur ke 0 dB"/"Tengah".
+
+### Palet aplikasi (di luar ruang TV)
+
+- `Tokens.Argb` kini bernada hangat: permukaan `#121210 → #373935` (charcoal bertingkat, menggantikan hitam kebiruan),
+  aksen amber `#D6A64D` (lampu indikator TV) menggantikan oranye label piringan. Teks tetap putih dengan tiga tingkat
+  opasitas, sehingga semua jaminan kontras lama (`ContrastTest`, termasuk latar ambient dari cover) tetap berlaku.
+- Karena drawer, pengaturan, dialog, onboarding, taskbar, dan lirik memakai skema Material dari token ini, semuanya ikut
+  berganti tanpa kode warna terpisah.
+- Layar kunci dan onboarding memakai komponen `CrtTv` yang sama dengan ruang TV (gaya dari `RetroSettings`).

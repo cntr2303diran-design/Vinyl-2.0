@@ -1,5 +1,6 @@
 package com.vinyl.launcher.media
 
+import androidx.core.content.edit
 import android.annotation.SuppressLint
 import android.content.Context
 import android.media.AudioManager
@@ -53,18 +54,18 @@ internal class VolumeGuardStore(context: Context) {
 
     /** Panggil dari thread latar belakang (memakai commit agar tertulis sebelum volume diubah). */
     fun save(original: Int, lastSet: Int) {
-        prefs.edit().putBoolean(ACTIVE, true).putInt(ORIGINAL, original).putInt(LAST_SET, lastSet).commit()
+        prefs.edit(commit = true) { putBoolean(ACTIVE, true).putInt(ORIGINAL, original).putInt(LAST_SET, lastSet) }
     }
 
     fun updateLastSet(lastSet: Int) {
-        prefs.edit().putInt(LAST_SET, lastSet).commit()
+        prefs.edit(commit = true) { putInt(LAST_SET, lastSet) }
     }
 
     fun read(): Guard? =
         if (prefs.getBoolean(ACTIVE, false)) Guard(prefs.getInt(ORIGINAL, 0), prefs.getInt(LAST_SET, 0)) else null
 
     fun clear() {
-        prefs.edit().clear().commit()
+        prefs.edit(commit = true) { clear() }
     }
 
     private companion object {

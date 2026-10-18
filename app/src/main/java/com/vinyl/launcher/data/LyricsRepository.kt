@@ -77,7 +77,7 @@ class LyricsService(
  * durasi lagu — dan hanya bila `allowNetwork = true` (Pengaturan → Musik → Cari lirik online).
  */
 object LyricsRepository {
-    private const val UA = "VinylLauncher/1.0 (https://github.com/cntr2303diran-design/vinyllauncher)"
+    private const val UA = "VinylLauncher/1.0 (https://github.com/cntr2303diran-design/Vinyl-2.0)"
 
     private val service = LyricsService(
         fetch = { url -> Http.fetch(url, Lrclib.MAX_RESPONSE, UA) },

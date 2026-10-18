@@ -1,5 +1,6 @@
 package com.vinyl.launcher.util
 
+import androidx.core.net.toUri
 import android.accessibilityservice.AccessibilityService
 import android.annotation.SuppressLint
 import android.content.Context
@@ -10,7 +11,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import android.content.Intent
-import android.net.Uri
 import android.provider.Settings
 import android.widget.Toast
 import com.vinyl.launcher.data.AppsRepository
@@ -98,12 +98,12 @@ object SystemActions {
 
     fun openOverlaySettings(context: Context) = startSafe(
         context,
-        Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${context.packageName}")),
+        Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, "package:${context.packageName}".toUri()),
     )
 
     fun openAppSettings(context: Context) = startSafe(
         context,
-        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}")),
+        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, "package:${context.packageName}".toUri()),
     )
 
     fun isAccessibilityEnabled(): Boolean = VinylAccessibilityService.instance != null

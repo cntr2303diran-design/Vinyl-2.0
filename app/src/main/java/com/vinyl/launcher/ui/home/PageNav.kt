@@ -1,6 +1,6 @@
 package com.vinyl.launcher.ui.home
 
-/*
+/**
  * Navigasi tiga halaman beranda tema TV tabung, murni (tanpa Compose) agar aturannya bisa diuji.
  *
  *   [ Perpustakaan kaset ]  ←  [ Ruang TV (beranda) ]  →  [ Audio Console ]

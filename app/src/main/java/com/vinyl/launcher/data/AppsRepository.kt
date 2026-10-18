@@ -1,5 +1,6 @@
 package com.vinyl.launcher.data
 
+import androidx.core.net.toUri
 import android.annotation.SuppressLint
 import android.content.ComponentName
 import android.content.Context
@@ -9,7 +10,6 @@ import android.content.pm.LauncherActivityInfo
 import android.content.pm.LauncherApps
 import android.content.pm.ShortcutInfo
 import android.graphics.Rect
-import android.net.Uri
 import android.os.UserHandle
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
@@ -230,7 +230,7 @@ class AppsRepository private constructor(private val context: Context) {
     }
 
     fun uninstall(app: AppInfo) {
-        val intent = Intent(Intent.ACTION_DELETE, Uri.parse("package:${app.packageName}"))
+        val intent = Intent(Intent.ACTION_DELETE, "package:${app.packageName}".toUri())
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         runCatching { context.startActivity(intent) }
     }

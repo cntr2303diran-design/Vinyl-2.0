@@ -1,5 +1,6 @@
 package com.vinyl.launcher.ui.library
 
+import androidx.compose.ui.unit.IntOffset
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.Image
@@ -283,7 +284,7 @@ private fun Spine(e: RackEntry, pulled: Boolean, onClick: () -> Unit) {
         Modifier
             .fillMaxWidth()
             .heightIn(min = 48.dp)
-            .offset(x = shift)
+            .offset { IntOffset(shift.roundToPx(), 0) }
             .clip(RoundedCornerShape(3.dp))
             .background(Color(0xFF1E1E1E))
             .clickable(onClickLabel = "Tarik kaset ini", role = Role.Button, onClick = onClick)

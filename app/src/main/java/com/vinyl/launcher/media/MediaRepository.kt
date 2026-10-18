@@ -1,5 +1,7 @@
 package com.vinyl.launcher.media
 
+import androidx.core.graphics.get
+import androidx.core.net.toUri
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -9,7 +11,6 @@ import android.media.session.MediaController
 import android.media.session.MediaSessionManager
 import android.media.session.MediaSession
 import android.media.session.PlaybackState
-import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
@@ -280,7 +281,7 @@ object MediaRepository {
             return runCatching {
                 val w = bmp.width; val h = bmp.height
                 val pts = listOf(w / 2 to h / 2, w / 4 to h / 4, 3 * w / 4 to h / 4, w / 4 to 3 * h / 4, 3 * w / 4 to 3 * h / 4)
-                val px = if (bmp.config == Bitmap.Config.HARDWARE) "hw" else pts.joinToString(",") { (x, y) -> bmp.getPixel(x, y).toString() }
+                val px = if (bmp.config == Bitmap.Config.HARDWARE) "hw" else pts.joinToString(",") { (x, y) -> bmp[x, y].toString() }
                 "${w}x$h:$px"
             }.getOrDefault("bmp")
         }
@@ -341,7 +342,7 @@ object MediaRepository {
             // URI berasal dari aplikasi lain, jadi tidak dipercaya: hanya https (internet) dan content/android.resource
             // (penyedia konten); skema file:// ditolak. Ukuran data dibatasi dan gambar selalu diperkecil saat decode.
             val bmp = runCatching {
-                val u = Uri.parse(uri)
+                val u = uri.toUri()
                 val bytes = when (u.scheme?.lowercase()) {
                     "content", "android.resource" ->
                         appContext.contentResolver.openInputStream(u)?.use { it.readAtMost(Images.MAX_BYTES) }
