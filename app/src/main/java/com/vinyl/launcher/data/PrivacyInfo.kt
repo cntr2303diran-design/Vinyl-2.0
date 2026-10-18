@@ -63,9 +63,10 @@ object PrivacyInfo {
             optional = true,
         ),
         Item(
-            "android.permission.MODIFY_AUDIO_SETTINGS", "Pengaturan audio (visualizer)",
-            "Syarat teknis Android untuk membuka Visualizer pada keluaran audio sistem. Izin biasa yang diberikan saat pemasangan; " +
-                "Vinyl memakainya hanya untuk visualizer di atas, bukan untuk mengubah setelan suara Anda.",
+            "android.permission.MODIFY_AUDIO_SETTINGS", "Pengaturan audio (visualizer & equalizer)",
+            "Syarat teknis Android untuk membuka Visualizer pada keluaran audio sistem dan untuk memasang equalizer Audio Console " +
+                "ke sesi audio yang dibuka aplikasi musik. Izin biasa yang diberikan saat pemasangan. Equalizer mati secara default; " +
+                "launcher tidak mengubah volume atau setelan suara sistem Anda.",
         ),
         Item(ID_ACCESSIBILITY, "Layanan aksesibilitas", "Hanya untuk aksi global kunci layar dan buka notifikasi dari gestur. Tidak membaca isi layar.", optional = true),
     )

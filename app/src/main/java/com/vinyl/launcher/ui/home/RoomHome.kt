@@ -12,7 +12,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
-import com.vinyl.launcher.audio.AudioMonitor
+import com.vinyl.launcher.audio.AudioSnapshot
 import com.vinyl.launcher.audio.Source
 import com.vinyl.launcher.media.NowPlaying
 import com.vinyl.launcher.ui.room.VfdTicker
@@ -86,7 +86,7 @@ fun clockText(now: LocalDateTime, use24h: Boolean): String =
     now.format(DateTimeFormatter.ofPattern(if (use24h) "HH:mm" else "h:mm a", Locale.US))
 
 /** Teks Output: nama keluaran aktif; "≈" bila hanya perkiraan; jujur bila tidak diketahui. */
-fun outputText(s: AudioMonitor.Snapshot): String = when (s.active.reading.source) {
+fun outputText(s: AudioSnapshot): String = when (s.active.reading.source) {
     Source.REPORTED, Source.MEASURED -> s.active.reading.display
     Source.ESTIMATED -> "≈ " + s.active.reading.display
     Source.UNAVAILABLE -> "Tidak diketahui"
@@ -96,7 +96,7 @@ fun outputText(s: AudioMonitor.Snapshot): String = when (s.active.reading.source
  * Tiga baris VFD: status putar, sample rate keluaran BAWAAN sistem (diberi awalan OUT, bukan format lagu), dan nama
  * keluaran. Nilai yang tidak diketahui ditulis "--", tidak ditebak.
  */
-fun vfdLines(np: NowPlaying, s: AudioMonitor.Snapshot): List<String> = listOf(
+fun vfdLines(np: NowPlaying, s: AudioSnapshot): List<String> = listOf(
     VfdTicker.playback(np.hasTrack, np.isPlaying),
     "OUT " + (s.nativeRate.text ?: "--"),
     (s.active.device?.name ?: "--").uppercase().take(VfdTicker.MAX_CHARS),

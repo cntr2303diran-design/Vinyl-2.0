@@ -97,6 +97,7 @@ import com.vinyl.launcher.ui.drawer.DrawerActions
 import com.vinyl.launcher.ui.drawer.DrawerData
 import com.vinyl.launcher.ui.theme.Ease
 import com.vinyl.launcher.ui.theme.Tokens
+import com.vinyl.launcher.ui.theme.RetroColors
 import com.vinyl.launcher.ui.settings.AppPickerDialog
 import com.vinyl.launcher.ui.theme.darken
 import com.vinyl.launcher.ui.theme.horizontal
@@ -128,7 +129,8 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
-import com.vinyl.launcher.ui.console.ConsoleScreen
+import com.vinyl.launcher.ui.console.ConsoleRoute
+import com.vinyl.launcher.audio.AudioConsoleRuntime
 import com.vinyl.launcher.ui.theme.rememberReduceMotion
 import com.vinyl.launcher.data.BackgroundType
 import com.vinyl.launcher.data.RetroSettings
@@ -173,7 +175,7 @@ fun HomeScreen(vm: HomeViewModel) {
 
     // Efek visual (Tahap 4): satu keputusan (FxPlan) dari pengaturan + lingkungan; tertutup overlay = semua efek berhenti
     val fx = rememberFxState()
-    val fxPlan = rememberFxPlan(settings.visual, np.isPlaying, screenVisible = page == RoomPage.ROOM && !drawerOpen && !lyricsOpen, fx = fx)
+    val fxPlan = rememberFxPlan(settings.visual, np.isPlaying, screenVisible = (page == RoomPage.ROOM || page == RoomPage.CONSOLE) && !drawerOpen && !lyricsOpen, fx = fx)
     FxRunner(fx, fxPlan)
     val visualizerState by VisualizerStatus.state.collectAsStateWithLifecycle()
     val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
@@ -228,6 +230,14 @@ fun HomeScreen(vm: HomeViewModel) {
     LifecycleResumeEffect(Unit) {
         AudioMonitor.acquire(context)
         onPauseOrDispose { AudioMonitor.release() }
+    }
+    // Aturan otomasi "USB DAC tersambung → buka console": dijalankan saat beranda tampil (tidak menarik launcher ke depan)
+    val consoleRequested by AudioConsoleRuntime.consoleRequested.collectAsStateWithLifecycle()
+    LaunchedEffect(consoleRequested) {
+        if (consoleRequested) {
+            vm.showPage(RoomPage.CONSOLE)
+            AudioConsoleRuntime.consumeConsoleRequest()
+        }
     }
 
     // ----- Ruang TV: dinding, proyeksi, nada teks -----
@@ -388,7 +398,17 @@ fun HomeScreen(vm: HomeViewModel) {
                 .roomPage(indexOf(RoomPage.CONSOLE), pagePosition, screenWidthPx)
                 .sidePageSwipe(swipeFromSide),
         ) {
-            if (pageVisible(indexOf(RoomPage.CONSOLE), pagePosition)) ConsoleScreen(onBack = { vm.showPage(RoomPage.ROOM) })
+            if (pageVisible(indexOf(RoomPage.CONSOLE), pagePosition)) {
+                ConsoleRoute(
+                    audio = settings.audio,
+                    onSave = { a -> vm.updateSettings { it.copy(audio = a) } },
+                    onBack = { vm.showPage(RoomPage.ROOM) },
+                ) {
+                    // VU meter: visualizer yang sama dengan layar TV (keterangannya ikut tampil bila tidak tersedia)
+                    VisualizerStrip(fx, fxPlan.visualizer, settings.visual.visualizer, visualizerState == VisualizerStatus.State.UNAVAILABLE,
+                        RetroColors.Amber, RetroColors.CreamTextSecondary)
+                }
+            }
         }
 
         // App drawer

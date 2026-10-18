@@ -17,7 +17,7 @@ import kotlinx.coroutines.flow.asStateFlow
 
 /**
  * Membaca keadaan audio perangkat dari API PUBLIK Android saja (tanpa izin tambahan) dan menerbitkannya sebagai
- * [Snapshot]. Setiap nilai berlabel sumbernya ([Reading]). Data yang tidak dibuka Android untuk aplikasi biasa
+ * [AudioSnapshot]. Setiap nilai berlabel sumbernya ([Reading]). Data yang tidak dibuka Android untuk aplikasi biasa
  * (codec Bluetooth aktif, bit depth keluaran, resampling, baterai perangkat Bluetooth) TIDAK diisi di sini; itu urusan
  * Akses lanjutan (laporan diagnostik sistem) dan tanpa itu tampil "Tidak tersedia".
  *
@@ -26,26 +26,8 @@ import kotlinx.coroutines.flow.asStateFlow
  */
 object AudioMonitor {
 
-    data class Snapshot(
-        val devices: List<OutputDevice> = emptyList(),
-        val inputs: List<String> = emptyList(),
-        val active: ActiveOutput = ActiveOutput(null, Reading.unavailable("Belum dibaca")),
-        /** Sample rate keluaran bawaan sistem (bukan format lagu, bukan jaminan format aktif). */
-        val nativeRate: Reading = Reading.unavailable("Belum dibaca"),
-        val latency: Reading = Reading.unavailable("Belum dibaca"),
-        /** Kemampuan perangkat keluaran aktif: sample rate & format yang DIDUKUNG. */
-        val capability: Reading = Reading.unavailable("Belum dibaca"),
-        /** Pemutaran bit-perfect untuk USB (Android 14+): didukung atau tidak. */
-        val bitPerfect: Reading = Reading.unavailable("Belum dibaca"),
-        val spatial: Reading = Reading.unavailable("Belum dibaca"),
-        val headTracking: Reading = Reading.unavailable("Belum dibaca"),
-        val musicActive: Boolean = false,
-        /** Waktu (ms) keluaran aktif terakhir berganti; dipakai VFD untuk memprioritaskan nama keluaran baru. */
-        val activeChangedAt: Long = Long.MIN_VALUE,
-    )
-
-    private val _state = MutableStateFlow(Snapshot())
-    val state: StateFlow<Snapshot> = _state.asStateFlow()
+    private val _state = MutableStateFlow(AudioSnapshot())
+    val state: StateFlow<AudioSnapshot> = _state.asStateFlow()
 
     private var users = 0
     private var manager: AudioManager? = null
@@ -88,7 +70,7 @@ object AudioMonitor {
 
         val activeInfo = active.device?.let { d -> runCatching { am.getDevices(AudioManager.GET_DEVICES_OUTPUTS).firstOrNull { it.id == d.id } }.getOrNull() }
         val previous = _state.value
-        _state.value = Snapshot(
+        _state.value = AudioSnapshot(
             devices = devices,
             inputs = inputs,
             active = active,

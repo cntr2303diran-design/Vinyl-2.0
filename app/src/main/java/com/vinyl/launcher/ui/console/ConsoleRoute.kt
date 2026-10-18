@@ -1,0 +1,114 @@
+package com.vinyl.launcher.ui.console
+
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleResumeEffect
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
+import com.vinyl.launcher.audio.AdvancedReadings
+import com.vinyl.launcher.audio.AudioConsoleRuntime
+import com.vinyl.launcher.audio.AudioMonitor
+import com.vinyl.launcher.audio.ChannelTest
+import com.vinyl.launcher.audio.EqEngine
+import com.vinyl.launcher.audio.Reading
+import com.vinyl.launcher.audio.SystemAudioShortcuts
+import com.vinyl.launcher.data.AudioConsoleSettings
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
+
+/**
+ * Menghubungkan [ConsoleScreen] ke sumber datanya. Pemantau perangkat audio hanya aktif selama halaman ini tampil
+ * (dan beranda dalam keadaan RESUMED); nada tes berhenti saat halaman ditinggalkan.
+ *
+ * Perubahan EQ langsung dipratinjau ke [EqEngine] lalu disimpan sesaat kemudian, agar menggeser fader tidak menulis
+ * ke penyimpanan puluhan kali per detik.
+ */
+@Composable
+fun ConsoleRoute(
+    audio: AudioConsoleSettings,
+    onSave: (AudioConsoleSettings) -> Unit,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+    vu: @Composable () -> Unit = {},
+) {
+    val context = LocalContext.current
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val snapshot by AudioMonitor.state.collectAsStateWithLifecycle()
+    val sessions by EqEngine.sessions.collectAsStateWithLifecycle()
+    val log by AudioConsoleRuntime.log.collectAsStateWithLifecycle()
+    val tone by ChannelTest.playing.collectAsStateWithLifecycle()
+
+    var shortcuts by remember { mutableStateOf(emptyList<SystemAudioShortcuts.Shortcut>()) }
+    LaunchedEffect(Unit) { shortcuts = withContext(Dispatchers.IO) { SystemAudioShortcuts.available(context) } }
+
+    LifecycleResumeEffect(Unit) {
+        AudioMonitor.acquire(context)
+        onPauseOrDispose {
+            AudioMonitor.release()
+            ChannelTest.stop()
+        }
+    }
+    // Status spasial & properti keluaran tidak punya callback perubahan: dibaca ulang berkala selama halaman tampil
+    LaunchedEffect(lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            while (true) {
+                delay(3_000)
+                AudioMonitor.refresh()
+            }
+        }
+    }
+
+    var draft by remember { mutableStateOf<AudioConsoleSettings?>(null) }
+    LaunchedEffect(draft) {
+        val d = draft ?: return@LaunchedEffect
+        EqEngine.update(d)
+        delay(350)
+        onSave(d)
+        delay(1_000)
+        if (draft == d) draft = null
+    }
+    LaunchedEffect(audio) { if (audio == draft) draft = null }
+
+    val effectsPanel = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { }
+    val mic = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+
+    ConsoleScreen(
+        ui = ConsoleUi(
+            snapshot = snapshot,
+            advanced = AdvancedReadings(),
+            audio = draft ?: audio,
+            sessions = sessions,
+            log = log,
+            shortcuts = shortcuts,
+            tone = tone,
+            micGranted = mic,
+            advancedAccess = Reading.unavailable("Belum diberikan"),
+            isSamsung = SystemAudioShortcuts.isSamsung,
+        ),
+        actions = ConsoleActions(
+            onBack = onBack,
+            onAudio = { f -> draft = f(draft ?: audio) },
+            onTone = ChannelTest::play,
+            onStopTone = ChannelTest::stop,
+            onShortcut = { s ->
+                runCatching { if (s.forResult) effectsPanel.launch(s.intent) else context.startActivity(s.intent) }
+            },
+        ),
+        modifier = modifier,
+        vu = vu,
+    )
+}

@@ -1,6 +1,7 @@
 package com.vinyl.launcher
 
 import android.app.Application
+import com.vinyl.launcher.audio.AudioConsoleRuntime
 import com.vinyl.launcher.data.AppsRepository
 import com.vinyl.launcher.data.HistoryRepository
 import com.vinyl.launcher.data.SettingsRepository
@@ -30,6 +31,8 @@ class VinylApp : Application() {
         SleepTimer.init(this)    // siapkan pengatur volume dan pulihkan volume yang tertinggal bila proses sempat mati
 
         val settings = SettingsRepository.get(this).settings
+        // Audio Console: sesi efek dari aplikasi musik, EQ, dan aturan otomasi (tanpa layanan latar tambahan)
+        AudioConsoleRuntime.start(this, appScope)
         appScope.launch {
             settings.map { it.defaultMusicPackage }.distinctUntilChanged()
                 .collect { MediaRepository.defaultMusicPackage = it }

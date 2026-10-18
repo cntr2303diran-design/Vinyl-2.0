@@ -304,6 +304,8 @@ data class AppSettings(
     val visual: VisualSettings = VisualSettings(),
     /** Tema TV tabung. Dokumen lama tanpa kunci ini dimigrasi dari gaya vinyl (SettingsMigration). */
     val retro: RetroSettings = RetroSettings(),
+    /** Audio Console: EQ, preset, profil per perangkat, otomasi. */
+    val audio: AudioConsoleSettings = AudioConsoleSettings(),
     /** Paket aplikasi musik default (null = pilih otomatis). */
     val defaultMusicPackage: String? = null,
     val hiddenApps: Set<String> = emptySet(),

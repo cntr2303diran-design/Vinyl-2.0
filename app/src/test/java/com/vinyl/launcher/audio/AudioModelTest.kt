@@ -56,10 +56,25 @@ class AudioModelTest {
     }
 
     @Test
-    fun profileKeysAreStableAndPreferTheAddress() {
-        assertEquals("BLUETOOTH:aa:bb", buds.profileKey)
-        assertEquals("USB:usb dac", dac.profileKey)
+    fun profileKeysAreStableAndPreferTheAddressWithoutStoringIt() {
+        assertTrue(buds.profileKey.startsWith("BLUETOOTH:"))
+        assertTrue(dac.profileKey.startsWith("USB:"))
+        // Stabil saat id/nama berubah (alamat dipakai), dan alamatnya sendiri tidak terbaca dari kunci
         assertEquals(buds.profileKey, buds.copy(id = 99, name = "Nama baru").profileKey)
+        assertTrue("aa:bb" !in buds.profileKey.lowercase())
+        assertTrue(buds.profileKey != buds.copy(address = "AA:BC").profileKey)
+        // Tanpa alamat: nama (tanpa beda huruf besar/kecil)
+        assertEquals(dac.profileKey, dac.copy(id = 2, name = "usb dac").profileKey)
+        assertEquals("USB:".length + 16, dac.profileKey.length)
+    }
+
+    @Test
+    fun safeHeadroomLowersTheInputByTheLargestBoost() {
+        val v = EqValues(lowDb = 6f, midDb = -2f, highDb = 3f, preampDb = -1f)
+        assertEquals(-7f to -7f, Eq.inputGains(v, safeHeadroom = true))
+        assertEquals(-1f to -1f, Eq.inputGains(v, safeHeadroom = false))
+        // Hanya pemotongan: tidak ada penurunan tambahan
+        assertEquals(0f to 0f, Eq.inputGains(EqValues(lowDb = -3f), safeHeadroom = true))
     }
 
     // ---------------- EQ

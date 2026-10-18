@@ -1,5 +1,6 @@
 package com.vinyl.launcher.audio
 
+import kotlinx.serialization.Serializable
 import kotlin.math.log10
 import kotlin.math.roundToInt
 
@@ -47,9 +48,36 @@ data class OutputDevice(
     val sampleRates: List<Int> = emptyList(),
     val channelCounts: List<Int> = emptyList(),
 ) {
-    /** Kunci stabil untuk profil EQ per perangkat: jenis + alamat (atau nama bila alamat kosong). */
-    val profileKey: String get() = "${kind.name}:" + address.ifBlank { name }.trim().lowercase()
+    /**
+     * Kunci stabil untuk profil EQ per perangkat: jenis + sidik SHA-256 dari alamat (atau nama bila alamat kosong).
+     * Alamat perangkat (mis. MAC Bluetooth) sendiri tidak pernah disimpan, jadi juga tidak ikut berkas cadangan.
+     */
+    val profileKey: String get() = "${kind.name}:" + fingerprint(address.ifBlank { name }.trim().lowercase())
+
+    private companion object {
+        fun fingerprint(s: String): String =
+            java.security.MessageDigest.getInstance("SHA-256").digest(s.toByteArray()).take(8).joinToString("") { "%02x".format(it) }
+    }
 }
+
+/** Keadaan audio perangkat yang dibaca dari API publik (diisi AudioMonitor; murni agar console bisa diuji). */
+data class AudioSnapshot(
+    val devices: List<OutputDevice> = emptyList(),
+    val inputs: List<String> = emptyList(),
+    val active: ActiveOutput = ActiveOutput(null, Reading.unavailable("Belum dibaca")),
+    /** Sample rate keluaran bawaan sistem (bukan format lagu, bukan jaminan format aktif). */
+    val nativeRate: Reading = Reading.unavailable("Belum dibaca"),
+    val latency: Reading = Reading.unavailable("Belum dibaca"),
+    /** Kemampuan perangkat keluaran aktif: sample rate & format yang DIDUKUNG. */
+    val capability: Reading = Reading.unavailable("Belum dibaca"),
+    /** Pemutaran bit-perfect untuk USB (Android 14+): didukung atau tidak. */
+    val bitPerfect: Reading = Reading.unavailable("Belum dibaca"),
+    val spatial: Reading = Reading.unavailable("Belum dibaca"),
+    val headTracking: Reading = Reading.unavailable("Belum dibaca"),
+    val musicActive: Boolean = false,
+    /** Waktu (ms) keluaran aktif terakhir berganti; dipakai VFD untuk memprioritaskan nama keluaran baru. */
+    val activeChangedAt: Long = Long.MIN_VALUE,
+)
 
 /** Keluaran aktif dan seberapa yakin kita. */
 data class ActiveOutput(val device: OutputDevice?, val reading: Reading)
@@ -116,6 +144,7 @@ object AudioRoutes {
 }
 
 /** EQ tiga pita + preamp + balance. Nilai dalam dB; balance −1 (kiri) .. 1 (kanan). */
+@Serializable
 data class EqValues(
     val lowDb: Float = 0f,
     val midDb: Float = 0f,
@@ -151,6 +180,16 @@ object Eq {
         val left = c.preampDb + if (c.balance > 0f) atten(1f - c.balance) else 0f
         val right = c.preampDb + if (c.balance < 0f) atten(1f + c.balance) else 0f
         return left to right
+    }
+
+    /**
+     * Penguatan masukan yang benar-benar dipasang ke efek. Dengan [safeHeadroom], masukan diturunkan sebesar penguatan
+     * pita terbesar agar penguatan EQ tidak membuat sinyal melewati 0 dBFS (clipping).
+     */
+    fun inputGains(v: EqValues, safeHeadroom: Boolean): Pair<Float, Float> {
+        val (l, r) = channelGains(v)
+        val drop = if (safeHeadroom) bands(v).maxOrNull()?.coerceAtLeast(0f) ?: 0f else 0f
+        return (l - drop) to (r - drop)
     }
 
     fun bands(v: EqValues): FloatArray = clamp(v).let { floatArrayOf(it.lowDb, it.midDb, it.highDb) }
