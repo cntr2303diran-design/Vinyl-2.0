@@ -269,6 +269,9 @@ private fun RecordShelf(np: NowPlaying, queue: List<MediaRepository.QueueEntry>,
         val showStrip = maxHeight > 560.dp && history.isNotEmpty()
         val sleeve = minOf(maxHeight * (if (showStrip) 0.40f else 0.50f), maxWidth * 0.28f, 320.dp)
         val step = sleeve * 0.66f
+        // Dihitung di sini, bukan di dalam Column: maxHeight/maxWidth milik BoxWithConstraintsScope tidak bisa dipakai
+        // sebagai penerima implisit di dalam lambda ber-scope layout lain (DslMarker), dan kompiler menolaknya
+        val stackCover = minOf(maxHeight * (if (showStrip) 0.34f else 0.42f), maxWidth * 0.5f, 300.dp)
         val sidePad = (maxWidth - step) / 2
         val focusedIndex = if (stack) stackFocus else pager.currentPage
         val focused = items.getOrNull(focusedIndex)
@@ -276,7 +279,7 @@ private fun RecordShelf(np: NowPlaying, queue: List<MediaRepository.QueueEntry>,
         Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
             Spacer(Modifier.weight(0.15f))
             if (stack) {
-                val cover = minOf(maxHeight * (if (showStrip) 0.34f else 0.42f), maxWidth * 0.5f, 300.dp)
+                val cover = stackCover
                 StackShelf(
                     items = items,
                     startPage = startPage,

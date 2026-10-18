@@ -53,9 +53,12 @@ jobs:
             if [ -n "$KEY_ALIAS" ]; then echo "VINYL_KEY_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"; fi
             if [ -n "$KEY_PASSWORD" ]; then echo "VINYL_KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"; fi
             echo "Kunci tanda tangan rahasia dari Secrets dipakai." >> "$GITHUB_STEP_SUMMARY"
-          else
+          elif [ -f app/vinyl.keystore ]; then
             echo "::warning title=Kunci tanda tangan publik::Secrets VINYL_KEYSTORE_* belum diisi; APK ditandatangani dengan kunci lama yang ada di repo (publik). Lihat SECURITY.md."
             echo "⚠️ APK ditandatangani dengan kunci lama yang publik. Isi Secrets VINYL_KEYSTORE_* (lihat SECURITY.md)." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::warning title=Tanpa kunci rahasia::Secrets VINYL_KEYSTORE_* belum diisi dan repo ini tidak menyimpan kunci; APK debug memakai kunci debug bawaan Android, jadi tidak bisa menimpa aplikasi yang ditandatangani kunci lain. Lihat SECURITY.md."
+            echo "ℹ️ APK debug memakai kunci debug bawaan (tanpa kunci rahasia). Isi Secrets VINYL_KEYSTORE_* agar pembaruan antar-build bisa saling menimpa (lihat SECURITY.md)." >> "$GITHUB_STEP_SUMMARY"
           fi
 
       - name: Tes unit
