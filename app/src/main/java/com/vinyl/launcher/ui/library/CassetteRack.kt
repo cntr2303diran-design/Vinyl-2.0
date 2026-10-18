@@ -134,7 +134,9 @@ fun CassetteRack(
     val arranged = remember(all, state.filter, state.query) { LibraryCatalog.arrange(all, state.filter, state.query) }
     val compartments = remember(arranged, state.filter, now) { LibraryCatalog.compartments(arranged, state.filter, now) }
 
-    Column(modifier.fillMaxSize()) {
+    // Box: lapisan detail digambar DI ATAS rak (di dalam Column ia akan tersusun di bawah daftar, di luar layar)
+    Box(modifier.fillMaxSize()) {
+    Column(Modifier.fillMaxSize()) {
         // Pencarian katalog & saringan
         OutlinedTextField(
             value = state.query,
@@ -197,7 +199,7 @@ fun CassetteRack(
             ) {
                 var lastSection: String? = null
                 compartments.forEachIndexed { i, comp ->
-                    if (comp.section != lastSection) {
+                    if (comp.section.isNotEmpty() && comp.section != lastSection) {
                         val title = comp.section
                         item(key = "s:$i:$title", span = { GridItemSpan(maxLineSpan) }) {
                             Text(
@@ -230,6 +232,7 @@ fun CassetteRack(
             onClose = { state.selected = null },
         )
     }
+    }
 }
 
 /** Satu kompartemen walnut: kaset bertumpuk dengan punggung menghadap keluar; slot kosong tetap terlihat. */
@@ -246,6 +249,18 @@ private fun CompartmentBox(comp: Compartment, selected: String?, onSelect: (Stri
             .padding(4.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
+        // Pelat kuningan berhuruf di atas kompartemen
+        Text(
+            LibraryCatalog.plate(comp),
+            color = RetroColors.Ink,
+            fontFamily = MonoFamily,
+            style = MaterialTheme.typography.labelMedium,
+            modifier = Modifier
+                .align(Alignment.CenterHorizontally)
+                .clip(RoundedCornerShape(2.dp))
+                .background(Color(0xFFC9A55A))
+                .padding(horizontal = 8.dp, vertical = 1.dp),
+        )
         comp.entries.forEach { e -> Spine(e, pulled = e.key == selected) { onSelect(e.key) } }
         repeat(LibraryCatalog.PER_COMPARTMENT - comp.entries.size) {
             Box(Modifier.fillMaxWidth().heightIn(min = 48.dp).clip(RoundedCornerShape(3.dp)).background(Color.Black.copy(alpha = 0.25f)))

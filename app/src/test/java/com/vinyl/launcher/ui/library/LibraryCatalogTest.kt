@@ -89,6 +89,14 @@ class LibraryCatalogTest {
     }
 
     @Test
+    fun theWallRackIsPackedFullAndLabelledWithLetterPlates() {
+        val comps = LibraryCatalog.compartments(LibraryCatalog.arrange(entries, RackFilter.ALL, ""), RackFilter.ALL, now)
+        assertEquals(listOf(4, 1), comps.map { it.entries.size })
+        assertEquals(listOf("#–B", "C"), comps.map { LibraryCatalog.plate(it) })
+        assertTrue(comps.all { it.section.isEmpty() })
+    }
+
+    @Test
     fun sameAlbumListsOtherSongsOfThatAlbumAndArtist() {
         val alien = entries.first { it.record.title == "Alien" }
         assertEquals(listOf("Zebra"), LibraryCatalog.sameAlbum(entries, alien).map { it.record.title })

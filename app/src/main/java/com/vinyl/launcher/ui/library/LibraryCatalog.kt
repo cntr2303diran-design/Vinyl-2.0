@@ -74,9 +74,13 @@ object LibraryCatalog {
         }
     }
 
-    /** Judul bagian rak untuk [e] sesuai [filter]. */
+    /**
+     * Judul bagian rak untuk [e] sesuai [filter]. Rak dinding "Semua" sengaja TIDAK dibagi per huruf: kompartemen
+     * diisi penuh berurutan A–Z (rak terlihat penuh) dan tiap kompartemen diberi pelat huruf ([plate]).
+     */
     fun section(e: RackEntry, filter: RackFilter, now: Long): String = when (filter) {
-        RackFilter.ALL, RackFilter.FAVORITE -> sectionLetter(e.record.artist)
+        RackFilter.ALL -> ""
+        RackFilter.FAVORITE -> sectionLetter(e.record.artist)
         RackFilter.ARTIST -> e.record.artist.trim().ifEmpty { "Tanpa artis" }
         RackFilter.ALBUM -> e.record.album.trim().ifEmpty { "Tanpa album" }
         RackFilter.RECENT -> recency(e.record.lastPlayed, now)
@@ -115,6 +119,13 @@ object LibraryCatalog {
         }
         flush()
         return out
+    }
+
+    /** Pelat huruf kompartemen, mis. "A" atau "A–D", dari artis kaset pertama dan terakhir. */
+    fun plate(c: Compartment): String {
+        val a = sectionLetter(c.entries.first().record.artist)
+        val b = sectionLetter(c.entries.last().record.artist)
+        return if (a == b) a else "$a–$b"
     }
 
     /** Lagu lain dari album yang sama di koleksi (pengganti "daftar lagu album": launcher tidak bisa membaca isi album). */
