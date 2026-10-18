@@ -63,11 +63,28 @@ jobs:
             echo "ℹ️ APK debug memakai kunci debug bawaan (tanpa kunci rahasia). Isi Secrets VINYL_KEYSTORE_* agar pembaruan antar-build bisa saling menimpa (lihat SECURITY.md)." >> "$GITHUB_STEP_SUMMARY"
           fi
 
+      # SEMENTARA (branch retro-tv): cetak tanda tangan API resmi dari android.jar agar kode baru tidak mengarang API.
+      # Dihapus sebelum digabung ke main.
+      - name: Tanda tangan API (sementara)
+        if: github.ref_name == 'retro-tv'
+        run: |
+          JAR="$ANDROID_HOME/platforms/android-36/android.jar"
+          for c in android.media.audiofx.DynamicsProcessing 'android.media.audiofx.DynamicsProcessing$Config$Builder' \
+                   'android.media.audiofx.DynamicsProcessing$EqBand' 'android.media.audiofx.DynamicsProcessing$Eq' \
+                   android.media.audiofx.AudioEffect android.media.Spatializer android.media.AudioDeviceInfo \
+                   android.media.AudioMixerAttributes android.bluetooth.BluetoothDevice android.bluetooth.BluetoothA2dp \
+                   android.media.AudioManager android.media.AudioTrack 'android.media.AudioTrack$Builder' \
+                   android.provider.Settings; do
+            echo "===== $c"; javap -cp "$JAR" "$c" 2>&1 | grep -vE '^Compiled'
+          done > api.txt
+          { echo; echo "===== TANDA TANGAN API ====="; cat api.txt; } >> api-head.txt
+
       - name: Tes unit
         run: |
           chmod +x gradlew
           set -o pipefail
           ./gradlew testDebugUnitTest --stacktrace --no-daemon 2>&1 | tee build.log
+          if [ -f api-head.txt ]; then cat api-head.txt >> build.log; fi
 
       # Tangkapan layar Compose tanpa HP (Roborazzi + Robolectric). PNG disalin ke branch log agar bisa diperiksa.
       # Belum memblokir: kegagalan infrastruktur render tidak boleh menahan build selama tahap awal.
