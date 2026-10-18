@@ -135,3 +135,18 @@ nama. Dokumen tanpa kunci `retro` (pengaturan & cadangan dari versi vinyl) dimig
 piringan klasik/berwarna/transparan/bergambar → kaset hitam/berwarna (TV space-age)/transparan/bergambar, tonearm
 perak/hitam/emas → knob krom/bakelite/kuningan, 45 RPM → gulungan cepat. Preset lama mendapat padanannya saat diterapkan.
 Dibuktikan `SettingsMigrationTest`.
+
+### Audio Console (halaman kanan)
+
+- Gaya receiver stereo tanpa merek: halaman `CHARCOAL_DEEP`, panel `CHARCOAL` sudut 14dp, lampu indikator amber per panel
+  (menyala bila fitur panel aktif), fader EQ dengan tutup krem bergaris amber.
+- Kontras teks di atas panel `#343633`: krem `#EDE3D1` 9,6:1, krem sekunder `#C9BEAA` 6,6:1, amber `#D6A64D` 5,5:1,
+  hijau VFD `#9FC29A` 6,2:1.
+- Setiap nilai memakai `ReadingRow`: label, nilai (huruf mono bila ada), label sumber (Terukur / Dilaporkan sistem hijau,
+  Perkiraan amber), dan alasan/asal. Nilai "Tidak tersedia" tidak diberi label sumber ganda.
+- Tata letak: ≥ 900dp tiga kolom, ≥ 600dp dua kolom, selain itu satu kolom bergulir. Semua baris bertumpuk agar tetap
+  terbaca pada ukuran huruf 200%.
+- RTL: panel dicerminkan, tetapi sumbu frekuensi EQ dan balance kiri/kanan tetap kiri→kanan (kanal fisik). Teks memakai
+  `TextDirection.Content` di tipografi aplikasi, jadi teks Latin seperti "-4 dB" tetap terbaca benar.
+- Target sentuh ≥ 48dp (tombol, sakelar baris penuh, fader 48×150dp). Fader dan balance adalah penggeser TalkBack
+  (`setProgress`) dengan aksi "Naik/Turun 1 dB" dan "Atur ke 0 dB"/"Tengah".

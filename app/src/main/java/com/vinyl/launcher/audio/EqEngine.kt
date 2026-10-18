@@ -39,7 +39,12 @@ object EqEngine {
     private var config = AudioConsoleSettings()
 
     fun open(id: Int, packageName: String, origin: SessionOrigin) = scope.launch {
-        _sessions.update { EqSessions.open(it, id, packageName, origin) }
+        _sessions.update { list ->
+            val opened = EqSessions.open(list, id, packageName, origin)
+            // Sesi yang dibuka lagi oleh aplikasinya boleh dicoba ulang walau sebelumnya ditolak sistem
+            val wasFailed = list.any { it.id == id && it.state == SessionState.FAILED }
+            if (wasFailed) EqSessions.withState(opened, id, SessionState.PENDING) else opened
+        }
         sync()
     }
 
@@ -88,6 +93,9 @@ object EqEngine {
             return
         }
         for (session in _sessions.value) {
+            // Sesi yang sudah ditolak sistem tidak dicoba ulang di setiap perubahan nilai (mis. saat fader digeser);
+            // percobaan ulang terjadi saat EQ dinyalakan ulang atau sesi dibuka lagi.
+            if (session.state == SessionState.FAILED && effects[session.id] == null) continue
             val dp = effects[session.id] ?: create(session.id) ?: continue
             val ok = runCatching { applyValues(dp, s) }.isSuccess
             val state = when {
