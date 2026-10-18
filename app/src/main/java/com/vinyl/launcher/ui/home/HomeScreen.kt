@@ -722,7 +722,7 @@ private fun VisualizerStrip(
     noteColor: Color,
 ) {
     val note: String? = when {
-        plan == VisualizerPlan.NEEDS_PERMISSION -> "Visualizer audio asli butuh izin mikrofon. Atur di Pengaturan → Efek visual."
+        plan == VisualizerPlan.NEEDS_PERMISSION -> "Visualizer audio asli butuh izin mikrofon. Atur di Pengaturan → Gambar & efek."
         mode == VisualizerMode.REAL && plan == VisualizerPlan.REAL && unavailable -> "Visualizer audio asli tidak tersedia di perangkat ini."
         plan == VisualizerPlan.DECORATIVE -> "Animasi dekoratif, tidak mengikuti suara"
         else -> null

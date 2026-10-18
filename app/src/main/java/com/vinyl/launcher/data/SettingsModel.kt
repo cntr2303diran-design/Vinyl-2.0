@@ -15,7 +15,7 @@ import kotlinx.serialization.Serializable
 enum class Anchor { TOP_START, TOP_CENTER, TOP_END, CENTER_START, CENTER, CENTER_END, BOTTOM_START, BOTTOM_CENTER, BOTTOM_END }
 
 @Serializable
-enum class ClockType { THIN, BOLD, FLIP, ANALOG, CIRCULAR }
+enum class ClockType { THIN, BOLD, FLIP, ANALOG, CIRCULAR, VFD }
 
 @Serializable
 enum class FontChoice { DEFAULT, SANS, SERIF, MONO, CURSIVE }
@@ -103,7 +103,8 @@ data class CoverElement(val visible: Boolean = true, val anchor: Anchor = Anchor
 
 @Serializable
 data class CoverSettings(
-    val clock: ClockSettings = ClockSettings(type = ClockType.BOLD, scale = 1.5f, anchor = Anchor.TOP_START, showDate = false),
+    // Pengguna baru: jam VFD (tema TV). Pengguna lama tetap memakai tipe tersimpan karena JSON pengaturan menyimpan nilai default.
+    val clock: ClockSettings = ClockSettings(type = ClockType.VFD, scale = 1.5f, anchor = Anchor.TOP_START, showDate = false),
     val date: CoverElement = CoverElement(true, Anchor.TOP_START),
     val calendar: CoverElement = CoverElement(true, Anchor.CENTER_START),
     val songInfo: CoverElement = CoverElement(true, Anchor.BOTTOM_START),

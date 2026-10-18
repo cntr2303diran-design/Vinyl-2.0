@@ -113,7 +113,7 @@ private enum class Page(val title: String, val subtitle: String, val icon: Image
     MUSIC("Musik", "Aplikasi default, lirik, rak, timer tidur", Icons.Rounded.MusicNote, Color(0xFFFF375F)),
     TASKBAR("Taskbar", "Bar aplikasi gaya PC", Icons.Rounded.Dock, Color(0xFFFF9F43)),
     NAV("Tombol navigasi", "Kembali, Home, Terbaru", Icons.Rounded.TouchApp, Color(0xFF64D2FF)),
-    VISUAL("Efek visual", "Distorsi kaca, cahaya, partikel, parallax, visualizer", Icons.Rounded.GraphicEq, Color(0xFF00C7BE)),
+    VISUAL("Gambar & efek", "Video di TV, distorsi, cahaya, partikel, parallax, visualizer", Icons.Rounded.GraphicEq, Color(0xFF00C7BE)),
     FX("Suara & getar", "Tombol kaset, desis pita, getar", Icons.Rounded.Vibration, Color(0xFFBF5AF2)),
     GESTURES("Gestur", "Swipe & gestur gambar sendiri", Icons.Rounded.Gesture, Color(0xFFFFD60A)),
     WEATHER("Cuaca", "Lokasi untuk widget cuaca", Icons.Rounded.WbSunny, Color(0xFFFF9F0A)),

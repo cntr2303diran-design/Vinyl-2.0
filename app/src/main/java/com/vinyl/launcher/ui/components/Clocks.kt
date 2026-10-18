@@ -1,5 +1,8 @@
 package com.vinyl.launcher.ui.components
 
+import androidx.compose.foundation.background
+import com.vinyl.launcher.ui.theme.RetroColors
+import com.vinyl.launcher.ui.theme.MonoFamily
 import android.graphics.Paint
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
@@ -135,7 +138,34 @@ fun ClockView(
             ClockType.FLIP -> FlipClock(hm, ampm, color, family, (sizeDp * 0.9f).dp)
             ClockType.ANALOG -> AnalogClock(now, color, (sizeDp * 1.75f).dp)
             ClockType.CIRCULAR -> CircularClock(hm + (ampm?.let { " $it" } ?: ""), color, (sizeDp * 1.9f).dp)
+            ClockType.VFD -> VfdClock(hm, ampm, sizeDp)
         }
+    }
+}
+
+/**
+ * Jam VFD seperti panel TV/receiver: angka mono hijau di atas kaca gelap, dengan segmen "88:88" samar di belakangnya.
+ * Latarnya sendiri gelap, jadi kontrasnya tidak bergantung pada latar layar (hijau VFD di atas kaca: > 9:1).
+ */
+@Composable
+private fun VfdClock(hm: String, ampm: String?, sizeDp: Float) {
+    val fs = (sizeDp * 0.62f).sp
+    val style = TextStyle(fontFamily = MonoFamily, fontWeight = FontWeight.Medium, fontSize = fs, lineHeight = fs)
+    Row(
+        Modifier
+            .clip(RoundedCornerShape((sizeDp * 0.08f).dp))
+            .background(RetroColors.VfdGlass)
+            .padding(horizontal = (sizeDp * 0.14f).dp, vertical = (sizeDp * 0.08f).dp),
+        verticalAlignment = Alignment.Bottom,
+    ) {
+        Box {
+            Text(hm.map { if (it.isDigit()) '8' else it }.joinToString(""), style = style.copy(color = RetroColors.VfdGhost))
+            Text(hm, style = style.copy(color = RetroColors.VfdGreen))
+        }
+        if (ampm != null) Text(
+            ampm, style = style.copy(fontSize = fs * 0.32f, color = RetroColors.VfdGreen),
+            modifier = Modifier.padding(start = (sizeDp * 0.06f).dp, bottom = (sizeDp * 0.06f).dp),
+        )
     }
 }
 

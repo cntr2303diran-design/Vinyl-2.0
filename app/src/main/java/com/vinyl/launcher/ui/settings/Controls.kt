@@ -315,6 +315,7 @@ fun ClockType.label() = when (this) {
     ClockType.FLIP -> "Flip clock"
     ClockType.ANALOG -> "Analog"
     ClockType.CIRCULAR -> "Melingkar"
+    ClockType.VFD -> "VFD (layar TV)"
 }
 
 /** Kontrol gaya jam (dipakai di home & layar kunci). */

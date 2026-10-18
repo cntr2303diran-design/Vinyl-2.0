@@ -34,7 +34,7 @@ import com.vinyl.launcher.fx.rememberPowerSave
 import com.vinyl.launcher.ui.theme.rememberReduceMotion
 
 /*
- * Pengaturan → Efek visual. Setiap kontrol menjelaskan apa yang terjadi, apa yang dibutuhkan, dan apa yang TIDAK
+ * Pengaturan → Gambar & efek. Setiap kontrol menjelaskan apa yang terjadi, apa yang dibutuhkan, dan apa yang TIDAK
  * dilakukan; kegagalan (perangkat menolak, izin ditolak) ditulis apa adanya, tidak diganti tiruan.
  */
 

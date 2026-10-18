@@ -148,4 +148,13 @@ class SettingsMigrationTest {
         assertEquals(SettingsSanitizer.MAX_FAVORITES, s.music.favorites.size)
         assertTrue(s.music.favorites.none { it.isEmpty() || it.any(Char::isISOControl) })
     }
+
+    @Test
+    fun newUsersGetTheVfdLockClockWhileSavedChoicesStay() {
+        assertEquals(ClockType.VFD, AppSettings().cover.clock.type)
+        val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true; encodeDefaults = true }
+        // Pengaturan lama tersimpan dengan semua nilai (encodeDefaults), termasuk tipe jam pilihan pengguna
+        val old = json.encodeToString(AppSettings.serializer(), AppSettings(cover = CoverSettings(clock = ClockSettings(type = ClockType.BOLD))))
+        assertEquals(ClockType.BOLD, json.decodeFromString(AppSettings.serializer(), old).cover.clock.type)
+    }
 }

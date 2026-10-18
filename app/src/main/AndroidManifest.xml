@@ -28,7 +28,7 @@
     <!--
       Visualizer audio "Audio asli" (opsional, mati secara default). Android mewajibkan RECORD_AUDIO untuk android.media.audiofx.Visualizer
       dan MODIFY_AUDIO_SETTINGS untuk Visualizer pada keluaran sistem (sesi 0). Hanya spektrum FFT yang dibaca, tanpa rekaman; izin
-      mikrofon baru diminta saat pengguna memilih mode itu di Pengaturan → Efek visual.
+      mikrofon baru diminta saat pengguna memilih mode itu di Pengaturan → Gambar & efek.
       MODIFY_AUDIO_SETTINGS juga dipakai equalizer Audio Console (DynamicsProcessing pada sesi audio yang dibuka aplikasi musik);
       EQ mati secara default.
     -->

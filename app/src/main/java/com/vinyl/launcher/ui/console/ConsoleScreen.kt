@@ -383,7 +383,7 @@ private fun DiagnosticsPanel(ui: ConsoleUi, actions: ConsoleActions) {
         ReadingRow(
             "Visualizer audio asli",
             if (ui.micGranted) Reading.reported("Izin diberikan", "Izin mikrofon (hanya spektrum, bukan rekaman)")
-            else Reading.unavailable("Izin mikrofon belum diberikan; opsional, atur di Pengaturan → Efek visual"),
+            else Reading.unavailable("Izin mikrofon belum diberikan; opsional, atur di Pengaturan → Gambar & efek"),
         )
         ReadingRow("Akses lanjutan", accessReading(ui.access))
     }

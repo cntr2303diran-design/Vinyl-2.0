@@ -26,7 +26,7 @@ fun MusicLyricsControls(m: MusicSettings, onChange: (MusicSettings) -> Unit) {
 fun MusicPlaybackControls(m: MusicSettings, onChange: (MusicSettings) -> Unit) {
     Column {
         SwitchRow(
-            "Pergantian lembut", m.softSkip, { onChange(m.copy(softSkip = it)) },
+            "Fade kaset (pergantian lembut)", m.softSkip, { onChange(m.copy(softSkip = it)) },
             subtitle = "Volume media turun sebentar lalu naik lagi saat Anda menekan lagu berikutnya atau sebelumnya. Ini bukan crossfade: Vinyl tidak memutar audio, jadi tidak bisa menumpuk dua lagu. Volume selalu dikembalikan, dan bila Anda menekan tombol volume, Vinyl berhenti menyentuhnya.",
         )
         // Pilihan sekarang ikut ditampilkan walau bukan salah satu preset (mis. dari berkas cadangan)
