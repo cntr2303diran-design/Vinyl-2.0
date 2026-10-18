@@ -3,6 +3,7 @@ package com.vinyl.launcher.media
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import androidx.core.net.toUri
 import android.provider.DocumentsContract
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -46,7 +47,7 @@ object VideoLibrary {
             if (!force && s.folderUri == folderUri && s.error == null && System.currentTimeMillis() - s.scannedAt < RESCAN_MS) return
             _state.update { it.copy(folderUri = folderUri, scanning = true) }
             val app = context.applicationContext
-            val result = withContext(Dispatchers.IO) { runCatching { list(app, Uri.parse(folderUri)) } }
+            val result = withContext(Dispatchers.IO) { runCatching { list(app, folderUri.toUri()) } }
             _state.value = result.fold(
                 onSuccess = { (files, truncated) -> State(folderUri, files, false, null, System.currentTimeMillis(), truncated) },
                 onFailure = { e ->
@@ -86,7 +87,7 @@ object VideoLibrary {
         context.contentResolver.persistedUriPermissions.any { it.uri == tree && it.isReadPermission }
 
     fun uriOf(folderUri: String, documentId: String): Uri =
-        DocumentsContract.buildDocumentUriUsingTree(Uri.parse(folderUri), documentId)
+        DocumentsContract.buildDocumentUriUsingTree(folderUri.toUri(), documentId)
 
     /** Simpan izin baca folder agar tetap berlaku setelah HP restart. */
     fun takePermission(context: Context, tree: Uri): Boolean = runCatching {
@@ -95,7 +96,7 @@ object VideoLibrary {
 
     /** Lepaskan izin folder lama (saat ganti/lepas folder) agar launcher tidak menyimpan akses yang tak dipakai. */
     fun releasePermission(context: Context, folderUri: String) {
-        runCatching { context.contentResolver.releasePersistableUriPermission(Uri.parse(folderUri), Intent.FLAG_GRANT_READ_URI_PERMISSION) }
+        runCatching { context.contentResolver.releasePersistableUriPermission(folderUri.toUri(), Intent.FLAG_GRANT_READ_URI_PERMISSION) }
     }
 
     /** Nama folder untuk ditampilkan. Panggil di thread latar. */
