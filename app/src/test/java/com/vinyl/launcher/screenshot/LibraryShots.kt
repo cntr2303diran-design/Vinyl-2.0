@@ -11,6 +11,7 @@ import com.vinyl.launcher.media.NowPlaying
 import com.vinyl.launcher.player.HiFi
 import com.vinyl.launcher.player.LocalLibrary
 import com.vinyl.launcher.player.LocalTrack
+import com.vinyl.launcher.player.PlaybackErrors
 import com.vinyl.launcher.data.PlayRecord
 import com.vinyl.launcher.data.ShelfStyle
 import com.vinyl.launcher.ui.crate.CrateSheet
@@ -70,9 +71,17 @@ class LibraryShots {
             LocalTrack("3", "Kota Tua", "Arunika", "Pelabuhan", trackNo = 3, mime = "audio/flac", fileName = "03.flac", sampleRate = 96_000, bitsPerSample = 24, durationMs = 198_000),
             LocalTrack("4", "Neon Lama", "Band Kertas", "Radio Malam", trackNo = 1, mime = "audio/mpeg", fileName = "neon.mp3", bitrate = 320_000, durationMs = 221_000),
             LocalTrack("5", "Lagu dengan judul yang sangat panjang sekali untuk menguji pemotongan teks", "Band Kertas", "Radio Malam", trackNo = 2, mime = "audio/wav", fileName = "b.wav", sampleRate = 44_100, bitsPerSample = 16, durationMs = 3_725_000),
+            // Format yang belum didukung pemutar bawaan: tetap tampil dengan keterangannya, tanpa aksi putar
+            LocalTrack("6", "Rekaman Studio", "Band Kertas", "Radio Malam", trackNo = 3, mime = "audio/x-aiff", fileName = "c.aiff", sampleRate = 48_000, bitsPerSample = 24, durationMs = 254_000),
         )
         LocalLibrary.preview(FAKE_FOLDER, tracks)
-        HiFi.updatePath { HiFi.PathState(active = true, trackId = "2", codec = "FLAC", sourceRate = 96_000, sourceBits = 24, channels = 2, lossless = true) }
+        HiFi.updatePath {
+            HiFi.PathState(
+                active = true, trackId = "2", codec = "FLAC", sourceRate = 96_000, sourceBits = 24, channels = 2, lossless = true,
+                // Keterangan lagu yang dilewati pemutar (kode 4005 = dekoder tidak mendukung format)
+                skipped = PlaybackErrors.message("Arsip Lama", 4005, skipped = true),
+            )
+        }
         content(tab = 4, np = playing(null).copy(title = "Hujan Bulan Juni", artist = "Arunika", packageName = "com.vinyl.launcher"))
     }
 
