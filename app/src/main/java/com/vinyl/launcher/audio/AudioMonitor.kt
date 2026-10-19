@@ -141,7 +141,8 @@ object AudioMonitor {
         val ok = list.any { it.mixerBehavior == AudioMixerAttributes.MIXER_BEHAVIOR_BIT_PERFECT }
         return Reading.reported(
             if (ok) "Didukung" else "Tidak didukung",
-            "Bit-perfect hanya aktif bila aplikasi musik memintanya; launcher tidak bisa menyalakannya",
+            "Kemampuan DAC. Bit-perfect hanya aktif bila aplikasi musik memintanya untuk dirinya sendiri; pemutar bawaan memakai " +
+                "\"Laju sampel cocok\", bukan bit-perfect",
         )
     }
 

@@ -170,3 +170,74 @@ Dibuktikan `SettingsMigrationTest`.
 | Editor beranda | Service menu: baris status mono amber, tab huruf kapital mono, tab terpilih ▸ di atas amber | Tab = `Role.Tab` dengan status terpilih; target sentuh tab & preset dinaikkan ke 48dp |
 | Lirik | Halaman teletext/subtitel | Garis scan hanya menggelapkan; kotak subtitel menjaga kontras baris aktif |
 | Widget | Kalender sobek, cuaca VFD, baterai jarum, polaroid | Tiap widget membawa permukaannya sendiri, jadi kontras tidak bergantung warna dinding |
+
+---
+
+## Beranda VHS (desain ulang 2.0)
+
+Beranda kini seperti rekaman kamera VHS di ruangan malam: TV tabung di atas meja stereo, proyektor di belakangnya,
+kaset di samping TV, dan teks layar kamera (OSD) yang menggantikan status bar. Rujukan dari game horor/retro diambil
+**sebagai prinsip saja** — tanpa logo, karakter, ikon, huruf, atau aset dari game mana pun.
+
+### Prinsip yang dipakai
+
+| Prinsip | Sumber (genre, bukan produk) | Dipakai untuk |
+|---|---|---|
+| Antarmuka diegetik: informasi menjadi bagian dari dunia | Game horor *found footage* & survival horror | Status perangkat = OSD kamera; posisi lagu = penghitung pita; keluaran audio = jendela VFD deck |
+| Satu sumber cahaya, sisanya gelap | Horor atmosferik | Ruangan hanya diterangi layar TV & proyeksi; tepi ruangan memudar ke hitam |
+| Ketidaksempurnaan analog yang terkendali | Estetika VHS/CRT | Butir film 12 fps dan garis tracking rata-rata tiap ±9 dtk — tipis, berhenti saat *Hapus animasi*/Hemat daya, tidak pernah menutupi teks |
+| Bentuk padat berbayang datar, sedikit poligon | Game 3D era 32-bit | Meja, deck, kaset, TV: sisi atas/samping lebih gelap dari muka depan, tanpa tekstur foto |
+| Objek nyata yang bisa disentuh (bukan tombol melayang) | Ruang diegetik + Apple HIG (hierarki) | Ketuk layar TV, kaset, knob, tombol deck; tidak ada FAB atau panel mengambang di atas ruangan |
+| Keterbacaan menang atas suasana | Aturan penengah tetap | OSD selalu putih berbayangan keras di atas peredam yang dihitung, bukan efek "glitch" pada teks |
+
+### Panggung 3D (`ui/room/stage`)
+
+- **Kamera satu titik hilang** (`StageCamera`, `Stage3D.kt`) dengan *lens shift*: bidang yang menghadap kamera tetap persegi
+  panjang lurus, jadi TV, deck, dan kaset bisa berupa composable biasa (target sentuh, TalkBack, dan skala huruf normal).
+  Sisi atas & samping digambar Canvas dari proyeksi yang sama, sehingga kaset tidak lagi terlihat pipih.
+- **`StageLayout`** menghitung semua posisi dari ukuran layar dan bilah sistem: TV adalah benda terbesar, deck cukup lebar
+  untuk empat tombol 48dp, proyeksi menggantung di belakang-atas TV dengan tepi atas tetap di layar, dan pada layar
+  mendatar yang pendek TV hanya boleh naik di antara kolom sudut OSD. **TV tidak bisa dipindah** — pengaturan hanya mengubah
+  ukurannya (dibuktikan `StageLayoutTest`).
+- **Panggung selalu kiri→kanan**, juga pada bahasa RTL: ini benda fisik (posisi knob & kanal kiri/kanan), bukan teks.
+  Teks di dalamnya tetap mengikuti arah bahasa; angka memakai digit Latin (`Locale.ROOT`).
+- Ukuran huruf di VFD dan layar CRT dibatasi (maks. 1,3×) karena jendelanya berukuran tetap; teks yang sama tersedia
+  lewat TalkBack dan di OSD/konsol yang ikut skala huruf.
+
+### OSD (pengganti status bar, `ui/room/vhs`)
+
+- Huruf VT323 (OFL) putih `OSD_TEXT` dengan bayangan hitam keras, seperti tampilan kamera — terbaca di atas apa pun.
+- **Kontras dibuktikan, bukan dikira-kira** (`VhsPaletteTest`): peredam pita bawah `OSD_SCRIM_ALPHA` = 0,66 menjaga
+  teks putih ≥ 4,5:1 bahkan di atas proyeksi putih penuh. Peredam sudut kiri/kanan atas dibuat dari `SCRIM_LAYERS` = 16
+  lapisan × 0,066 yang makin kecil: tepinya memudar halus tanpa kotak, dan di bawah teks tumpukannya mencapai
+  1 − 0,934¹⁶ ≈ 0,665 ≥ 0,66.
+- Baterai lemah = isian merah `OSD_WARN_FILL` dengan teks putih di atasnya (bukan teks merah). Aksen kuning `OSD_ACCENT`
+  hanya untuk "HI-FI" dan timer tidur.
+- Skala huruf OSD dibatasi 1,5× (teks dasarnya sudah 20–32sp); di atas itu pita OSD akan menutupi TV.
+- Target sentuh: jam/tanggal, kelompok status, dan baris notifikasi masing-masing ≥ 48dp tinggi, dengan label TalkBack
+  ("Buka alarm", "Buka pengaturan cepat", "N notifikasi"); penghitung pita adalah penggeser TalkBack (`setProgress`).
+
+### Token baru (`Tokens.Vhs`, `Tokens.Motion`)
+
+| Token | Nilai | Pemakaian |
+|---|---|---|
+| `WALL_LIT` / `WALL_DARK` / `FLOOR` | `#1B2029` / `#07080B` / `#050506` | Dinding di belakang TV, tepi ruangan, lantai |
+| `WOOD_LIGHT` / `WOOD_MID` / `WOOD_DARK` | `#6A4630` / `#46301F` / `#231710` | Meja stereo (muka, sisi, bayangan) |
+| `DECK_FACE` / `DECK_FACE_LIGHT` | `#19191B` / `#2C2D30` | Muka deck kaset |
+| `KEY_FACE` / `KEY_FACE_DOWN` / `KEY_INK` | `#C9C6BD` / `#A9A69D` / `#1A1918` | Tombol perak deck dan simbolnya (teruji kontrasnya) |
+| `OSD_TEXT` / `OSD_ACCENT` / `OSD_WARN_FILL` | `#F4F3EE` / `#FFD45C` / `#B3261E` | Teks OSD, "HI-FI" & timer, baterai lemah |
+| `OSD_SCRIM_ALPHA`, `SCRIM_LAYERS`, `SCRIM_LAYER_ALPHA` | 0,66 · 16 · 0,066 | Peredam OSD (lihat di atas) |
+| `LABEL_PAPER` / `LABEL_INK` | `#E9E0CC` / `#1C1A2E` | Label kaset kertas & tulisan spidol (Permanent Marker, Apache 2.0) |
+| `FILM_FRAME_MS`, `TRACKING_EVERY_MS`, `TRACKING_GLITCH_MS` | 83 · 9000 · 700 ms | Butir film & gangguan tracking |
+| `SEEK_OSD_HOLD_MS` | 900 ms | Lama waktu tujuan knob tetap tampil di layar TV |
+
+### Audio Console: Pemutar bawaan & EQ
+
+- Panel **Pemutar bawaan** menampilkan jalur suara apa adanya, berurutan seperti sinyalnya: sumber (dibaca dari berkas) →
+  hasil dekoder → rantai suara (atau "Tanpa olahan") → ke Android → DAC USB. Label sumber "Pasti" (hijau) dipakai untuk
+  nilai yang diketahui pemutar sendiri, terpisah dari "Dilaporkan sistem".
+- **Kurva EQ** digambar dari respons filter yang sebenarnya (rumus biquad yang sama dengan rantai suara), sumbu frekuensi
+  logaritmik 20 Hz–20 kHz yang tetap kiri→kanan pada RTL. Penyunting pita memakai penggeser frekuensi logaritmik dan
+  label bergaya Equalizer APO ("PK 2,2 kHz −3,4 dB Q 1,29") agar profil AutoEQ mudah dicocokkan.
+- Tab **Lokal** di perpustakaan kaset mengikuti gaya daftar yang sama dengan tab lain; lencana kualitas kuning hanya untuk
+  hi-res (>16-bit atau >48 kHz) dengan teks gelap di atasnya; format yang belum didukung tetap tampil dengan keterangannya.

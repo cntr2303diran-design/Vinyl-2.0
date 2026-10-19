@@ -33,6 +33,16 @@ Efek visual (Tahap 4) tidak mengirim apa pun ke internet:
 | Sensor gerak (parallax) | Tidak disimpan | Tanpa izin; didengarkan 50 Hz hanya selama layar utama terlihat dan parallax menyala, dilepas saat layar tertutup |
 | Spektrum audio (visualizer *Audio asli*) | Hanya memori, satu tangkapan terakhir | Hanya FFT (magnitudo per frekuensi) campuran keluaran audio; callback gelombang mentah tidak diminta. Android mewajibkan `RECORD_AUDIO` (dan `MODIFY_AUDIO_SETTINGS` untuk sesi 0), tetapi mikrofon tidak dibuka, tidak ada rekaman, tidak ada berkas. Izin hanya diminta saat pengguna memilih mode itu; cadangan pengaturan tidak bisa menyalakannya sendiri |
 
+Beranda VHS, pemutar bawaan, dan Audio Console juga tidak mengirim apa pun ke internet:
+
+| Data | Disimpan di | Catatan |
+|---|---|---|
+| Status perangkat untuk OSD (baterai, Wi-Fi tersambung & kekuatannya, sinyal seluler, Bluetooth, dering, Jangan Ganggu, alarm) | Hanya memori, hanya selama beranda tampil | API publik tanpa izin lokasi: nama Wi-Fi tidak dibaca, `READ_PHONE_STATE` tidak diminta. Penerima & callback dilepas saat beranda tertutup |
+| Ikon notifikasi di OSD | Hanya memori | Ikon kecil + jumlah dari layanan akses notifikasi yang sama dengan kontrol musik; judul dan isi notifikasi tidak dibaca. Bisa dimatikan (editor beranda → *Status & jam*) |
+| Indeks pustaka musik lokal (`local_library.json`) | Folder internal aplikasi | Judul, artis, album, nomor lagu, durasi, format, ukuran, waktu ubah, dan ID dokumen SAF per berkas — agar pemindaian ulang cepat. Berkas musik tidak disalin, diubah, atau diunggah. Dihapus saat folder dilepas (*Lepas*) |
+| Level baterai earphone yang diingat (`bt_battery`) | `SharedPreferences` internal | Paling banyak 16 perangkat (yang terbaru); laporan lebih tua dari 3 hari tidak ditampilkan. Kuncinya 16 karakter awal SHA-256 alamat Bluetooth, **bukan** alamatnya; isinya hanya level & waktu laporan. Catatan jujur: ruang alamat Bluetooth kecil, jadi orang yang bisa membaca berkas ini (butuh akses root; cadangan Android dimatikan) secara teori bisa menebak alamatnya dari sidik itu |
+| Profil EQ & pengaturan pemutar | DataStore (bersama pengaturan lain) | Ikut berkas cadangan **kecuali** folder musik (URI folder melekat pada perangkat dan izin SAF-nya) |
+
 Setiap izin dan alasannya tampil di Pengaturan → *Cadangan & privasi*; daftarnya (`PrivacyInfo.kt`) dicocokkan dengan
 `AndroidManifest.xml` oleh tes otomatis, jadi izin baru tanpa alasan akan menggagalkan build.
 
@@ -49,9 +59,12 @@ Setiap izin dan alasannya tampil di Pengaturan → *Cadangan & privasi*; daftarn
 | Volume | Sleep timer/pergantian lembut hanya menyentuh `STREAM_MUSIC`, berhenti bila pengguna menekan tombol volume, dan selalu memulihkan volume asli (termasuk setelah proses mati) |
 | Audio Console: siaran sesi efek | Penerima `OPEN/CLOSE_AUDIO_EFFECT_CONTROL_SESSION` harus diekspor (dikirim aplikasi musik), didaftarkan saat proses berjalan. Nomor sesi divalidasi (> 0), sesi 0 tidak bisa dibuka lewat siaran, jumlah sesi dibatasi 16, nama paket dipotong 200 karakter. EQ mati secara default |
 | Audio Console: Akses lanjutan | Izin `DUMP` hanya bisa diberikan pengguna sendiri (ADB/Shizuku). Laporan `dumpsys` dibaca lewat pipa di memori (maks 4 MB, batas waktu 4 detik), tidak pernah ditulis ke berkas, tidak dicatat ke log, tidak dikirim; pengurai murni dan toleran (`DumpParsers`, diuji dengan contoh sintetis dari format AOSP) |
-| Baterai Bluetooth | Siaran `BATTERY_LEVEL_CHANGED` (jalur tidak resmi, @SystemApi) hanya didaftarkan setelah pengguna memberi izin Perangkat sekitar. Level divalidasi 0–100, alamat harus berbentuk alamat Bluetooth, maks 16 perangkat, hanya di memori; ditampilkan hanya untuk perangkat aktif dengan alamat yang sama |
+| Baterai Bluetooth | Siaran `BATTERY_LEVEL_CHANGED` (jalur tidak resmi, @SystemApi) hanya didaftarkan setelah pengguna memberi izin Perangkat sekitar. Penerimanya harus diekspor (pengirimnya proses Bluetooth sistem), jadi isinya divalidasi: level 0–100, alamat harus berbentuk alamat Bluetooth, maks 16 perangkat; ditampilkan hanya untuk perangkat keluaran aktif dengan alamat yang sama. Level terakhir disimpan dengan sidik SHA-256 alamat (bukan alamatnya), maks 16 perangkat. Aplikasi lain yang mengirim siaran palsu paling jauh hanya bisa mengubah angka baterai yang tampil |
+| Pemutar bawaan | `PlayerService` tidak diekspor: aplikasi lain tidak bisa mengikatnya. Kendali dari luar hanya lewat sesi media platform (notifikasi, layar kunci, headset/Bluetooth), seperti aplikasi musik lain. Permintaan "putar item" dari pengendali hanya menerima **ID lagu yang ada di indeks**; URI yang dikirim pengendali diabaikan, jadi pemutar tidak bisa disuruh membuka berkas/URL sembarang. Folder musik lewat SAF (izin baca persisten hanya untuk folder itu; dilepas saat ganti/lepas folder, kecuali masih dipakai video). Pemindaian dibatasi 10.000 berkas dan 8 tingkat subfolder; indeks rusak/terlalu besar (> 64 MB) diabaikan |
+| Impor AutoEQ | Berkas dipilih pengguna (SAF), dibaca maks 32.000 karakter di thread latar; maks 20 pita, frekuensi/penguatan/Q dibatasi ke rentang aman, filter yang tidak dikenal dilewati dan dilaporkan |
+| Laju sampel USB | Hanya `setPreferredMixerAttributes` untuk uid aplikasi ini, `USAGE_MEDIA`, dan DAC USB (batasan Android); perilaku mixer *default* (volume sistem tetap berlaku). Dikembalikan ke pengaturan sistem saat fitur dimatikan atau layanan pemutar berhenti |
 | Shizuku | `ShizukuProvider` dilindungi `INTERACT_ACROSS_USERS_FULL` (hanya sistem/Shizuku). `ShellService` (proses shell) hanya punya satu operasi tetap: `pm grant com.vinyl.launcher android.permission.DUMP`; AIDL-nya tidak menerima teks/perintah (dijaga `PrivacyInfoTest`). Dijalankan hanya setelah dialog yang menampilkan perintahnya disetujui |
-| Video di layar TV | Hanya folder yang dipilih pengguna (Storage Access Framework, izin baca persisten untuk folder itu saja; dilepas saat ganti/lepas folder). Hanya nama & jenis berkas tingkat teratas yang dibaca (maks 2000). Diputar tanpa suara, tanpa audio focus, maks 720p, hanya selama ruang TV tampil. URI folder tidak ikut berkas cadangan. `ACCESS_NETWORK_STATE` bawaan Media3 dibuang dari manifest |
+| Video di layar TV | Hanya folder yang dipilih pengguna (Storage Access Framework, izin baca persisten untuk folder itu saja; dilepas saat ganti/lepas folder). Hanya nama & jenis berkas tingkat teratas yang dibaca (maks 2000). Diputar tanpa suara, tanpa audio focus, maks 720p, hanya selama ruang TV tampil. URI folder tidak ikut berkas cadangan |
 | Komponen | `BootReceiver` tidak diekspor (siaran boot/pembaruan dikirim sistem). Yang tetap diekspor memang harus: Home dan Onboarding (dipanggil sistem/peluncur), serta layanan notifikasi & aksesibilitas yang hanya bisa di-bind sistem lewat izin `BIND_*` |
 
 ## Kunci tanda tangan — perlu keputusan Anda
@@ -105,7 +118,8 @@ Itu butuh langkah penandatanganan manual di luar build ini dan tidak diotomatisk
   hanya terjangkau lewat Akses lanjutan; efek "semua audio" (sesi 0) sudah usang di Android dan diberi label eksperimental.
   Bisa bentrok dengan efek pabrikan (Dolby/Samsung) atau aplikasi EQ lain; status sesi ditampilkan apa adanya. Belum diuji di perangkat nyata.
 - Format `dumpsys` milik OEM (mis. Samsung One UI) bisa berbeda dari AOSP; field yang tidak cocok tampil "Tidak tersedia". Belum diverifikasi
-  di perangkat Samsung nyata. Laporan sistem AOSP tidak memuat baterai perangkat Bluetooth, jadi baterai tidak ditampilkan.
+  di perangkat Samsung nyata. Baterai earphone tidak berasal dari laporan ini, melainkan dari siaran sistem tidak resmi (lihat tabel di atas).
+- Pemutar bawaan, laju sampel USB, OSD, dan penyembunyian status bar belum diuji di perangkat nyata (hanya tes unit, tangkapan layar, build CI).
 - Video YouTube sengaja tidak dibangun: Kebijakan Pengembang YouTube API Services III.I butir 7 melarang memisahkan atau
   mengisolasi komponen audio/video konten YouTube (https://developers.google.com/youtube/terms/developer-policies), padahal
   video di layar TV diputar tanpa suara sementara musik berasal dari aplikasi lain.
