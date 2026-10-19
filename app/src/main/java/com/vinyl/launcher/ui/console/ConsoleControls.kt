@@ -386,7 +386,7 @@ internal fun Fader(
             }
         }
         Text(label, color = ConsoleColors.Text, style = MaterialTheme.typography.labelLarge, maxLines = 1)
-        Text(sub, color = ConsoleColors.TextSecondary, style = MaterialTheme.typography.labelSmall, maxLines = 1)
+        Text(sub, color = ConsoleColors.TextSecondary, style = MaterialTheme.typography.labelSmall, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
     }
 }
 
