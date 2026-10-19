@@ -47,7 +47,8 @@ fun StageCassette(
     label: CassetteLabel,
     hasSession: Boolean,
     playing: Boolean,
-    progress: Float,
+    /** 0..1; dibaca di fase gambar. */
+    progress: () -> Float,
     timeText: String,
     shell: CassetteShell,
     speed: ReelSpeed,
@@ -60,7 +61,6 @@ fun StageCassette(
 ) {
     val swapState by rememberCassetteSwap(label, motionAllowed)
     val (shown, frame) = swapState
-    val (rl, rr) = Reels.radii(progress)
     val angles = rememberReelAngles(playing && motionAllowed, speed, progress)
     val text = rememberLabelText(shown.title.ifBlank { "—" }, shown.artist, timeText)
     val look = shellLook(shell, accent)
@@ -118,6 +118,7 @@ fun StageCassette(
             val q = solid.quad(face)
             when (face) {
                 Face.FRONT -> {
+                    val (rl, rr) = Reels.radii(progress())
                     val pts = q.map(::proj)
                     val m = AndroidMatrix()
                     m.setPolyToPoly(

@@ -77,7 +77,8 @@ fun RoomStage(
     accent: Color,
     motionAllowed: Boolean,
     editing: Boolean,
-    positionMs: Long,
+    /** Posisi lagu; dibaca hanya di fase gambar (tidak mengomposisi ulang panggung tiap detak). */
+    position: () -> Long,
     titleScrimAlpha: Float,
     seek: SeekState,
     info: StageInfo,
@@ -191,7 +192,8 @@ fun RoomStage(
         )
 
         // ---------- Kaset 3D
-        val progress = if (np.durationMs > 0) positionMs.toFloat() / np.durationMs else 0f
+        val duration = np.durationMs
+        val progress: () -> Float = { if (duration > 0) position().toFloat() / duration else 0f }
         val label = remember(np.hasTrack, np.title, np.artist, np.art) {
             CassetteLabel(if (np.hasTrack) "${np.title}\u0000${np.artist}" else null, np.title, np.artist, np.art)
         }

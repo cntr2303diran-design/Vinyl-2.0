@@ -57,87 +57,74 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/**
- * Panel "Pemutar bawaan" di Audio Console: jalur suara lagu yang sedang diputar (format sumber sampai keluaran ke
- * Android, semuanya diketahui pasti karena pemutarnya milik launcher) dan rantai suaranya — ReplayGain, EQ parametrik
- * (sunting pita atau impor AutoEQ), crossfeed, keluaran float, dan laju sampel USB.
+/*
+ * Tab "Pemutar" di Audio Console: pemutar bawaan launcher, dibagi tiga panel supaya tiap panel pendek —
+ * jalur suara lagu yang sedang diputar (semuanya diketahui pasti karena pemutarnya milik launcher), equalizer
+ * parametrik (sunting pita atau impor AutoEQ), dan penyesuaian lain (ReplayGain, crossfeed, keluaran float, USB).
+ * Penjelasan panjang ada di balik tombol ⓘ tiap panel.
  */
+
+/** Jalur suara: dari format berkas sampai keluaran ke Android. */
+@Composable
+internal fun PathPanel(ui: ConsoleUi) {
+    val path = ui.path
+    ConsolePanel(
+        "Jalur suara", lit = path.active,
+        help = "Semua nilai di sini dibaca langsung dari berkas dan rantai suara pemutar bawaan. \"Ke Android\" adalah format AudioTrack; " +
+            "mixer Android tetap mengatur volume dan mencampur suara lain, jadi ini bukan keluaran bit-perfect.",
+    ) {
+        if (!path.active) {
+            ReadingRow("Pemutar bawaan", Reading.unavailable("Tidak sedang memutar. Putar berkas di Perpustakaan kaset → Lokal."))
+            return@ConsolePanel
+        }
+        val src = buildString {
+            append(path.codec.ifBlank { "?" })
+            if (path.sourceBits > 0 && path.lossless) append(" ${path.sourceBits}-bit")
+            if (path.sourceRate > 0) append(" ${LocalFormat.khz(path.sourceRate)} kHz")
+            if (path.channels > 0) append(" · ${path.channels} kanal")
+        }
+        ReadingRow("Sumber", Reading.known(src, if (path.lossless) "Lossless" else "Dari berkas"))
+        val chain = listOfNotNull(
+            path.replayGainDb?.let { "ReplayGain " + EqEditor.gainText(it) },
+            path.eqName?.let { "EQ \"$it\"" },
+            path.crossfeed?.let { "crossfeed" },
+            if (path.limiter) "pembatas" else null,
+        )
+        ReadingRow(
+            "Olahan",
+            if (path.transparent) Reading.known("Tanpa olahan", "Sampel apa adanya")
+            else Reading.known(chain.joinToString(" → ").ifBlank { "Diolah" }, "Float 32-bit"),
+        )
+        if (path.output.isNotBlank()) ReadingRow("Ke Android", Reading.known(path.output, "Format AudioTrack"))
+        if (path.usbRate.isNotBlank()) ReadingRow("DAC USB", Reading.reported(path.usbRate, "Hasil permintaan ke sistem"))
+    }
+}
+
+/** Equalizer parametrik pemutar bawaan. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun PlayerPanel(ui: ConsoleUi, actions: ConsoleActions) {
+internal fun EqPanel(ui: ConsoleUi, actions: ConsoleActions) {
     val p = ui.player
-    val path = ui.path
     val set = actions.onPlayer
-    val context = LocalContext.current
     var importNote by rememberSaveable { mutableStateOf<String?>(null) }
+    var editing by rememberSaveable { mutableStateOf(false) }
     val importer = rememberEqImporter { result ->
         if (result == null) {
-            importNote = "Berkas bukan ParametricEQ.txt (AutoEQ / Equalizer APO) yang dikenali."
+            importNote = "Bukan berkas ParametricEQ.txt yang dikenali."
         } else {
             set { PlayerRules.saveEq(it, result.profile).copy(eq = result.profile, eqEnabled = true) }
-            importNote = "Profil \"${result.profile.name}\" dipakai: ${result.profile.bands.size} pita" +
+            importNote = "\"${result.profile.name}\" dipakai: ${result.profile.bands.size} pita" +
                 if (result.skipped.isNotEmpty()) "; ${result.skipped.size} baris dilewati" else ""
         }
     }
-
-    ConsolePanel("Pemutar bawaan", lit = path.active) {
-        // ---------- Jalur suara
-        if (!path.active) {
-            ReadingRow("Jalur suara", Reading.unavailable("Sedang tidak memutar. Buka Perpustakaan kaset → tab Lokal untuk memutar berkas musik di HP."))
-        } else {
-            val src = buildString {
-                append(path.codec.ifBlank { "?" })
-                if (path.sourceBits > 0 && path.lossless) append(" ${path.sourceBits}-bit")
-                if (path.sourceRate > 0) append(" ${LocalFormat.khz(path.sourceRate)} kHz")
-                if (path.channels > 0) append(" · ${path.channels} kanal")
-            }
-            ReadingRow("Sumber", Reading.known(src, if (path.lossless) "Lossless, dibaca dari berkas" else "Dibaca dari berkas"))
-            if (path.decoded.isNotBlank()) ReadingRow("Hasil dekoder", Reading.known(path.decoded, "Masuk ke rantai suara"))
-            val chain = listOfNotNull(
-                path.replayGainDb?.let { "ReplayGain " + EqEditor.gainText(it) },
-                path.eqName?.let { "EQ \"$it\"" },
-                path.crossfeed?.let { "crossfeed" },
-                if (path.limiter) "pembatas" else null,
-            )
-            ReadingRow(
-                "Rantai suara",
-                if (path.transparent) Reading.known("Tanpa olahan", "Sampel diteruskan apa adanya")
-                else Reading.known(chain.joinToString(" → ").ifBlank { "Diolah" }, "Diproses float 32-bit"),
-            )
-            if (path.output.isNotBlank()) ReadingRow("Ke Android", Reading.known(path.output, "Format AudioTrack; mixer Android mengatur volume & mencampur suara lain"))
-            if (path.usbRate.isNotBlank()) ReadingRow("DAC USB", Reading.reported(path.usbRate, "Hasil permintaan ke sistem"))
-        }
-        ConsoleDivider()
-
-        // ---------- ReplayGain
-        Text("ReplayGain (tag kenyaringan di berkas)", color = ConsoleColors.TextSecondary, style = MaterialTheme.typography.labelMedium)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            ReplayGainMode.entries.forEach { m ->
-                ConsoleButton(PlayerRules.label(m), { set { it.copy(replayGain = it.replayGain.copy(mode = m)) } }, selected = p.replayGain.mode == m)
-            }
-        }
-        if (p.replayGain.mode != ReplayGainMode.OFF) {
-            LineSlider(
-                "Preamp ReplayGain", p.replayGain.preampDb, -15f..15f, EqEditor.gainText(p.replayGain.preampDb), "−15", "+15",
-                { v -> set { it.copy(replayGain = it.replayGain.copy(preampDb = v)) } }, step = 0.5f,
-            )
-            LineSlider(
-                "Berkas tanpa tag", p.replayGain.untaggedDb, -15f..6f, EqEditor.gainText(p.replayGain.untaggedDb), "−15", "+6",
-                { v -> set { it.copy(replayGain = it.replayGain.copy(untaggedDb = v)) } }, step = 0.5f,
-            )
-            ConsoleSwitch(
-                "Cegah clipping", p.replayGain.preventClipping, { on -> set { it.copy(replayGain = it.replayGain.copy(preventClipping = on)) } },
-                detail = "Penguatan dibatasi oleh puncak yang tercatat di tag",
-            )
-        }
-        ConsoleDivider()
-
-        // ---------- EQ parametrik
-        ConsoleSwitch(
-            "EQ parametrik", p.eqEnabled, { on -> set { it.copy(eqEnabled = on) } },
-            detail = "Biquad presisi 64-bit di dalam pemutar (bukan efek sistem): selalu bekerja, termasuk untuk berkas 24-bit",
-        )
-        EqCurve(p.eq.bands, Modifier.fillMaxWidth().height(120.dp))
+    ConsolePanel(
+        "Equalizer", lit = p.eqEnabled,
+        help = "EQ parametrik berupa biquad presisi 64-bit di dalam pemutar (bukan efek sistem), jadi selalu bekerja, termasuk untuk berkas 24-bit. " +
+            "Impor profil AutoEQ atau Equalizer APO (ParametricEQ.txt) atau sunting pitanya. Headroom otomatis menurunkan preamp sebesar " +
+            "penguatan EQ terbesar: tidak pernah clipping, tanpa pembatas.",
+    ) {
+        ConsoleSwitch("EQ parametrik", p.eqEnabled, { on -> set { it.copy(eqEnabled = on) } })
+        EqCurve(p.eq.bands, Modifier.fillMaxWidth().height(110.dp))
         Text(
             "${p.eq.name} · preamp ${EqEditor.gainText(EqMath.effectivePreampDb(p.eq, p.autoHeadroom))}",
             color = ConsoleColors.Text, style = MaterialTheme.typography.bodyMedium, fontFamily = MonoFamily,
@@ -151,18 +138,53 @@ internal fun PlayerPanel(ui: ConsoleUi, actions: ConsoleActions) {
             onFlat = { set { it.copy(eq = ParametricProfile()) } },
         )
         importNote?.let { ConsoleNote(it) }
-        BandEditor(p.eq) { prof -> set { it.copy(eq = ParametricProfile.clamp(prof)) } }
-        ConsoleSwitch(
-            "Headroom otomatis", p.autoHeadroom, { on -> set { it.copy(autoHeadroom = on) } },
-            detail = "Preamp diturunkan sebesar penguatan EQ terbesar: tidak pernah clipping, tanpa pembatas",
-        )
+        ConsoleDivider()
+        ConsoleSwitch("Headroom otomatis", p.autoHeadroom, { on -> set { it.copy(autoHeadroom = on) } })
         LineSlider(
-            "Preamp EQ", p.eq.preampDb, ParametricProfile.MIN_PREAMP..ParametricProfile.MAX_PREAMP, EqEditor.gainText(p.eq.preampDb), "−30", "+12",
+            "Preamp", p.eq.preampDb, ParametricProfile.MIN_PREAMP..ParametricProfile.MAX_PREAMP, EqEditor.gainText(p.eq.preampDb), "−30", "+12",
             { v -> set { it.copy(eq = it.eq.copy(preampDb = v)) } }, step = 0.1f,
         )
         ConsoleDivider()
+        ConsoleExpander("Sunting pita (${p.eq.bands.size})") {
+            BandEditor(p.eq) { prof -> set { it.copy(eq = ParametricProfile.clamp(prof)) } }
+        }
+    }
+}
 
-        // ---------- Crossfeed
+/** ReplayGain, crossfeed, dan keluaran. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+internal fun OutputPanel(ui: ConsoleUi, actions: ConsoleActions) {
+    val p = ui.player
+    val set = actions.onPlayer
+    ConsolePanel(
+        "Penyesuaian", lit = true,
+        help = "ReplayGain membaca tag kenyaringan di berkas supaya antarlagu sama keras; \"Cegah clipping\" membatasi penguatan oleh puncak " +
+            "yang tercatat di tag. Crossfeed mencampur sedikit bass ke kanal seberang seperti mendengar speaker; untuk headphone, bukan speaker. " +
+            "Keluaran float 32-bit membawa berkas 24-bit utuh ke mixer Android; mati = 16-bit dengan dither (berlaku di lagu berikutnya). " +
+            "Laju sampel USB (Android 14+) membuat mixer USB mengikuti laju lagu (44,1/96/192 kHz) tanpa resampling Android; bukan bit-perfect " +
+            "karena volume dan suara lain tetap dicampur.",
+    ) {
+        Text("ReplayGain", color = ConsoleColors.TextSecondary, style = MaterialTheme.typography.labelMedium)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            ReplayGainMode.entries.forEach { m ->
+                ConsoleButton(PlayerRules.label(m), { set { it.copy(replayGain = it.replayGain.copy(mode = m)) } }, selected = p.replayGain.mode == m)
+            }
+        }
+        if (p.replayGain.mode != ReplayGainMode.OFF) {
+            LineSlider(
+                "Preamp", p.replayGain.preampDb, -15f..15f, EqEditor.gainText(p.replayGain.preampDb), "−15", "+15",
+                { v -> set { it.copy(replayGain = it.replayGain.copy(preampDb = v)) } }, step = 0.5f,
+            )
+            LineSlider(
+                "Tanpa tag", p.replayGain.untaggedDb, -15f..6f, EqEditor.gainText(p.replayGain.untaggedDb), "−15", "+6",
+                { v -> set { it.copy(replayGain = it.replayGain.copy(untaggedDb = v)) } }, step = 0.5f,
+            )
+            ConsoleSwitch(
+                "Cegah clipping", p.replayGain.preventClipping, { on -> set { it.copy(replayGain = it.replayGain.copy(preventClipping = on)) } },
+            )
+        }
+        ConsoleDivider()
         Text("Crossfeed headphone", color = ConsoleColors.TextSecondary, style = MaterialTheme.typography.labelMedium)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             ConsoleButton("Mati", { set { it.copy(crossfeed = null) } }, selected = p.crossfeed == null)
@@ -170,21 +192,16 @@ internal fun PlayerPanel(ui: ConsoleUi, actions: ConsoleActions) {
                 ConsoleButton(c.label, { set { it.copy(crossfeed = c) } }, selected = p.crossfeed == c)
             }
         }
-        ConsoleNote("Mencampur sedikit bass ke kanal seberang seperti mendengar speaker; untuk headphone, bukan speaker.")
         ConsoleDivider()
-
-        // ---------- Keluaran
         ConsoleSwitch(
-            "Keluaran resolusi tinggi (float 32-bit)", p.hiResOutput, { on -> set { it.copy(hiResOutput = on) } },
-            detail = "Berkas 24-bit sampai ke mixer Android utuh. Mati: 16-bit dengan dither (berlaku di lagu berikutnya)",
+            "Keluaran float 32-bit", p.hiResOutput, { on -> set { it.copy(hiResOutput = on) } },
+            detail = if (p.hiResOutput) "Berkas 24-bit tetap utuh" else "16-bit + dither",
         )
         val usbSupported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE
         ConsoleSwitch(
-            "Laju sampel cocok untuk DAC USB", p.usbRateMatch && usbSupported, { on -> set { it.copy(usbRateMatch = on) } },
+            "Laju sampel cocok (DAC USB)", p.usbRateMatch && usbSupported, { on -> set { it.copy(usbRateMatch = on) } },
             enabled = usbSupported,
-            detail = if (usbSupported) "Android 14+: mixer USB mengikuti laju sampel lagu (44,1/96/192 kHz), tanpa resampling Android. " +
-                "Bukan bit-perfect: volume & suara lain tetap dicampur."
-            else "Butuh Android 14 atau lebih baru",
+            detail = if (usbSupported) "Bukan bit-perfect" else "Butuh Android 14+",
         )
     }
 }

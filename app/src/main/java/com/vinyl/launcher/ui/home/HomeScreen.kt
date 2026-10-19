@@ -55,7 +55,9 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.vinyl.launcher.data.ClockSettings
 import com.vinyl.launcher.data.HomeSettings
+import com.vinyl.launcher.data.OsdSettings
 import com.vinyl.launcher.data.WeatherSettings
 import com.vinyl.launcher.data.WidgetConfig
 import com.vinyl.launcher.data.WidgetType
@@ -415,11 +417,9 @@ fun HomeScreen(vm: HomeViewModel) {
         // Rekaman VHS (butir, tracking) lalu OSD di atasnya; ikut bergeser bersama halaman
         if (settings.retro.osd.film) VhsFilm(animate = motionAllowed && resumed && page == RoomPage.ROOM, Modifier.fillMaxSize())
         if (settings.retro.osd.visible) {
-            var tick by remember { mutableIntStateOf(0) }
-            LaunchedEffect(np) { while (np.isPlaying) { delay(500); tick++ } }
-            val pos = remember(np, tick) { np.positionAt() }
-            RoomOsd(
-                np = np, positionMs = pos, seek = seekState, osd = settings.retro.osd, clock = home.clock, landscape = landscape,
+            // Detak posisi hidup di dalam OsdLayer: hanya OSD yang dikomposisi ulang, bukan seluruh beranda
+            OsdLayer(
+                np = np, seek = seekState, osd = settings.retro.osd, clock = home.clock, landscape = landscape,
                 onSeek = vm::seek,
                 modifier = Modifier.padding(dockPadding(settings.dock, editing)),
             )
@@ -598,11 +598,7 @@ private fun HomeContent(
     val endPad = with(density) { (if (layoutDirection == LayoutDirection.Ltr) safe.getRight(density, layoutDirection) else safe.getLeft(density, layoutDirection)).toDp() } +
         dockPad.calculateEndPadding(layoutDirection)
 
-    var clockTick by remember { mutableIntStateOf(0) }
-    LaunchedEffect(np) {
-        while (np.isPlaying) { delay(500); clockTick++ }
-    }
-    val posMs = remember(np, clockTick) { np.positionAt() }
+    val position = rememberPositionMs(np)
     val audio by AudioMonitor.state.collectAsStateWithLifecycle()
     val hifi by HiFi.path.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -632,7 +628,7 @@ private fun HomeContent(
     Box(Modifier.fillMaxSize()) {
         RoomStage(
             np = np, retro = retro, tone = look.tone, tvSize = home.turntableSize, accent = accent,
-            motionAllowed = motionAllowed && !editing, editing = editing, positionMs = posMs, titleScrimAlpha = scrim,
+            motionAllowed = motionAllowed && !editing, editing = editing, position = { position.longValue }, titleScrimAlpha = scrim,
             seek = seek, info = info, actions = actions, projection = projection,
             modifier = Modifier.padding(start = startPad, end = endPad),
             topInset = topInset.value, bottomInset = bottomInset.value,
@@ -799,4 +795,19 @@ private fun VisualizerStrip(
             )
         }
     }
+}
+
+/** OSD beranda dengan detak posisi sendiri (lihat [rememberPositionMs]). */
+@Composable
+private fun OsdLayer(
+    np: NowPlaying,
+    seek: SeekState,
+    osd: OsdSettings,
+    clock: ClockSettings,
+    landscape: Boolean,
+    onSeek: (Long) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val position = rememberPositionMs(np)
+    RoomOsd(np = np, positionMs = position.longValue, seek = seek, osd = osd, clock = clock, landscape = landscape, onSeek = onSeek, modifier = modifier)
 }

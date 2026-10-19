@@ -90,47 +90,112 @@ class ConsoleShots {
 
     private fun shot(name: String) = compose.onRoot().captureRoboImage("build/outputs/roborazzi/$name.png")
 
+    private fun show(ui: com.vinyl.launcher.ui.console.ConsoleUi, tab: Int) =
+        compose.setContent { VinylTheme { ConsoleScreen(ui, actions, initialTab = tab) } }
+
+    // ---- Tablet: tiap tab satu layar (landscape, tiga kolom)
     @Test
-    @Config(qualifiers = "w1280dp-h800dp-land-mdpi")
-    fun tablet() {
-        compose.setContent { VinylTheme { ConsoleScreen(consoleUi(), actions) } }
+    @Config(qualifiers = "w1280dp-h900dp-land-mdpi")
+    fun tabletApps() {
+        show(consoleUi(), 1)
         shot("tahap6_console_tablet")
     }
 
     @Test
+    @Config(qualifiers = "w1280dp-h900dp-land-mdpi")
+    fun tabletDevice() {
+        show(consoleUi(), 2)
+        shot("tahap12_console_tablet_perangkat")
+    }
+
+    /** Akses lanjutan aktif: nilai codec/format/resampling terisi (data rekaan). */
+    @Test
+    @Config(qualifiers = "w1280dp-h900dp-land-mdpi")
+    fun tabletDeviceAdvanced() {
+        show(consoleUi(granted = true), 2)
+        shot("tahap6_console_tablet_akses_lanjutan")
+    }
+
+    @Test
+    @Config(qualifiers = "w1280dp-h900dp-land-mdpi")
+    fun tabletTools() {
+        show(consoleUi(granted = true), 3)
+        shot("tahap12_console_tablet_alat")
+    }
+
+    // ---- Ponsel: tiap tab satu halaman penuh (layar tinggi agar tak perlu digulir di gambar)
+    @Test
     @Config(qualifiers = "w411dp-h891dp-xxhdpi")
     fun phone() {
-        compose.setContent { VinylTheme { ConsoleScreen(consoleUi(eqOn = false), actions) } }
+        show(consoleUi(eqOn = false), 1)
         shot("tahap6_console_ponsel")
     }
 
-    /** Seluruh isi halaman ponsel dalam satu gambar (layar sangat tinggi agar semua panel terlihat). */
     @Test
-    @Config(qualifiers = "w411dp-h4400dp-mdpi")
-    fun phoneFullPage() {
-        compose.setContent { VinylTheme { ConsoleScreen(consoleUi(), actions) } }
+    @Config(qualifiers = "w411dp-h1500dp-mdpi")
+    fun phonePlayerTab() {
+        show(playerUi(), 0)
+        shot("tahap12_console_ponsel_pemutar")
+    }
+
+    @Test
+    @Config(qualifiers = "w411dp-h1600dp-mdpi")
+    fun phoneAppsTab() {
+        show(consoleUi(), 1)
         shot("tahap6_console_ponsel_penuh")
     }
 
-    /** Akses lanjutan aktif: nilai codec/format/resampling terisi (data rekaan), layar tinggi agar semua panel terlihat. */
     @Test
-    @Config(qualifiers = "w1280dp-h1900dp-mdpi")
-    fun tabletAdvancedFull() {
-        compose.setContent { VinylTheme { ConsoleScreen(consoleUi(granted = true), actions) } }
-        shot("tahap6_console_tablet_akses_lanjutan")
+    @Config(qualifiers = "w411dp-h1500dp-mdpi")
+    fun phoneDeviceTab() {
+        show(consoleUi(), 2)
+        shot("tahap12_console_ponsel_perangkat")
+    }
+
+    @Test
+    @Config(qualifiers = "w411dp-h1500dp-mdpi")
+    fun phoneToolsTab() {
+        show(consoleUi(), 3)
+        shot("tahap12_console_ponsel_alat")
     }
 
     @Test
     @Config(qualifiers = "w411dp-h891dp-xxhdpi", fontScale = 2.0f)
     fun phoneLargeFont() {
-        compose.setContent { VinylTheme { ConsoleScreen(consoleUi(), actions) } }
+        show(consoleUi(), 0)
         shot("tahap6_console_ponsel_font200")
+    }
+
+    @Test
+    @Config(qualifiers = "w411dp-h891dp-xxhdpi", fontScale = 2.0f)
+    fun phoneLargeFontApps() {
+        show(consoleUi(), 1)
+        shot("tahap12_console_ponsel_font200_aplikasi")
     }
 
     /** Pemutar bawaan memutar FLAC 24/96 dengan profil EQ hasil impor & ReplayGain (data rekaan). */
     @Test
-    @Config(qualifiers = "w1280dp-h1900dp-mdpi")
+    @Config(qualifiers = "w1280dp-h900dp-land-mdpi")
     fun tabletPlayerChain() {
+        show(playerUi(), 0)
+        shot("tahap11_console_pemutar")
+    }
+
+    @Test
+    @Config(qualifiers = "ar-w1280dp-h900dp-land-mdpi")
+    fun tabletRtl() {
+        show(consoleUi(), 1)
+        shot("tahap6_console_rtl")
+    }
+
+    @Test
+    @Config(qualifiers = "ar-w411dp-h1500dp-mdpi")
+    fun phoneRtlPlayer() {
+        show(playerUi(), 0)
+        shot("tahap12_console_ponsel_rtl_pemutar")
+    }
+
+    private fun playerUi(): com.vinyl.launcher.ui.console.ConsoleUi {
         val profile = ParametricProfile(
             "Headphone uji", preampDb = -6.2f,
             bands = listOf(
@@ -138,25 +203,15 @@ class ConsoleShots {
                 EqBand(FilterType.PEAK, 5600f, 4.1f, 3f), EqBand(FilterType.HIGH_SHELF, 10_000f, -2f, 0.7f),
             ),
         )
-        val ui = consoleUi().let { base ->
-            base.copy(
-                audio = base.audio.copy(eqMode = EqMode.PROFILE, profile = profile),
-                player = PlayerSettings(eqEnabled = true, eq = profile, savedEqs = listOf(profile), crossfeed = CrossfeedLevel.NATURAL),
-                path = HiFi.PathState(
-                    active = true, trackId = "x", codec = "FLAC", sourceRate = 96_000, sourceBits = 24, channels = 2, lossless = true,
-                    decoded = "float 32-bit", output = "float 32-bit", replayGainDb = -7.2f, eqName = profile.name,
-                    crossfeed = CrossfeedLevel.NATURAL, limiter = false, transparent = false,
-                ),
-            )
-        }
-        compose.setContent { VinylTheme { ConsoleScreen(ui, actions) } }
-        shot("tahap11_console_pemutar")
-    }
-
-    @Test
-    @Config(qualifiers = "ar-w1280dp-h800dp-land-mdpi")
-    fun tabletRtl() {
-        compose.setContent { VinylTheme { ConsoleScreen(consoleUi(), actions) } }
-        shot("tahap6_console_rtl")
+        val base = consoleUi()
+        return base.copy(
+            audio = base.audio.copy(eqMode = EqMode.PROFILE, profile = profile),
+            player = PlayerSettings(eqEnabled = true, eq = profile, savedEqs = listOf(profile), crossfeed = CrossfeedLevel.NATURAL),
+            path = HiFi.PathState(
+                active = true, trackId = "x", codec = "FLAC", sourceRate = 96_000, sourceBits = 24, channels = 2, lossless = true,
+                decoded = "float 32-bit", output = "float 32-bit", replayGainDb = -7.2f, eqName = profile.name,
+                crossfeed = CrossfeedLevel.NATURAL, limiter = false, transparent = false,
+            ),
+        )
     }
 }

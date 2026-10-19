@@ -1,6 +1,6 @@
 package com.vinyl.launcher.ui.room.stage
 
-import android.os.Build
+import android.graphics.Bitmap
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -15,21 +15,27 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.BlendMode
-import androidx.compose.ui.graphics.BlurEffect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.TileMode
+import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.dp
 import com.vinyl.launcher.data.ProjectorSettings
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlin.math.PI
+import kotlin.math.roundToInt
 import kotlin.math.sin
 
 /** Isi proyeksi yang sudah diputuskan pemanggil. */
@@ -65,7 +71,6 @@ fun WallProjection(
         rememberInfiniteTransition(label = "proj")
             .animateFloat(0f, 1f, infiniteRepeatable(tween(24_000, easing = LinearEasing), RepeatMode.Restart), label = "kenburns")
     } else null
-    val blurDp = ((1f - settings.focus.coerceIn(0f, 1f)) * 10f).dp
     Box(
         modifier
             .offset(left.dp, top.dp)
@@ -76,10 +81,6 @@ fun WallProjection(
                 // Trapesium halus: proyektor di bawah gambar
                 rotationX = -4f
                 cameraDistance = 9f * density
-                if (blurDp.value > 0.5f && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    val r = blurDp.toPx()
-                    renderEffect = BlurEffect(r, r, TileMode.Decal)
-                }
                 if (settings.vhs && phase != null) {
                     // Goyang horizontal pita (beberapa piksel), seperti gambar VHS yang tidak stabil
                     val wobble = phase.value
@@ -105,8 +106,11 @@ fun WallProjection(
         when (content) {
             is ProjectionContent.Picture -> {
                 // Ken Burns pelan saat musik berjalan
+                // Fokus dipanggang ke gambar sekali (bitmap diperkecil, diperbesar halus): RenderEffect blur pada lapisan yang
+                // bergerak tiap frame menghitung ulang blur layar penuh 60×/detik dan membuat beranda tersendat
                 Image(
-                    content.image, null, contentScale = ContentScale.Crop,
+                    rememberSoftFocus(content.image, settings.focus), null, contentScale = ContentScale.Crop,
+                    filterQuality = FilterQuality.Medium,
                     modifier = Modifier.fillMaxSize().graphicsLayer {
                         val wobble = phase?.value ?: 0f
                         val s = 1.06f + 0.06f * sin(wobble * 2 * PI).toFloat()
@@ -119,4 +123,24 @@ fun WallProjection(
             is ProjectionContent.Tint -> Box(Modifier.fillMaxSize().background(Brush.radialGradient(listOf(content.color, Color(0xFF0B0C10)))))
         }
     }
+}
+
+/**
+ * Gambar proyeksi yang sudah "tidak fokus" menurut [focus] (1 = tajam). Dibuat sekali di thread latar dengan memperkecil
+ * bitmap (sampai 1/12); saat digambar membesar dengan filter halus, jadi lembut tanpa efek blur layar penuh tiap frame.
+ * Sebelum jadi (atau bila bitmap tidak bisa diperkecil), gambar asli yang ditampilkan.
+ */
+@Composable
+private fun rememberSoftFocus(image: ImageBitmap, focus: Float): ImageBitmap {
+    val factor = 1 + ((1f - focus.coerceIn(0f, 1f)) * 11f).roundToInt()
+    if (factor <= 1) return image
+    val soft by produceState(initialValue = image, image, factor) {
+        value = withContext(Dispatchers.Default) {
+            runCatching {
+                val src = image.asAndroidBitmap()
+                Bitmap.createScaledBitmap(src, maxOf(8, src.width / factor), maxOf(8, src.height / factor), true).asImageBitmap()
+            }.getOrDefault(image)
+        }
+    }
+    return soft
 }

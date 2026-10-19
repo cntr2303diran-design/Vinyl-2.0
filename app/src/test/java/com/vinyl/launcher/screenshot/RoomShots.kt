@@ -93,7 +93,7 @@ internal fun StagePreview(np: NowPlaying, retro: RetroSettings, seek: SeekState?
             val transport = StatusText.transport(np.hasTrack, np.isPlaying, s.deltaMs?.takeIf { s.touching })
             RoomStage(
                 np = np, retro = retro, tone = tone, tvSize = 0.85f, accent = Color(0xFFD3A774), motionAllowed = false,
-                editing = false, positionMs = np.positionMs, titleScrimAlpha = 0.25f, seek = s,
+                editing = false, position = { np.positionMs }, titleScrimAlpha = 0.25f, seek = s,
                 info = StageInfo(
                     tvVfd = if (np.hasTrack) "PLAY" else "STANDBY",
                     deck = DeckDisplay(StatusText.modeLine(transport) + if (np.hasTrack) " SP" else "", "48K BUDS PRO"),

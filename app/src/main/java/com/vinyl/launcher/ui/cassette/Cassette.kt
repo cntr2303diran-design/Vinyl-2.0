@@ -67,7 +67,7 @@ class ReelAngles {
  * total saat jeda, saat "Hapus animasi", atau saat hemat daya ([running] false).
  */
 @Composable
-fun rememberReelAngles(running: Boolean, speed: ReelSpeed, progress: Float): ReelAngles {
+fun rememberReelAngles(running: Boolean, speed: ReelSpeed, progress: () -> Float): ReelAngles {
     val angles = remember { ReelAngles() }
     val currentProgress by rememberUpdatedState(progress)
     LaunchedEffect(running, speed) {
@@ -78,7 +78,7 @@ fun rememberReelAngles(running: Boolean, speed: ReelSpeed, progress: Float): Ree
             val now = withFrameNanos { it }
             val dt = (now - last) / 1e9f
             last = now
-            val (l, r) = Reels.radii(currentProgress)
+            val (l, r) = Reels.radii(currentProgress())
             angles.left = (angles.left + Reels.turnsPerSecond(l, rpm) * dt * 360f) % 360f
             angles.right = (angles.right + Reels.turnsPerSecond(r, rpm) * dt * 360f) % 360f
         }

@@ -25,6 +25,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -36,6 +37,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -123,33 +125,49 @@ class ConsoleActions(
     val onPlayer: ((PlayerSettings) -> PlayerSettings) -> Unit = {},
 )
 
+/** Tab Audio Console, urut dari yang paling sering dipakai. */
+internal enum class ConsoleTab(val label: String) {
+    PLAYER("Pemutar"),
+    APPS("Aplikasi lain"),
+    DEVICE("Perangkat"),
+    TOOLS("Alat"),
+}
+
 /**
- * Halaman kanan: Audio Console bergaya receiver stereo. Tablet landscape: tiga kolom panel; layar sedang: dua kolom;
- * ponsel: satu kolom yang digulir. Setiap nilai diberi label sumbernya (lihat [ReadingRow]).
+ * Halaman kanan: Audio Console bergaya receiver stereo, dibagi empat tab supaya tiap layar pendek. Tablet landscape:
+ * panel tab dibagi tiga kolom; layar sedang: dua kolom; ponsel: satu kolom yang digulir. Setiap nilai diberi label
+ * sumbernya (lihat [ReadingRow]). [initialTab] = indeks [ConsoleTab] yang dibuka (dipakai tes tangkapan layar).
  */
 @Composable
-fun ConsoleScreen(ui: ConsoleUi, actions: ConsoleActions, modifier: Modifier = Modifier, vu: @Composable () -> Unit = {}) {
+fun ConsoleScreen(ui: ConsoleUi, actions: ConsoleActions, modifier: Modifier = Modifier, vu: @Composable () -> Unit = {}, initialTab: Int = 0) {
+    var tab by rememberSaveable { mutableIntStateOf(initialTab.coerceIn(0, ConsoleTab.entries.lastIndex)) }
     BoxWithConstraints(modifier.fillMaxSize().background(ConsoleColors.Page)) {
         val columns = when {
             maxWidth >= 900.dp -> 3
             maxWidth >= 600.dp -> 2
             else -> 1
         }
-        val panels: List<@Composable () -> Unit> = listOf(
-            { DevicesPanel(ui, actions) },          // 0
-            { SoundPanel(ui, actions) },            // 1
-            { QualityPanel(ui) },                   // 2
-            { SpatialPanel(ui, actions) },          // 3
-            { DiagnosticsPanel(ui, actions) },      // 4
-            { AutomationPanel(ui, actions) },       // 5
-            { DevicePanel(ui, actions) },           // 6
-            { AdvancedPanel(ui, actions) },         // 7
-            { PlayerPanel(ui, actions) },           // 8
-        )
-        val layout = when (columns) {
-            3 -> listOf(listOf(0, 8, 2), listOf(1, 3, 5), listOf(4, 7, 6))
-            2 -> listOf(listOf(0, 8, 5), listOf(1, 2, 3, 4, 7, 6))
-            else -> listOf(listOf(0, 8, 1, 2, 3, 4, 5, 7, 6))
+        // Panel tiap tab dan pembagiannya ke kolom (indeks ke daftar panel tab itu)
+        val current = ConsoleTab.entries[tab.coerceIn(0, ConsoleTab.entries.lastIndex)]
+        val panels: List<@Composable () -> Unit>
+        val layout: List<List<Int>>
+        when (current) {
+            ConsoleTab.PLAYER -> {
+                panels = listOf({ PathPanel(ui) }, { EqPanel(ui, actions) }, { OutputPanel(ui, actions) })
+                layout = when (columns) { 1 -> listOf(listOf(0, 1, 2)); 2 -> listOf(listOf(0, 2), listOf(1)); else -> listOf(listOf(0), listOf(1), listOf(2)) }
+            }
+            ConsoleTab.APPS -> {
+                panels = listOf({ SoundPanel(ui, actions) }, { ScopePanel(ui, actions) })
+                layout = if (columns == 1) listOf(listOf(0, 1)) else listOf(listOf(0), listOf(1))
+            }
+            ConsoleTab.DEVICE -> {
+                panels = listOf({ DevicesPanel(ui, actions) }, { QualityPanel(ui) }, { SpatialPanel(ui, actions) }, { DevicePanel(ui, actions) })
+                layout = when (columns) { 1 -> listOf(listOf(0, 1, 2, 3)); 2 -> listOf(listOf(0, 3), listOf(1, 2)); else -> listOf(listOf(0), listOf(1, 2), listOf(3)) }
+            }
+            ConsoleTab.TOOLS -> {
+                panels = listOf({ DiagnosticsPanel(ui, actions) }, { AutomationPanel(ui, actions) }, { AdvancedPanel(ui, actions) })
+                layout = when (columns) { 1 -> listOf(listOf(0, 1, 2)); 2 -> listOf(listOf(0, 1), listOf(2)); else -> listOf(listOf(0), listOf(1), listOf(2)) }
+            }
         }
         Column(
             Modifier
@@ -160,6 +178,7 @@ fun ConsoleScreen(ui: ConsoleUi, actions: ConsoleActions, modifier: Modifier = M
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Header(actions.onBack, vu)
+            ConsoleTabs(ConsoleTab.entries.map { it.label }, tab, { tab = it })
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 layout.forEach { col ->
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(16.dp)) { col.forEach { panels[it]() } }
@@ -171,24 +190,31 @@ fun ConsoleScreen(ui: ConsoleUi, actions: ConsoleActions, modifier: Modifier = M
 
 @Composable
 private fun Header(onBack: () -> Unit, vu: @Composable () -> Unit) {
+    var help by rememberSaveable { mutableStateOf(false) }
     Column {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) {
                 Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Kembali ke ruang TV", tint = ConsoleColors.Text)
             }
-            Column(Modifier.weight(1f).padding(start = 4.dp)) {
-                Text(
-                    "AUDIO CONSOLE", color = ConsoleColors.Text, style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold, letterSpacing = 0.08.em, modifier = Modifier.semantics { heading() },
+            Text(
+                "AUDIO CONSOLE", color = ConsoleColors.Text, style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold, letterSpacing = 0.08.em,
+                modifier = Modifier.weight(1f).padding(start = 4.dp).semantics { heading() },
+            )
+            Box(Modifier.widthIn(max = 180.dp)) { vu() }
+            IconButton(onClick = { help = !help }) {
+                Icon(
+                    Icons.Rounded.Info, if (help) "Tutup penjelasan label sumber" else "Penjelasan label sumber",
+                    tint = if (help) ConsoleColors.Amber else ConsoleColors.TextSecondary,
                 )
-                Text("STATUS SISTEM · KONTROL PERANGKAT", color = ConsoleColors.Amber, style = MaterialTheme.typography.labelMedium, letterSpacing = 0.1.em)
             }
-            Box(Modifier.widthIn(max = 220.dp)) { vu() }
         }
-        ConsoleNote(
-            "Setiap nilai berlabel sumbernya: Terukur, Dilaporkan sistem, Perkiraan, atau Tidak tersedia beserta alasannya. Tidak ada nilai yang ditebak.",
-            Modifier.padding(start = 52.dp, top = 4.dp),
-        )
+        if (help) {
+            ConsoleNote(
+                "Setiap nilai berlabel sumbernya: Terukur, Dilaporkan sistem, Perkiraan, atau Tidak tersedia beserta alasannya. Tidak ada nilai yang ditebak.",
+                Modifier.padding(start = 52.dp, top = 4.dp),
+            )
+        }
     }
 }
 
@@ -211,15 +237,14 @@ private fun ShortcutButtons(ui: ConsoleUi, actions: ConsoleActions, kinds: List<
 
 @Composable
 private fun DevicesPanel(ui: ConsoleUi, actions: ConsoleActions) {
-    ConsolePanel("Perangkat") {
+    ConsolePanel("Perangkat", help = "Daftar keluaran musik yang dilaporkan sistem. Baterai Bluetooth memakai laporan sistem lewat jalur tidak resmi, jadi bisa tidak tersedia di sebagian perangkat.") {
         ReadingRow("Keluaran aktif", ui.snapshot.active.reading)
         val rows = ConsoleRows.devices(ui.snapshot)
         if (rows.isEmpty()) ConsoleNote("Tidak ada perangkat keluaran musik yang dilaporkan sistem.")
         rows.forEach { DeviceLine(it) }
         ReadingRow("Baterai", ConsoleRows.battery(ui.snapshot, ui.advanced, ui.btPermission, ui.btLevels, ui.btRemembered, ui.nowMs))
         if (!ui.btPermission) {
-            ConsoleButton("Izinkan baca baterai Bluetooth", actions.onRequestBluetooth, description = "Minta izin Perangkat sekitar untuk membaca baterai Bluetooth")
-            ConsoleNote("Memakai laporan baterai dari sistem Bluetooth lewat jalur tidak resmi; bisa tidak tersedia di sebagian perangkat.")
+            ConsoleButton("Izinkan baterai Bluetooth", actions.onRequestBluetooth, description = "Minta izin Perangkat sekitar untuk membaca baterai Bluetooth")
         }
         ShortcutButtons(ui, actions, listOf(Kind.BLUETOOTH, Kind.VOLUME_PANEL))
     }
@@ -254,19 +279,21 @@ private fun SoundPanel(ui: ConsoleUi, actions: ConsoleActions) {
     var importNote by rememberSaveable { mutableStateOf<String?>(null) }
     val importer = rememberEqImporter { result ->
         if (result == null) {
-            importNote = "Berkas bukan ParametricEQ.txt (AutoEQ / Equalizer APO) yang dikenali."
+            importNote = "Bukan berkas ParametricEQ.txt yang dikenali."
         } else {
             actions.onPlayer { PlayerRules.saveEq(it, result.profile) }
             actions.onAudio { it.copy(eqMode = EqMode.PROFILE, profile = result.profile) }
-            importNote = "Profil \"${result.profile.name}\" dipakai untuk semua aplikasi (juga tersimpan untuk pemutar bawaan)."
+            importNote = "\"${result.profile.name}\" dipakai untuk semua aplikasi."
         }
     }
 
-    ConsolePanel("Suara aplikasi lain", lit = a.eqEnabled) {
-        ConsoleSwitch(
-            "Equalizer", a.eqEnabled, { on -> actions.onAudio { it.copy(eqEnabled = on) } },
-            detail = "Efek DynamicsProcessing 31 pita pada sesi audio aplikasi musik lain (Spotify, YouTube Music, …)",
-        )
+    ConsolePanel(
+        "Suara aplikasi lain", lit = a.eqEnabled,
+        help = "Efek DynamicsProcessing 31 pita yang dipasang pada sesi audio aplikasi musik lain (Spotify, YouTube Music, …). " +
+            "Bisa bentrok dengan efek suara bawaan perangkat (mis. Dolby) dan aplikasi equalizer lain; bila status menyebut " +
+            "\"dikendalikan aplikasi efek lain\", matikan salah satunya.",
+    ) {
+        ConsoleSwitch("Equalizer", a.eqEnabled, { on -> actions.onAudio { it.copy(eqEnabled = on) } })
         ReadingRow("Diproses", EqSessions.summary(a.eqEnabled, ui.sessions))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             for ((m, label) in listOf(EqMode.THREE to "3 pita", EqMode.GRAPHIC10 to "10 pita", EqMode.PROFILE to "Profil / AutoEQ")) {
@@ -319,10 +346,7 @@ private fun SoundPanel(ui: ConsoleUi, actions: ConsoleActions) {
                     onPick = { p -> actions.onAudio { it.copy(profile = p) } },
                     onImport = importer, onSave = null, onDelete = null, onFlat = null,
                 )
-                ConsoleNote(
-                    "Profil parametrik didekati dengan 31 pita 1/3 oktaf (batas efek sistem). Untuk ketepatan penuh, putar berkas " +
-                        "dengan pemutar bawaan: EQ-nya biquad persis.",
-                )
+                ConsoleNote("Didekati 31 pita; pemutar bawaan memakai biquad persis.")
             }
         }
         importNote?.let { ConsoleNote(it) }
@@ -348,33 +372,6 @@ private fun SoundPanel(ui: ConsoleUi, actions: ConsoleActions) {
             }
             ProfileLine(ui, actions)
         }
-        ConsoleDivider()
-        ConsoleSwitch(
-            "Pengaman clipping", a.safeHeadroom, { on -> actions.onAudio { it.copy(safeHeadroom = on) } },
-            detail = "Masukan diturunkan sebesar penguatan pita terbesar agar suara tidak pecah",
-        )
-        ConsoleSwitch(
-            "Cadangan: semua audio bila tidak ada sesi", a.globalFallback, { on -> actions.onAudio { it.copy(globalFallback = on) } },
-            enabled = a.eqEnabled,
-            detail = "Bila aplikasi musik tidak membuka sesi efek, EQ dipasang ke keluaran gabungan (sesi 0) dan dilepas lagi saat " +
-                "sesi aplikasi muncul. Cara lama Android: di sebagian perangkat tidak terdengar.",
-        )
-        ConsoleSwitch(
-            "Selalu pasang ke semua audio", a.globalExperimental, { on -> actions.onAudio { it.copy(globalExperimental = on) } },
-            enabled = a.eqEnabled,
-            detail = "Sesi 0 tetap dipasang walau ada sesi aplikasi (EQ bisa terdengar dua kali). Eksperimental.",
-        )
-        ConsoleSwitch(
-            "Deteksi sesi lewat Akses lanjutan", a.detectSessions, { on -> actions.onAudio { it.copy(detectSessions = on) } },
-            enabled = ui.access.dumpGranted,
-            detail = if (ui.access.dumpGranted) "Juga memasang EQ ke sesi musik yang terlihat di laporan sistem, untuk aplikasi yang tidak membuka sesi efek"
-            else "Butuh Akses lanjutan (izin DUMP)",
-        )
-        ConsoleNote(
-            "Bisa bentrok dengan efek suara bawaan perangkat (mis. Dolby atau efek pabrikan) dan aplikasi equalizer lain. Bila status menyebut " +
-                "\"dikendalikan aplikasi efek lain\", matikan salah satunya.",
-            warn = true,
-        )
     }
 
     if (saving) {
@@ -412,6 +409,33 @@ private fun SoundPanel(ui: ConsoleUi, actions: ConsoleActions) {
     }
 }
 
+/** Cakupan EQ aplikasi lain: kapan dan ke mana efek dipasang. */
+@Composable
+private fun ScopePanel(ui: ConsoleUi, actions: ConsoleActions) {
+    val a = ui.audio
+    ConsolePanel(
+        "Cakupan", lit = a.eqEnabled,
+        help = "Pengaman clipping menurunkan masukan sebesar penguatan pita terbesar. Cadangan: bila aplikasi musik tidak membuka sesi efek, " +
+            "EQ dipasang ke keluaran gabungan (sesi 0) dan dilepas lagi saat sesi aplikasi muncul; cara lama Android, di sebagian perangkat " +
+            "tidak terdengar. \"Selalu pasang\" memasang sesi 0 walau ada sesi aplikasi (EQ bisa terdengar dua kali; eksperimental). " +
+            "Deteksi sesi memakai laporan sistem dan butuh Akses lanjutan (izin DUMP).",
+    ) {
+        ConsoleSwitch("Pengaman clipping", a.safeHeadroom, { on -> actions.onAudio { it.copy(safeHeadroom = on) } })
+        ConsoleSwitch(
+            "Cadangan: semua audio", a.globalFallback, { on -> actions.onAudio { it.copy(globalFallback = on) } },
+            enabled = a.eqEnabled, detail = "Bila tak ada sesi efek",
+        )
+        ConsoleSwitch(
+            "Selalu pasang ke semua audio", a.globalExperimental, { on -> actions.onAudio { it.copy(globalExperimental = on) } },
+            enabled = a.eqEnabled, detail = "Eksperimental",
+        )
+        ConsoleSwitch(
+            "Deteksi sesi lewat laporan sistem", a.detectSessions, { on -> actions.onAudio { it.copy(detectSessions = on) } },
+            enabled = ui.access.dumpGranted, detail = if (ui.access.dumpGranted) null else "Butuh Akses lanjutan",
+        )
+    }
+}
+
 private fun balanceText(b: Float): String {
     val pct = (abs(b) * 100).roundToInt()
     return when {
@@ -444,17 +468,18 @@ private fun ProfileLine(ui: ConsoleUi, actions: ConsoleActions) {
 
 @Composable
 private fun QualityPanel(ui: ConsoleUi) {
-    ConsolePanel("Kualitas") {
+    ConsolePanel(
+        "Kualitas",
+        help = "Format sumber (lagu) dan format keluaran (yang dikirim ke perangkat) dibedakan. Kemampuan perangkat bukan format yang sedang dipakai.",
+    ) {
         ConsoleRows.quality(ui.snapshot, ui.advanced).forEach { ReadingRow(it.label, it.reading) }
-        ConsoleNote("Format sumber (lagu) dan format keluaran (yang dikirim ke perangkat) dibedakan. Kemampuan perangkat bukan format yang sedang dipakai.")
     }
 }
 
 @Composable
 private fun SpatialPanel(ui: ConsoleUi, actions: ConsoleActions) {
-    ConsolePanel("Spasial & efek") {
+    ConsolePanel("Spasial & efek", help = "Status hanya dibaca. Efek bawaan perangkat diatur di aplikasinya sendiri lewat tombol di panel ini.") {
         ConsoleRows.spatial(ui.snapshot).forEach { ReadingRow(it.label, it.reading) }
-        ConsoleNote("Status hanya dibaca. Efek bawaan perangkat diatur di aplikasinya sendiri lewat tombol di bawah.")
         ShortcutButtons(ui, actions, listOf(Kind.EFFECTS_PANEL, Kind.SOUND_SETTINGS))
     }
 }
@@ -462,7 +487,11 @@ private fun SpatialPanel(ui: ConsoleUi, actions: ConsoleActions) {
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun DiagnosticsPanel(ui: ConsoleUi, actions: ConsoleActions) {
-    ConsolePanel("Diagnostik") {
+    ConsolePanel(
+        "Diagnostik",
+        help = "Tes kanal: nada pendek 1,2 detik (kiri 440 Hz, kanan 660 Hz) pada level aman lewat keluaran media saat ini; musik tidak dijeda. " +
+            "Visualizer audio asli memakai izin mikrofon hanya untuk spektrum, bukan rekaman.",
+    ) {
         ConsoleRows.diagnostics(ui.snapshot).forEach { ReadingRow(it.label, it.reading) }
         ConsoleDivider()
         Text("Tes kanal", color = ConsoleColors.TextSecondary, style = MaterialTheme.typography.labelMedium)
@@ -471,31 +500,32 @@ private fun DiagnosticsPanel(ui: ConsoleUi, actions: ConsoleActions) {
             ConsoleButton("Kanan", { actions.onTone(ToneSynth.Side.RIGHT) }, selected = ui.tone == ToneSynth.Side.RIGHT, description = "Putar nada tes di kanal kanan")
             ConsoleButton("Berhenti", actions.onStopTone, enabled = ui.tone != null, description = "Hentikan nada tes")
         }
-        ConsoleNote("Nada pendek 1,2 detik (kiri 440 Hz, kanan 660 Hz) pada level aman, lewat keluaran media saat ini. Musik tidak dijeda.")
         ConsoleDivider()
         ReadingRow(
             "Visualizer audio asli",
             if (ui.micGranted) Reading.reported("Izin diberikan", "Izin mikrofon (hanya spektrum, bukan rekaman)")
-            else Reading.unavailable("Izin mikrofon belum diberikan; opsional, atur di Pengaturan → Gambar & efek"),
+            else Reading.unavailable("Izin mikrofon belum diberikan (opsional)"),
         )
-        ReadingRow("Akses lanjutan", accessReading(ui.access))
     }
 }
 
 @Composable
 private fun AutomationPanel(ui: ConsoleUi, actions: ConsoleActions) {
     val a = ui.audio
-    ConsolePanel("Otomasi", lit = a.profiles.isNotEmpty() || a.openConsoleOnUsb) {
+    ConsolePanel(
+        "Otomasi", lit = a.profiles.isNotEmpty() || a.openConsoleOnUsb,
+        help = "Aturan berjalan selama launcher aktif; tidak ada layanan latar tambahan. Profil perangkat dibuat dari panel Suara aplikasi lain saat perangkatnya menjadi keluaran.",
+    ) {
         ConsoleSwitch(
             "Kembalikan preset saat terputus", a.restoreOnDisconnect, { on -> actions.onAudio { it.copy(restoreOnDisconnect = on) } },
-            detail = "Perangkat berprofil terputus → preset sebelumnya dipakai lagi",
+            detail = "Saat perangkat berprofil terputus",
         )
         ConsoleSwitch(
             "USB DAC tersambung → buka console", a.openConsoleOnUsb, { on -> actions.onAudio { it.copy(openConsoleOnUsb = on) } },
-            detail = "Halaman ini dibuka saat beranda tampil berikutnya",
+            detail = "Dibuka di tampilan beranda berikutnya",
         )
         if (a.profiles.isEmpty()) {
-            ConsoleNote("Belum ada profil perangkat. Buat dari panel Suara saat perangkatnya menjadi keluaran.")
+            ConsoleNote("Belum ada profil perangkat.")
         } else {
             Text("Profil perangkat", color = ConsoleColors.TextSecondary, style = MaterialTheme.typography.labelMedium)
             a.profiles.forEach { p ->
@@ -526,7 +556,6 @@ private fun AutomationPanel(ui: ConsoleUi, actions: ConsoleActions) {
                 Text("${fmt.format(Date(r.atMs))} · ${r.detail}", color = ConsoleColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
             }
         }
-        ConsoleNote("Aturan berjalan selama launcher aktif; tidak ada layanan latar tambahan.")
     }
 }
 
@@ -540,12 +569,11 @@ private fun outcomeLabel(o: Automation.Outcome) = when (o) {
 /** Panel pabrikan: "Samsung" di perangkat Samsung, selain itu "Perangkat ini". Hanya pintasan resmi & status. */
 @Composable
 private fun DevicePanel(ui: ConsoleUi, actions: ConsoleActions) {
-    ConsolePanel(if (ui.isSamsung) "Optimasi Samsung" else "Perangkat ini") {
-        ConsoleNote(
-            "Launcher tidak bisa mengubah Audio HAL atau efek suara pabrikan. Tombol di sini hanya membuka pengaturan resmi yang " +
-                "terdeteksi ada di perangkat ini.",
-        )
-        if (ui.shortcuts.isEmpty()) ConsoleNote("Tidak ada pengaturan audio sistem yang bisa dibuka dari sini.")
+    ConsolePanel(
+        if (ui.isSamsung) "Optimasi Samsung" else "Perangkat ini",
+        help = "Launcher tidak bisa mengubah Audio HAL atau efek suara pabrikan. Tombol di sini hanya membuka pengaturan resmi yang terdeteksi ada di perangkat ini.",
+    ) {
+        if (ui.shortcuts.isEmpty()) ConsoleNote("Tidak ada pengaturan audio sistem yang bisa dibuka.")
         ui.shortcuts.forEach { s ->
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f).clearAndSetSemantics { }) {
@@ -559,7 +587,6 @@ private fun DevicePanel(ui: ConsoleUi, actions: ConsoleActions) {
                 )
             }
         }
-        ReadingRow("Akses lanjutan", accessReading(ui.access))
     }
 }
 
@@ -581,75 +608,66 @@ private fun shizukuReading(s: AdvancedAccess.ShizukuState): Reading = when (s) {
 private fun AdvancedPanel(ui: ConsoleUi, actions: ConsoleActions) {
     val s = ui.access
     var confirming by rememberSaveable { mutableStateOf(false) }
-    ConsolePanel("Akses lanjutan", lit = s.dumpGranted) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    ConsolePanel(
+        "Akses lanjutan", lit = s.dumpGranted,
+        help = "Izin DUMP memberi console: codec Bluetooth aktif, format & sample rate keluaran, resampling, dan deteksi sesi musik untuk EQ. " +
+            "Tidak memberi baterai perangkat Bluetooth atau akses ke Audio HAL. Privasi: laporan sistem dibaca di memori hanya saat console " +
+            "terbuka atau saat EQ mendeteksi sesi, hanya nilai yang tampil yang diambil, dan isinya tidak disimpan, dicatat, atau dikirim. " +
+            "Mencabut izin: ${AdvancedAccess.ADB_REVOKE}",
+    ) {
         ReadingRow("Izin DUMP", accessReading(s))
-        ConsoleNote(
-            "Memberi console: codec Bluetooth aktif, format & sample rate keluaran, resampling, dan deteksi sesi musik untuk EQ. " +
-                "Tidak memberi: baterai perangkat Bluetooth (tidak dimuat laporan sistem) atau akses ke Audio HAL.",
-        )
         ConsoleDivider()
-        // Jalur tanpa komputer (Android 11+): Shizuku dinyalakan lewat Wireless debugging di HP itu sendiri
-        val context = androidx.compose.ui.platform.LocalContext.current
-        Text("Tanpa komputer · Android 11+ lewat Shizuku", color = ConsoleColors.TextSecondary, style = MaterialTheme.typography.labelMedium)
-        ConsoleNote(
-            "1. Pasang aplikasi Shizuku.\n" +
-                "2. Aktifkan Opsi pengembang: Pengaturan → Tentang ponsel → Informasi perangkat lunak → ketuk Nomor versi 7 kali.\n" +
-                "3. Sambungkan ke Wi-Fi, lalu di Opsi pengembang nyalakan Wireless debugging.\n" +
-                "4. Buka Shizuku → Pairing (lewat Wireless debugging): masukkan kode pasangan dari Opsi pengembang ke notifikasi " +
-                "Shizuku, lalu Start.\n" +
-                "5. Kembali ke sini dan ketuk \"Berikan izin lewat Shizuku\" di bawah. Cukup sekali: izin DUMP tetap ada walau " +
-                "Shizuku berhenti atau HP restart.",
-        )
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            ConsoleButton(
-                if (s.shizuku == AdvancedAccess.ShizukuState.NOT_INSTALLED) "Pasang Shizuku" else "Buka Shizuku",
-                { SystemSettingsIntents.openShizuku(context) },
+        ConsoleExpander("Panduan tanpa komputer (Shizuku, Android 11+)") {
+            ConsoleNote(
+                "1. Pasang aplikasi Shizuku.\n" +
+                    "2. Aktifkan Opsi pengembang: Pengaturan → Tentang ponsel → Informasi perangkat lunak → ketuk Nomor versi 7 kali.\n" +
+                    "3. Sambungkan ke Wi-Fi, lalu nyalakan Wireless debugging di Opsi pengembang.\n" +
+                    "4. Buka Shizuku → Pairing: masukkan kode pasangan dari Opsi pengembang ke notifikasi Shizuku, lalu Start.\n" +
+                    "5. Kembali ke sini dan ketuk \"Berikan izin lewat Shizuku\". Cukup sekali: izin DUMP tetap ada walau Shizuku berhenti atau HP restart.",
             )
-            ConsoleButton("Tentang ponsel", { SystemSettingsIntents.open(context, android.provider.Settings.ACTION_DEVICE_INFO_SETTINGS) })
-            ConsoleButton("Opsi pengembang", { SystemSettingsIntents.open(context, android.provider.Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS) })
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                ConsoleButton(
+                    if (s.shizuku == AdvancedAccess.ShizukuState.NOT_INSTALLED) "Pasang Shizuku" else "Buka Shizuku",
+                    { SystemSettingsIntents.openShizuku(context) },
+                )
+                ConsoleButton("Tentang ponsel", { SystemSettingsIntents.open(context, android.provider.Settings.ACTION_DEVICE_INFO_SETTINGS) })
+                ConsoleButton("Opsi pengembang", { SystemSettingsIntents.open(context, android.provider.Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS) })
+            }
+            ReadingRow("Shizuku", shizukuReading(s.shizuku))
+            s.lastGrant?.let { ReadingRow("Hasil terakhir", it) }
+            val canGrant = !s.dumpGranted && !s.working &&
+                (s.shizuku == AdvancedAccess.ShizukuState.NEEDS_PERMISSION || s.shizuku == AdvancedAccess.ShizukuState.READY)
+            ConsoleButton(
+                if (s.working) "Menunggu Shizuku…" else "Berikan izin lewat Shizuku", { confirming = true }, enabled = canGrant,
+            )
+            ConsoleNote("Tanpa root, Shizuku perlu dinyalakan ulang setiap HP restart, tetapi hanya bila ingin memberi izin lagi.")
         }
-        ConsoleDivider()
-        Text("Dengan komputer (ADB) · sekali, tetap ada setelah HP restart", color = ConsoleColors.TextSecondary, style = MaterialTheme.typography.labelMedium)
-        ConsoleNote(
-            "1. Aktifkan Opsi pengembang, lalu USB debugging atau Wireless debugging.\n" +
-                "2. Sambungkan HP ke komputer berisi ADB (atau pasangkan Wireless debugging).\n" +
-                "3. Jalankan perintah ini, lalu ketuk Periksa lagi:",
-        )
-        Text(
-            AdvancedAccess.ADB_COMMAND,
-            color = ConsoleColors.Green,
-            style = MaterialTheme.typography.bodySmall,
-            fontFamily = com.vinyl.launcher.ui.theme.MonoFamily,
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
-                .background(ConsoleColors.Page)
-                .padding(12.dp),
-        )
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            ConsoleButton(if (ui.copied) "Disalin" else "Salin perintah", actions.onCopyCommand, description = "Salin perintah ADB")
-            ConsoleButton("Periksa lagi", actions.onCheckAccess, description = "Periksa lagi status izin DUMP")
+        ConsoleExpander("Panduan dengan komputer (ADB)") {
+            ConsoleNote(
+                "1. Aktifkan Opsi pengembang, lalu USB debugging atau Wireless debugging.\n" +
+                    "2. Sambungkan HP ke komputer berisi ADB.\n" +
+                    "3. Jalankan perintah ini, lalu ketuk Periksa lagi:",
+            )
+            Text(
+                AdvancedAccess.ADB_COMMAND,
+                color = ConsoleColors.Green,
+                style = MaterialTheme.typography.bodySmall,
+                fontFamily = com.vinyl.launcher.ui.theme.MonoFamily,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
+                    .background(ConsoleColors.Page)
+                    .padding(12.dp),
+            )
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                ConsoleButton(if (ui.copied) "Disalin" else "Salin perintah", actions.onCopyCommand, description = "Salin perintah ADB")
+            }
+            ConsoleNote(
+                "Bila status kembali \"Belum diberikan\", cari opsi \"Disable permission monitoring\" di Opsi pengembang (bila ada), lalu ulangi perintahnya.",
+            )
         }
-        ConsoleNote(
-            "Di sebagian perangkat, sistem bisa mencabut lagi izin dari ADB. Bila status kembali \"Belum diberikan\", cari opsi " +
-                "\"Disable permission monitoring\" di Opsi pengembang (bila ada), lalu ulangi perintahnya.",
-        )
-        ConsoleDivider()
-        Text("Lewat Shizuku · opsional", color = ConsoleColors.TextSecondary, style = MaterialTheme.typography.labelMedium)
-        ReadingRow("Shizuku", shizukuReading(s.shizuku))
-        s.lastGrant?.let { ReadingRow("Hasil terakhir", it) }
-        val canGrant = !s.dumpGranted && !s.working &&
-            (s.shizuku == AdvancedAccess.ShizukuState.NEEDS_PERMISSION || s.shizuku == AdvancedAccess.ShizukuState.READY)
-        ConsoleButton(
-            if (s.working) "Menunggu Shizuku…" else "Berikan izin lewat Shizuku", { confirming = true }, enabled = canGrant,
-        )
-        ConsoleNote("Tanpa root, Shizuku perlu dinyalakan ulang lewat Wireless debugging setiap HP restart — tetapi itu hanya perlu bila " +
-            "ingin memberi izin lagi. Izin DUMP yang sudah diberikan tetap ada.")
-        ConsoleDivider()
-        ConsoleNote(
-            "Privasi: laporan sistem dibaca di memori hanya saat console terbuka atau saat EQ mendeteksi sesi, dan hanya nilai yang tampil " +
-                "yang diambil. Isinya tidak disimpan, tidak dicatat, dan tidak dikirim. Mencabut izin: ${AdvancedAccess.ADB_REVOKE}",
-        )
+        ConsoleButton("Periksa lagi", actions.onCheckAccess, description = "Periksa lagi status izin DUMP")
     }
     if (confirming) {
         AlertDialog(

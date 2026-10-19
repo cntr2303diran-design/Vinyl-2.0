@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import com.vinyl.launcher.ui.theme.Tokens
 import kotlinx.coroutines.delay
@@ -66,7 +67,8 @@ fun VhsFilm(animate: Boolean, modifier: Modifier = Modifier) {
             }
         }
     }
-    Canvas(modifier.clearAndSetSemantics { }) {
+    // Lapisan sendiri: butir yang menggambar ulang 12×/detik tidak ikut memaksa gambar ulang panggung di bawahnya
+    Canvas(modifier.graphicsLayer { }.clearAndSetSemantics { }) {
         val w = size.width
         val h = size.height
         val r = Random(tick)

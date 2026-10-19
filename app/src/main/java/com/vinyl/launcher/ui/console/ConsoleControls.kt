@@ -21,9 +21,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.KeyboardArrowUp
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -31,6 +39,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -81,18 +91,28 @@ internal object ConsoleColors {
     val Green = RetroColors.VfdGreen
 }
 
-/** Panel berjudul dengan lampu indikator kecil. */
+/**
+ * Panel berjudul dengan lampu indikator kecil. [help] = penjelasan panjang yang disembunyikan di balik tombol ⓘ
+ * (supaya panel tetap ringkas; teksnya tetap ada dan terbaca TalkBack saat dibuka).
+ */
 @Composable
-internal fun ConsolePanel(title: String, modifier: Modifier = Modifier, lit: Boolean = true, content: @Composable ColumnScope.() -> Unit) {
+internal fun ConsolePanel(
+    title: String,
+    modifier: Modifier = Modifier,
+    lit: Boolean = true,
+    help: String? = null,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    var helpOpen by rememberSaveable(title) { mutableStateOf(false) }
     Column(
         modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(16.dp))
             .background(ConsoleColors.Panel)
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.heightIn(min = 32.dp)) {
             Box(
                 Modifier.size(7.dp).clip(CircleShape)
                     .background(if (lit) ConsoleColors.Amber else ConsoleColors.Line)
@@ -104,10 +124,80 @@ internal fun ConsolePanel(title: String, modifier: Modifier = Modifier, lit: Boo
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.SemiBold,
                 letterSpacing = 0.12.em,
-                modifier = Modifier.padding(start = 10.dp).semantics { heading() },
+                modifier = Modifier.weight(1f).padding(start = 10.dp).semantics { heading() },
+            )
+            if (help != null) {
+                Box(
+                    Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .clickable(role = Role.Button, onClickLabel = if (helpOpen) "Tutup penjelasan" else "Buka penjelasan") { helpOpen = !helpOpen }
+                        .semantics { contentDescription = "Penjelasan $title"; stateDescription = if (helpOpen) "Terbuka" else "Tertutup" },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(Icons.Rounded.Info, null, tint = if (helpOpen) ConsoleColors.Amber else ConsoleColors.TextSecondary, modifier = Modifier.size(20.dp))
+                }
+            }
+        }
+        if (help != null && helpOpen) ConsoleNote(help)
+        content()
+    }
+}
+
+/** Bagian yang dilipat (panduan panjang): judul + panah; isi tampil hanya saat dibuka. */
+@Composable
+internal fun ConsoleExpander(title: String, modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+    var open by rememberSaveable(title) { mutableStateOf(false) }
+    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .heightIn(min = 48.dp)
+                .clickable(role = Role.Button, onClickLabel = if (open) "Tutup" else "Buka") { open = !open }
+                .semantics { stateDescription = if (open) "Terbuka" else "Tertutup" },
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(title, color = ConsoleColors.Text, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+            Icon(
+                if (open) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown, null,
+                tint = ConsoleColors.TextSecondary,
             )
         }
-        content()
+        if (open) content()
+    }
+}
+
+/**
+ * Tab halaman: deretan yang bisa digulir mendatar (muat di ukuran huruf 200%), tab terpilih bergaris amber.
+ * Tiap tab minimal 48dp tingginya.
+ */
+@Composable
+internal fun ConsoleTabs(labels: List<String>, selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
+    Row(modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        labels.forEachIndexed { i, label ->
+            val on = i == selected
+            Column(
+                Modifier
+                    .heightIn(min = 48.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .selectable(on, role = Role.Tab) { onSelect(i) }
+                    .padding(horizontal = 14.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Text(
+                    label,
+                    color = if (on) ConsoleColors.Text else ConsoleColors.TextSecondary,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal,
+                    maxLines = 1,
+                )
+                Spacer(
+                    Modifier.padding(top = 4.dp).height(3.dp).width(28.dp).clip(RoundedCornerShape(2.dp))
+                        .background(if (on) ConsoleColors.Amber else androidx.compose.ui.graphics.Color.Transparent),
+                )
+            }
+        }
     }
 }
 
