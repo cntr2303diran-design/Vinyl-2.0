@@ -247,10 +247,12 @@ internal fun LocalTab(
 @Composable
 private fun TrackRow(t: LocalTrack, playing: Boolean, showNumber: Boolean, onClick: () -> Unit) {
     val quality = remember(t) { LocalFormat.quality(t) }
-    val hiRes = remember(t) { LocalFormat.hiRes(t) }
     val playable = remember(t) { LocalFormat.playable(t) }
-    // Format yang belum bisa dibaca pemutar bawaan (AIFF, DSD, APE, WMA): tetap tampil, dengan alasannya, tanpa aksi putar
-    val sub = if (!playable) "Format ${LocalFormat.codec(t.mime, t.fileName)} belum didukung pemutar bawaan"
+    // Lencana emas hanya untuk hi-res yang memang bisa diputar
+    val hiRes = remember(t) { playable && LocalFormat.hiRes(t) }
+    // Format yang belum bisa dibaca pemutar bawaan (AIFF, DSD, APE, WMA): tetap tampil, dengan alasannya, tanpa aksi putar.
+    // Nama format sudah ada di lencana, jadi keterangannya pendek agar muat di ponsel.
+    val sub = if (!playable) "Belum didukung pemutar bawaan"
     else listOf(t.artist, t.album).filter { it.isNotBlank() }.joinToString(" — ")
     Row(
         Modifier
@@ -277,7 +279,7 @@ private fun TrackRow(t: LocalTrack, playing: Boolean, showNumber: Boolean, onCli
                 fontWeight = if (playing) FontWeight.SemiBold else null,
                 maxLines = 1, overflow = TextOverflow.Ellipsis,
             )
-            if (sub.isNotBlank()) Text(sub, style = MaterialTheme.typography.bodySmall, color = TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (sub.isNotBlank()) Text(sub, style = MaterialTheme.typography.bodySmall, color = TextSecondary, maxLines = if (playable) 1 else 2, overflow = TextOverflow.Ellipsis)
         }
         Spacer(Modifier.width(10.dp))
         if (quality.isNotBlank()) {
