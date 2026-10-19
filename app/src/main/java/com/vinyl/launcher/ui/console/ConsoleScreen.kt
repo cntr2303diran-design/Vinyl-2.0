@@ -44,6 +44,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -309,7 +310,12 @@ private fun SoundPanel(ui: ConsoleUi, actions: ConsoleActions) {
         when (a.eqMode) {
             EqMode.THREE -> {
                 // Sumbu frekuensi EQ selalu rendah → tinggi dari kiri, juga pada bahasa RTL (seperti equalizer fisik)
-                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                // Huruf besar: deretan fader digulir mendatar (SpaceEvenly tidak berlaku di wadah yang bisa digulir)
+                val big = LocalDensity.current.fontScale > 1.15f
+                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) { Row(
+                    if (big) Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()) else Modifier.fillMaxWidth(),
+                    horizontalArrangement = if (big) Arrangement.spacedBy(8.dp) else Arrangement.SpaceEvenly,
+                ) {
                     val subs = listOf("≤ 250 Hz", "0,25–4 kHz", "≥ 4 kHz")
                     val values = Eq.bands(a.values)
                     Eq.BAND_NAMES.forEachIndexed { i, name ->

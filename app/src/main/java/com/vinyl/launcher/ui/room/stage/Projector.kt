@@ -1,6 +1,5 @@
 package com.vinyl.launcher.ui.room.stage
 
-import android.graphics.Bitmap
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -30,6 +29,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.core.graphics.scale
 import androidx.compose.ui.unit.dp
 import com.vinyl.launcher.data.ProjectorSettings
 import kotlinx.coroutines.Dispatchers
@@ -138,7 +138,7 @@ private fun rememberSoftFocus(image: ImageBitmap, focus: Float): ImageBitmap {
         value = withContext(Dispatchers.Default) {
             runCatching {
                 val src = image.asAndroidBitmap()
-                Bitmap.createScaledBitmap(src, maxOf(8, src.width / factor), maxOf(8, src.height / factor), true).asImageBitmap()
+                src.scale(maxOf(8, src.width / factor), maxOf(8, src.height / factor)).asImageBitmap()
             }.getOrDefault(image)
         }
     }

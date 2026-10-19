@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -54,6 +56,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
@@ -180,6 +183,7 @@ internal fun ConsoleTabs(labels: List<String>, selected: Int, onSelect: (Int) ->
                 Modifier
                     .heightIn(min = 48.dp)
                     .clip(RoundedCornerShape(12.dp))
+                    .background(if (on) ConsoleColors.Panel else Color.Transparent)
                     .selectable(on, role = Role.Tab) { onSelect(i) }
                     .padding(horizontal = 14.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -194,7 +198,7 @@ internal fun ConsoleTabs(labels: List<String>, selected: Int, onSelect: (Int) ->
                 )
                 Spacer(
                     Modifier.padding(top = 4.dp).height(3.dp).width(28.dp).clip(RoundedCornerShape(2.dp))
-                        .background(if (on) ConsoleColors.Amber else androidx.compose.ui.graphics.Color.Transparent),
+                        .background(if (on) ConsoleColors.Amber else Color.Transparent),
                 )
             }
         }
@@ -214,6 +218,7 @@ private fun sourceColor(s: Source): Color = when (s) {
  * Satu nilai: label, nilai, label sumber, dan (bila perlu) alasan/asal. Disusun bertumpuk agar tetap terbaca pada
  * ukuran huruf 200%. TalkBack membacanya sebagai satu kalimat.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun ReadingRow(label: String, reading: Reading, modifier: Modifier = Modifier) {
     val showNote = reading.note.isNotBlank() && reading.note != reading.sourceLabel
@@ -225,22 +230,16 @@ internal fun ReadingRow(label: String, reading: Reading, modifier: Modifier = Mo
             },
     ) {
         Text(label, color = ConsoleColors.TextSecondary, style = MaterialTheme.typography.labelMedium)
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), itemVerticalAlignment = Alignment.CenterVertically) {
             Text(
                 reading.display,
                 color = if (reading.source == Source.UNAVAILABLE) ConsoleColors.TextSecondary else ConsoleColors.Text,
                 style = MaterialTheme.typography.bodyMedium,
                 fontFamily = if (reading.source == Source.UNAVAILABLE) null else MonoFamily,
-                modifier = Modifier.weight(1f, fill = false),
             )
             // "Tidak tersedia" sudah tertulis sebagai nilainya; label sumber hanya untuk nilai yang ada
             if (reading.source != Source.UNAVAILABLE) {
-                Text(
-                    reading.sourceLabel,
-                    color = sourceColor(reading.source),
-                    style = MaterialTheme.typography.labelSmall,
-                    modifier = Modifier.padding(start = 8.dp),
-                )
+                Text(reading.sourceLabel, color = sourceColor(reading.source), style = MaterialTheme.typography.labelSmall)
             }
         }
         if (showNote) {
@@ -334,7 +333,9 @@ internal fun Fader(
     val set by rememberUpdatedState(onChange)
     val span = range.endInclusive - range.start
     fun fromY(y: Float) = snap(range.endInclusive - (y / hPx).coerceIn(0f, 1f) * span, step, range)
-    Column(modifier.width(72.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+    // Lebar mengikuti ukuran huruf supaya label ("Rendah", "+5 dB") tidak terpotong pada huruf besar
+    val fader = (72f * LocalDensity.current.fontScale.coerceIn(1f, 1.6f)).dp
+    Column(modifier.width(fader), horizontalAlignment = Alignment.CenterHorizontally) {
         Text(valueText(value), color = ConsoleColors.Text, style = MaterialTheme.typography.labelMedium, fontFamily = MonoFamily, maxLines = 1)
         Box(
             Modifier

@@ -144,8 +144,13 @@ Dibuktikan `SettingsMigrationTest`.
   hijau VFD `#9FC29A` 6,2:1.
 - Setiap nilai memakai `ReadingRow`: label, nilai (huruf mono bila ada), label sumber (Terukur / Dilaporkan sistem hijau,
   Perkiraan amber), dan alasan/asal. Nilai "Tidak tersedia" tidak diberi label sumber ganda.
-- Tata letak: ≥ 900dp tiga kolom, ≥ 600dp dua kolom, selain itu satu kolom bergulir. Semua baris bertumpuk agar tetap
-  terbaca pada ukuran huruf 200%.
+- Tata letak: halaman dibagi **empat tab** (Pemutar · Aplikasi lain · Perangkat · Alat; tab bisa digulir mendatar) agar tiap
+  layar pendek. Panel tiap tab: ≥ 900dp tiga kolom, ≥ 600dp dua kolom, selain itu satu kolom bergulir. Baris bertumpuk dan
+  label sumber turun ke baris bawah bila sempit; lebar fader mengikuti ukuran huruf dan deretan fader digulir mendatar
+  pada huruf besar.
+- Teks dikurangi: keterangan satu baris di bawah sakelar saja; penjelasan panjang (cara kerja, batasan, peringatan, privasi)
+  ada di balik tombol ⓘ di judul panel (`ConsolePanel(help = …)`), dan panduan Shizuku/ADB dilipat (`ConsoleExpander`).
+  Tidak ada informasi yang dihapus, hanya disembunyikan sampai diminta.
 - RTL: panel dicerminkan, tetapi sumbu frekuensi EQ dan balance kiri/kanan tetap kiri→kanan (kanal fisik). Teks memakai
   `TextDirection.Content` di tipografi aplikasi, jadi teks Latin seperti "-4 dB" tetap terbaca benar.
 - Target sentuh ≥ 48dp (tombol, sakelar baris penuh, fader 48×150dp). Fader dan balance adalah penggeser TalkBack
@@ -233,7 +238,7 @@ kaset di samping TV, dan teks layar kamera (OSD) yang menggantikan status bar. R
 
 ### Audio Console: Pemutar bawaan & EQ
 
-- Panel **Pemutar bawaan** menampilkan jalur suara apa adanya, berurutan seperti sinyalnya: sumber (dibaca dari berkas) →
+- Tab **Pemutar** terdiri dari tiga panel (Jalur suara, Equalizer, Penyesuaian). Panel **Jalur suara** menampilkan jalur suara apa adanya, berurutan seperti sinyalnya: sumber (dibaca dari berkas) →
   hasil dekoder → rantai suara (atau "Tanpa olahan") → ke Android → DAC USB. Label sumber "Pasti" (hijau) dipakai untuk
   nilai yang diketahui pemutar sendiri, terpisah dari "Dilaporkan sistem".
 - **Kurva EQ** digambar dari respons filter yang sebenarnya (rumus biquad yang sama dengan rantai suara), sumbu frekuensi
@@ -241,3 +246,10 @@ kaset di samping TV, dan teks layar kamera (OSD) yang menggantikan status bar. R
   label bergaya Equalizer APO ("PK 2,2 kHz −3,4 dB Q 1,29") agar profil AutoEQ mudah dicocokkan.
 - Tab **Lokal** di perpustakaan kaset mengikuti gaya daftar yang sama dengan tab lain; lencana kualitas kuning hanya untuk
   hi-res (>16-bit atau >48 kHz) dengan teks gelap di atasnya; format yang belum didukung tetap tampil dengan keterangannya.
+
+### Stabilitas tampilan (anti-lag)
+
+- Posisi lagu dibaca di fase gambar (`rememberPositionMs` → lambda `() -> Long`), bukan di komposisi: detak 500 ms tidak lagi
+  menyusun ulang panggung TV, kaset, atau OSD. Kanvas yang sering digambar ulang (film VHS, kaset) punya `graphicsLayer` sendiri.
+- Cahaya proyektor tidak lagi memakai `RenderEffect` blur di layer yang beranimasi; gambarnya diperkecil sekali di thread latar
+  (blur "dibakar" lewat penskalaan) lalu ditampilkan dengan filter halus. Dampak ke perangkat nyata belum diukur.
