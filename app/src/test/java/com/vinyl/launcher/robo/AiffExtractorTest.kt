@@ -282,7 +282,8 @@ class AiffExtractorTest {
         val wav = "RIFF".toByteArray() + ByteArray(4) + "WAVE".toByteArray() + ByteArray(20)
         assertFalse(AiffExtractor().sniff(input(wav)))
         assertFalse(AiffExtractor().sniff(input(ByteArray(3))))
-        assertFalse(AiffExtractor().sniff(input(ByteArray(0))))
+        // ByteArrayDataSource menolak larik kosong; 1 byte tetap lebih pendek dari header 12 byte
+        assertFalse(AiffExtractor().sniff(input(ByteArray(1))))
         assertTrue(AiffExtractor().sniff(input(AiffFixture.simple(1, 16, 44100, ByteArray(4)))))
     }
 
