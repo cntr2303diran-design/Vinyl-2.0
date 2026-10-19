@@ -72,8 +72,19 @@ object LocalLibrary {
         _state.value = State(folderUri = folderUri, tracks = tracks, loaded = true)
     }
 
-    /** Lagu dengan [id] di indeks sekarang. */
-    fun track(id: String): LocalTrack? = _state.value.tracks.firstOrNull { it.id == id }
+    /** Peta id → lagu untuk daftar [state] saat ini; dibuat ulang hanya bila daftarnya berganti. */
+    @Volatile private var byId: Pair<List<LocalTrack>, Map<String, LocalTrack>>? = null
+
+    /**
+     * Lagu dengan [id] di indeks sekarang. O(1): antrean "putar semua" bisa berisi ribuan id yang dicari satu per satu
+     * di thread utama (sesi media), jadi pencarian linear per id tidak boleh dipakai.
+     */
+    fun track(id: String): LocalTrack? {
+        val list = _state.value.tracks
+        val cached = byId
+        val map = if (cached != null && cached.first === list) cached.second else list.associateBy { it.id }.also { byId = list to it }
+        return map[id]
+    }
 
     fun uriOf(folderUri: String, id: String): Uri = DocumentsContract.buildDocumentUriUsingTree(folderUri.toUri(), id)
 

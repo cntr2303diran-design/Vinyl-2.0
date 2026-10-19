@@ -76,6 +76,15 @@ object LocalFormat {
         }
     }
 
+    /**
+     * Format yang wadahnya tidak bisa dibaca pemutar bawaan (Media3 tanpa ekstensi FFmpeg tidak punya pengurai AIFF, DSF/DFF,
+     * APE, dan WMA). Tetap tampil di daftar dengan tanda "belum didukung" dan dilewati saat membuat antrean. Format lain
+     * dicoba; bila dekoder perangkat menolaknya (mis. ALAC di sebagian perangkat), pemutar melompat ke lagu berikutnya.
+     */
+    val UNSUPPORTED = setOf("AIFF", "DSD", "APE", "WMA")
+
+    fun playable(t: LocalTrack): Boolean = codec(t.mime, t.fileName) !in UNSUPPORTED
+
     /** Resolusi tinggi: lebih dari 16-bit atau lebih dari 48 kHz. */
     fun hiRes(t: LocalTrack): Boolean = lossless(codec(t.mime, t.fileName), t.bitsPerSample) && (t.bitsPerSample > 16 || t.sampleRate > 48_000)
 
@@ -99,23 +108,75 @@ object LocalFormat {
 object LocalLibraryModel {
     /** Kunci pengurutan & pencarian: tanpa aksen, huruf kecil, "The " di depan diabaikan. */
     fun sortKey(s: String): String {
-        val n = Normalizer.normalize(s.trim(), Normalizer.Form.NFD).replace(Regex("\\p{M}+"), "").lowercase(Locale.ROOT)
-        return n.removePrefix("the ")
+        val t = s.trim()
+        // Jalur cepat untuk teks ASCII (sebagian besar tag): normalisasi Unicode hanya bila perlu
+        val base = if (t.all { it.code < 0x80 }) t else {
+            val n = Normalizer.normalize(t, Normalizer.Form.NFD)
+            buildString(n.length) {
+                for (c in n) {
+                    when (Character.getType(c).toByte()) {
+                        Character.NON_SPACING_MARK, Character.ENCLOSING_MARK, Character.COMBINING_SPACING_MARK -> Unit
+                        else -> append(c)
+                    }
+                }
+            }
+        }
+        return base.lowercase(Locale.ROOT).removePrefix("the ")
     }
 
     fun displayArtist(t: LocalTrack): String = t.albumArtist.ifBlank { t.artist }.ifBlank { "Artis tak dikenal" }
 
     fun displayAlbum(t: LocalTrack): String = t.album.ifBlank { "Album tak dikenal" }
 
-    fun sorted(list: List<LocalTrack>, sort: LocalSort): List<LocalTrack> = when (sort) {
-        LocalSort.ALBUM -> list.sortedWith(
-            compareBy<LocalTrack>({ sortKey(displayAlbum(it)) }, { sortKey(displayArtist(it)) }, { it.discNo }, { it.trackNo }, { sortKey(it.title) }),
-        )
-        LocalSort.ARTIST -> list.sortedWith(
-            compareBy<LocalTrack>({ sortKey(displayArtist(it)) }, { it.year }, { sortKey(displayAlbum(it)) }, { it.discNo }, { it.trackNo }),
-        )
-        LocalSort.TITLE -> list.sortedWith(compareBy<LocalTrack>({ sortKey(it.title) }, { sortKey(it.artist) }))
-        LocalSort.RECENT -> list.sortedWith(compareByDescending<LocalTrack> { it.modified }.thenBy { sortKey(it.title) })
+    /** Lagu dengan kunci urut yang dihitung SEKALI (bukan di setiap perbandingan: ribuan lagu × log n perbandingan). */
+    private class Keyed(val t: LocalTrack) {
+        val album = sortKey(displayAlbum(t))
+        val artist = sortKey(displayArtist(t))
+        val title = sortKey(t.title)
+        val trackArtist = sortKey(t.artist)
+    }
+
+    fun sorted(list: List<LocalTrack>, sort: LocalSort): List<LocalTrack> {
+        val cmp: Comparator<Keyed> = when (sort) {
+            LocalSort.ALBUM -> compareBy({ it.album }, { it.artist }, { it.t.discNo }, { it.t.trackNo }, { it.title })
+            LocalSort.ARTIST -> compareBy({ it.artist }, { it.t.year }, { it.album }, { it.t.discNo }, { it.t.trackNo })
+            LocalSort.TITLE -> compareBy({ it.title }, { it.trackArtist })
+            LocalSort.RECENT -> compareByDescending<Keyed> { it.t.modified }.thenBy { it.title }
+        }
+        return list.map(::Keyed).sortedWith(cmp).map { it.t }
+    }
+
+    /**
+     * Daftar terurut beserta teks cari ternormalisasi per lagu (sejajar dengan [tracks]); dibuat di thread latar.
+     * [source] & [sort] = masukannya, agar layar tahu hasil ini sudah sesuai daftar terbaru atau belum.
+     */
+    class Prepared(val source: List<LocalTrack>, val sort: LocalSort, val tracks: List<LocalTrack>, val hay: List<String>)
+
+    fun prepare(list: List<LocalTrack>, sort: LocalSort): Prepared {
+        val s = sorted(list, sort)
+        return Prepared(list, sort, s, s.map(::haystack))
+    }
+
+    private fun haystack(t: LocalTrack): String = sortKey(listOf(t.title, t.artist, t.albumArtist, t.album, t.fileName).joinToString(" "))
+
+    /** Cari di [p] memakai teks yang sudah dinormalisasi: tiap ketikan hanya membandingkan string. */
+    fun search(p: Prepared, query: String): List<LocalTrack> {
+        val words = queryWords(query)
+        if (words.isEmpty()) return p.tracks
+        return p.tracks.filterIndexed { i, _ -> words.all { it in p.hay[i] } }
+    }
+
+    private fun queryWords(query: String): List<String> = sortKey(query).split(' ', '\t', '\n').filter { it.isNotEmpty() }
+
+    /**
+     * Antrean "putar dari sini": id lagu yang bisa diputar dari daftar yang tampil, dan posisi lagu yang diketuk di
+     * antrean itu. null = lagu itu tidak bisa diputar pemutar bawaan.
+     */
+    fun queue(shown: List<LocalTrack>, tapped: LocalTrack): Pair<List<String>, Int>? {
+        if (!LocalFormat.playable(tapped)) return null
+        val ids = shown.filter(LocalFormat::playable).map { it.id }
+        val start = ids.indexOf(tapped.id)
+        return if (start < 0) null else ids to start
     }
 
     /** Judul bagian untuk lagu pada urutan [sort] (lagu berurutan dengan judul yang sama digabung di bawahnya). */
@@ -128,12 +189,9 @@ object LocalLibraryModel {
 
     /** Cari di judul, artis, album, dan nama berkas; semua kata harus ada (urutan bebas). */
     fun search(list: List<LocalTrack>, query: String): List<LocalTrack> {
-        val words = sortKey(query).split(Regex("\\s+")).filter { it.isNotEmpty() }
+        val words = queryWords(query)
         if (words.isEmpty()) return list
-        return list.filter { t ->
-            val hay = sortKey(listOf(t.title, t.artist, t.albumArtist, t.album, t.fileName).joinToString(" "))
-            words.all { it in hay }
-        }
+        return list.filter { t -> haystack(t).let { hay -> words.all { it in hay } } }
     }
 
     /** Judul dari nama berkas bila tag kosong: "01 - Lagu Saya.flac" → "Lagu Saya". */
@@ -144,4 +202,27 @@ object LocalLibraryModel {
 
     /** Nomor lagu dari tag "3/12" atau "03". */
     fun parseTrackNo(raw: String?): Int = raw?.substringBefore('/')?.trim()?.toIntOrNull()?.coerceIn(0, 9999) ?: 0
+}
+
+/**
+ * Alasan galat pemutaran yang bisa dimengerti pengguna, dari kode galat Media3 (PlaybackException: 2xxx berkas/I-O,
+ * 3xxx wadah berkas, 4xxx dekoder, 5xxx keluaran audio).
+ */
+object PlaybackErrors {
+    private const val IO_FILE_NOT_FOUND = 2005
+    private const val IO_NO_PERMISSION = 2006
+
+    fun reason(code: Int): String = when {
+        code == IO_FILE_NOT_FOUND -> "berkas tidak ditemukan (dipindah atau dihapus)"
+        code == IO_NO_PERMISSION -> "izin folder sudah tidak berlaku"
+        code in 2000..2999 -> "berkas tidak bisa dibaca"
+        code in 3000..3999 -> "format berkas tidak dikenali atau rusak"
+        code in 4000..4999 -> "dekoder perangkat ini tidak mendukung formatnya"
+        code in 5000..5999 -> "keluaran audio menolak formatnya"
+        else -> "galat pemutaran (kode $code)"
+    }
+
+    /** @param skipped pemutar melompat ke lagu berikutnya (false = antrean berhenti di lagu ini) */
+    fun message(title: String, code: Int, skipped: Boolean): String =
+        (if (title.isBlank()) "Satu lagu" else "\"$title\"") + (if (skipped) " dilewati: " else " tidak bisa diputar: ") + reason(code)
 }

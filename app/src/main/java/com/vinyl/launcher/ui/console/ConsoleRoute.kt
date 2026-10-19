@@ -7,10 +7,12 @@ import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -128,6 +130,16 @@ fun ConsoleRoute(
         if (playerDraft == d) playerDraft = null
     }
     LaunchedEffect(player) { if (player == playerDraft) playerDraft = null }
+    // Halaman ditinggalkan sebelum jeda simpan selesai: draf terakhir tetap disimpan, agar suara yang sudah terdengar
+    // (EqEngine / rantai pemutar) sama dengan pengaturan tersimpan
+    val saveAudio by rememberUpdatedState(onSave)
+    val savePlayer by rememberUpdatedState(onSavePlayer)
+    DisposableEffect(Unit) {
+        onDispose {
+            draft?.let(saveAudio)
+            playerDraft?.let(savePlayer)
+        }
+    }
     val path by HiFi.path.collectAsStateWithLifecycle()
 
     val effectsPanel = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { }

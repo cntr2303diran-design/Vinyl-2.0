@@ -11,10 +11,13 @@ import android.os.Build
 import androidx.core.content.ContextCompat
 import androidx.core.content.IntentCompat
 import androidx.core.content.edit
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.updateAndGet
+import kotlinx.coroutines.withContext
 
 /**
  * Level baterai perangkat Bluetooth dari siaran sistem `android.bluetooth.device.action.BATTERY_LEVEL_CHANGED`.
@@ -55,17 +58,27 @@ object BluetoothBattery {
         }
     }
 
+    /** Isi berkas sudah dimuat; sebelum itu laporan baru hanya disimpan di memori (agar tidak menimpa level lama). */
+    private var loaded = false
+
+    private fun prefs(context: Context) = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+
     private fun remember(context: Context, address: String, level: Int) {
-        val next = _remembered.value + (BatteryReports.storeKey(address) to RememberedBattery(level, System.currentTimeMillis()))
-        _remembered.value = BatteryReports.decode(BatteryReports.encode(next))
-        context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putString(KEY, BatteryReports.encode(next)) }
+        val entry = BatteryReports.storeKey(address) to RememberedBattery(level, System.currentTimeMillis())
+        // decode(encode(…)) memangkas daftar ke batas jumlah & umur yang sama dengan yang tersimpan
+        val next = _remembered.updateAndGet { BatteryReports.decode(BatteryReports.encode(it + entry)) }
+        if (loaded) prefs(context).edit { putString(KEY, BatteryReports.encode(next)) }
     }
 
-    /** Muat level yang diingat (dipanggil saat aplikasi mulai; cepat, berkas kecil). */
-    fun load(context: Context) {
-        _remembered.value = BatteryReports.decode(
-            context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY, null),
-        )
+    /**
+     * Muat level yang diingat saat aplikasi mulai. Berkas dibaca di thread latar; laporan yang datang lebih dulu tidak
+     * ditimpa, dan disimpan bersama isi berkas.
+     */
+    suspend fun load(context: Context) {
+        val stored = withContext(Dispatchers.IO) { BatteryReports.decode(prefs(context).getString(KEY, null)) }
+        val merged = _remembered.updateAndGet { current -> BatteryReports.decode(BatteryReports.encode(stored + current)) }
+        loaded = true
+        if (merged != stored) prefs(context).edit { putString(KEY, BatteryReports.encode(merged)) }
     }
 
     /** Izin yang dibutuhkan versi Android ini. */

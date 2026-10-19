@@ -39,6 +39,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -78,8 +79,9 @@ import kotlinx.coroutines.withContext
 import androidx.core.net.toUri
 
 /**
- * Tab "Lokal": berkas musik di folder pilihan pengguna, diputar oleh pemutar bawaan (FLAC/WAV/ALAC hi-res, MP3, AAC,
- * OGG, Opus). Pilih folder → dipindai → daftar per album/artis/judul dengan label kualitas (mis. "FLAC 24/96").
+ * Tab "Lokal": berkas musik di folder pilihan pengguna, diputar oleh pemutar bawaan (FLAC/WAV hi-res, MP3, AAC, OGG,
+ * Opus; ALAC bila perangkat punya dekodernya). Pilih folder → dipindai → daftar per album/artis/judul dengan label
+ * kualitas (mis. "FLAC 24/96"). Format yang belum didukung tetap tampil dengan keterangannya, tanpa aksi putar.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -118,8 +120,9 @@ internal fun LocalTab(
     if (folder == null) {
         EmptyState(
             "Putar berkas musik di HP",
-            "FLAC, WAV, ALAC (termasuk 24-bit), MP3, AAC, OGG, dan Opus diputar langsung oleh pemutar bawaan, dengan ReplayGain, " +
-                "EQ parametrik & AutoEQ di Audio Console. Launcher hanya bisa membaca folder yang Anda pilih (tanpa izin penyimpanan).",
+            "FLAC dan WAV (termasuk 24-bit hi-res), MP3, AAC, OGG, dan Opus diputar langsung oleh pemutar bawaan, dengan ReplayGain, " +
+                "EQ parametrik & AutoEQ di Audio Console. ALAC bila perangkat punya dekodernya; AIFF, DSD, APE, dan WMA belum didukung. " +
+                "Launcher hanya bisa membaca folder yang Anda pilih (tanpa izin penyimpanan).",
         ) {
             TextButton(onClick = { picker.launch(null) }, modifier = Modifier.padding(top = 16.dp)) { Text("Pilih folder musik", color = RetroColors.CreamText) }
         }
@@ -127,8 +130,18 @@ internal fun LocalTab(
     }
 
     var query by rememberSaveable { mutableStateOf("") }
-    val sorted = remember(lib.tracks, player.sort) { LocalLibraryModel.sorted(lib.tracks, player.sort) }
-    val shown = remember(sorted, query) { LocalLibraryModel.search(sorted, query) }
+    // Ribuan lagu: kunci urut & teks cari dihitung sekali di thread latar, bukan saat komposisi (null = sedang disiapkan)
+    val prepared by produceState<LocalLibraryModel.Prepared?>(null, lib.tracks, player.sort) {
+        value = withContext(Dispatchers.Default) { LocalLibraryModel.prepare(lib.tracks, player.sort) }
+    }
+    // Hasil cari beserta kata carinya; selama hasil baru dihitung, daftar lama tetap tampil
+    val shown by produceState<Pair<String, List<LocalTrack>>?>(null, prepared, query) {
+        val p = prepared ?: return@produceState
+        value = query to (if (query.isBlank()) p.tracks else withContext(Dispatchers.Default) { LocalLibraryModel.search(p, query) })
+    }
+    val list = shown?.second.orEmpty()
+    // Pesan "kosong" hanya bila hasil sudah sesuai daftar, urutan, dan kata cari terbaru (tidak berkedip saat dihitung)
+    val upToDate = prepared.let { it != null && it.source == lib.tracks && it.sort == player.sort } && shown?.first == query
     val ownSession = np.packageName == context.packageName
     val playingId = if (ownSession && path.active) path.trackId else null
 
@@ -171,6 +184,10 @@ internal fun LocalTab(
                     }
                     if (lib.scanning) LinearProgressIndicator(Modifier.fillMaxWidth().padding(vertical = 6.dp), color = RetroColors.CreamText)
                     lib.error?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = Color(0xFFFFB4A9), modifier = Modifier.padding(vertical = 6.dp)) }
+                    // Lagu yang dilewati pemutar karena gagal diputar (alasannya dari kode galat pemutar)
+                    if (ownSession && path.skipped.isNotBlank()) {
+                        Text(path.skipped, style = MaterialTheme.typography.bodyMedium, color = Color(0xFFFFB4A9), modifier = Modifier.padding(vertical = 6.dp))
+                    }
                     OutlinedTextField(
                         value = query, onValueChange = { query = it.take(80) },
                         singleLine = true,
@@ -198,7 +215,7 @@ internal fun LocalTab(
                     }
                 }
             }
-            if (shown.isEmpty() && !lib.scanning) {
+            if (upToDate && list.isEmpty() && !lib.scanning) {
                 item(key = "empty") {
                     Text(
                         if (lib.tracks.isEmpty()) "Belum ada berkas musik di folder ini (subfolder ikut dipindai)." else "Tidak ada yang cocok dengan \"$query\".",
@@ -206,10 +223,9 @@ internal fun LocalTab(
                     )
                 }
             }
-            val ids = shown.map { it.id }
-            itemsIndexed(shown, key = { _, t -> t.id }) { i, t ->
+            itemsIndexed(list, key = { _, t -> t.id }) { i, t ->
                 val section = LocalLibraryModel.section(t, player.sort)
-                val newSection = section.isNotEmpty() && (i == 0 || LocalLibraryModel.section(shown[i - 1], player.sort) != section)
+                val newSection = section.isNotEmpty() && (i == 0 || LocalLibraryModel.section(list[i - 1], player.sort) != section)
                 Column {
                     if (newSection) {
                         Text(
@@ -218,7 +234,8 @@ internal fun LocalTab(
                         )
                     }
                     TrackRow(t, playing = t.id == playingId, showNumber = player.sort == LocalSort.ALBUM) {
-                        LocalPlayer.play(context, ids, i)
+                        // Antrean = lagu yang bisa diputar dari daftar yang tampil, mulai dari lagu ini
+                        LocalLibraryModel.queue(list, t)?.let { (ids, start) -> LocalPlayer.play(context, ids, start) }
                     }
                 }
             }
@@ -231,14 +248,17 @@ internal fun LocalTab(
 private fun TrackRow(t: LocalTrack, playing: Boolean, showNumber: Boolean, onClick: () -> Unit) {
     val quality = remember(t) { LocalFormat.quality(t) }
     val hiRes = remember(t) { LocalFormat.hiRes(t) }
-    val sub = listOf(t.artist, t.album).filter { it.isNotBlank() }.joinToString(" — ")
+    val playable = remember(t) { LocalFormat.playable(t) }
+    // Format yang belum bisa dibaca pemutar bawaan (AIFF, DSD, APE, WMA): tetap tampil, dengan alasannya, tanpa aksi putar
+    val sub = if (!playable) "Format ${LocalFormat.codec(t.mime, t.fileName)} belum didukung pemutar bawaan"
+    else listOf(t.artist, t.album).filter { it.isNotBlank() }.joinToString(" — ")
     Row(
         Modifier
             .fillMaxWidth()
             .heightIn(min = 56.dp)
             .clip(RoundedCornerShape(14.dp))
             .then(if (playing) Modifier.glass(RoundedCornerShape(14.dp), fillAlpha = 0.12f) else Modifier)
-            .clickable(onClickLabel = "Putar") { onClick() }
+            .clickable(enabled = playable, onClickLabel = "Putar") { onClick() }
             .semantics {
                 contentDescription = listOf(t.title, sub, quality).filter { it.isNotBlank() }.joinToString(", ")
                 if (playing) stateDescription = "Sedang diputar"
@@ -253,7 +273,7 @@ private fun TrackRow(t: LocalTrack, playing: Boolean, showNumber: Boolean, onCli
         Column(Modifier.weight(1f)) {
             Text(
                 t.title, style = MaterialTheme.typography.titleSmall,
-                color = if (playing) RetroColors.CreamText else TextPrimary,
+                color = if (playing) RetroColors.CreamText else if (playable) TextPrimary else TextSecondary,
                 fontWeight = if (playing) FontWeight.SemiBold else null,
                 maxLines = 1, overflow = TextOverflow.Ellipsis,
             )

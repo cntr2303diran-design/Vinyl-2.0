@@ -52,13 +52,37 @@ object DumpParsers {
         .distinctBy { it.sessionId }
 
     /** Codec Bluetooth A2DP yang sedang dipakai. Daftar berisi lebih dari satu nilai bila sistem mencetak kemampuan gabungan. */
-    data class Codec(val name: String, val sampleRates: List<Int>, val bitsPerSample: List<Int>)
+    data class Codec(
+        val name: String,
+        val sampleRates: List<Int>,
+        val bitsPerSample: List<Int>,
+        /** mCodecSpecific1 (untuk LDAC: mode kualitas/bitrate), null bila tidak tercetak. */
+        val specific1: Long? = null,
+    ) {
+        /**
+         * Mode LDAC dari mCodecSpecific1 (1000 + indeks, seperti Opsi pengembang Android): 990 / 660 / 330 kbps atau
+         * adaptif. null bila bukan LDAC atau nilainya tidak dikenal.
+         */
+        val ldacMode: String?
+            get() {
+                if (!name.equals("LDAC", ignoreCase = true)) return null
+                val v = specific1 ?: return null
+                if (v < 1000 || v > 1003) return null
+                return when (v % 10) {
+                    0L -> "990 kbps (kualitas audio)"
+                    1L -> "660 kbps (seimbang)"
+                    2L -> "330 kbps (koneksi)"
+                    else -> "bitrate adaptif"
+                }
+            }
+    }
 
     private val A2DP_HEADER = Regex("""===\s*A2dpStateMachine for .*?(\(Active\))?\s*===""")
     private val CODEC_LINE = Regex("""mCodecConfig:\s*\{(.*)\}""")
     private val CODEC_NAME = Regex("""codecName:([^,}]+)""")
     private val CODEC_RATE = Regex("""mSampleRate:0x[0-9a-fA-F]+\(([^)]*)\)""")
     private val CODEC_BITS = Regex("""mBitsPerSample:0x[0-9a-fA-F]+\(([^)]*)\)""")
+    private val CODEC_SPECIFIC1 = Regex("""mCodecSpecific1:(-?\d+)""")
 
     /**
      * Codec dari bagian A2DP perangkat yang bertanda "(Active)". Bila tidak ada tanda aktif, hanya dipakai bila tepat satu
@@ -91,7 +115,7 @@ object DumpParsers {
         val name = CODEC_NAME.find(body)?.groupValues?.get(1)?.trim()?.takeIf { it.isNotEmpty() && it != "null" } ?: return null
         if (name.startsWith("INVALID")) return null
         fun ints(r: Regex) = r.find(body)?.groupValues?.get(1)?.split('|')?.mapNotNull { it.trim().toIntOrNull() }.orEmpty()
-        return Codec(name, ints(CODEC_RATE), ints(CODEC_BITS))
+        return Codec(name, ints(CODEC_RATE), ints(CODEC_BITS), CODEC_SPECIFIC1.find(body)?.groupValues?.get(1)?.toLongOrNull())
     }
 
     /** Satu utas keluaran AudioFlinger. */
@@ -197,6 +221,7 @@ object AdvancedReport {
                     append(codec.name)
                     if (codec.sampleRates.size == 1) append(" · ").append(AudioRoutes.khz(codec.sampleRates[0]))
                     if (codec.bitsPerSample.size == 1) append(" · ").append(codec.bitsPerSample[0]).append("-bit")
+                    codec.ldacMode?.let { append(" · ").append(it) }
                 },
                 NOTE + " (Bluetooth)",
             )

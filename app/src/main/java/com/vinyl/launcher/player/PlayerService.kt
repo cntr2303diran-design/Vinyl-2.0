@@ -8,6 +8,7 @@ import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.Tracks
 import androidx.media3.common.util.UnstableApi
@@ -59,6 +60,7 @@ class PlayerService : MediaSessionService() {
             .setWakeMode(C.WAKE_MODE_LOCAL)
             .build()
         player.addListener(PathListener(player))
+        player.addListener(SkipOnError(player))
         val open = PendingIntent.getActivity(
             this, 0,
             Intent(this, HomeActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP),
@@ -152,6 +154,35 @@ class PlayerService : MediaSessionService() {
             if (playbackState == Player.STATE_IDLE || player.mediaItemCount == 0) {
                 HiFi.updatePath { it.copy(active = player.mediaItemCount > 0) }
             }
+        }
+    }
+
+    /**
+     * Lagu yang gagal diputar (format/dekoder tidak didukung perangkat, berkas rusak, dipindah, atau izin folder dicabut)
+     * dilewati agar antrean tidak berhenti diam-diam; alasannya tampil di tab Lokal. Paling banyak [MAX_SKIPS] kali
+     * beruntun, supaya antrean yang seluruhnya gagal tidak dicoba terus.
+     */
+    private class SkipOnError(private val player: Player) : Player.Listener {
+        private var skips = 0
+
+        override fun onPlayerError(error: PlaybackException) {
+            val title = player.currentMediaItem?.mediaMetadata?.title?.toString().orEmpty()
+            val skip = skips < MAX_SKIPS && player.hasNextMediaItem()
+            HiFi.updatePath { it.copy(skipped = PlaybackErrors.message(title, error.errorCode, skip)) }
+            if (skip) {
+                skips++
+                // playWhenReady tetap true setelah galat: prepare() melanjutkan pemutaran di lagu berikutnya
+                player.seekToNextMediaItem()
+                player.prepare()
+            }
+        }
+
+        override fun onIsPlayingChanged(isPlaying: Boolean) {
+            if (isPlaying) skips = 0
+        }
+
+        private companion object {
+            const val MAX_SKIPS = 20
         }
     }
 }

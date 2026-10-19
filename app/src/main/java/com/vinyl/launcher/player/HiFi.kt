@@ -66,6 +66,8 @@ object HiFi {
         val transparent: Boolean = true,
         /** Status pencocokan laju sampel USB (Android 14+), teks jujur untuk ditampilkan. */
         val usbRate: String = "",
+        /** Lagu terakhir yang dilewati karena gagal diputar, beserta alasannya ([PlaybackErrors]); "" = tidak ada. */
+        val skipped: String = "",
     )
 
     private val _path = MutableStateFlow(PathState())

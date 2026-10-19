@@ -42,9 +42,10 @@
     -->
     <uses-permission android:name="android.permission.DUMP" tools:ignore="ProtectedPermissions" />
     <!--
-      Baterai earphone/speaker Bluetooth di Audio Console (opsional). Diminta hanya saat pengguna menekan "Izinkan baca baterai
-      Bluetooth". Android 12+: BLUETOOTH_CONNECT; Android 10–11: BLUETOOTH (izin biasa). Dipakai untuk menerima siaran level
-      baterai dari sistem; tidak memindai, tidak menyambung, tidak mengubah perangkat.
+      Baterai earphone/speaker Bluetooth di Audio Console dan OSD beranda (opsional). Diminta hanya saat pengguna menekan
+      "Izinkan baca baterai Bluetooth". Android 12+: BLUETOOTH_CONNECT; Android 10–11: BLUETOOTH (izin biasa, juga untuk membaca
+      apakah Bluetooth menyala di OSD). Dipakai untuk menerima siaran level baterai dari sistem; tidak memindai, tidak
+      menyambung, tidak mengubah perangkat. Level terakhir diingat di perangkat dengan kunci sidik SHA-256 alamat (bukan alamatnya).
     -->
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />

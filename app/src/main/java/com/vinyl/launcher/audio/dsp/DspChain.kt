@@ -2,7 +2,8 @@ package com.vinyl.launcher.audio.dsp
 
 /**
  * Rantai olah sinyal pemutar bawaan, semuanya float 32-bit: penguatan (ReplayGain + preamp EQ) → EQ parametrik →
- * crossfeed → pembatas puncak. Dibuat ulang setiap format atau pengaturan berubah (status filter mulai dari nol).
+ * crossfeed → pembatas puncak. Dibuat ulang saat format atau pengaturan berubah (status filter mulai dari nol); antarlagu
+ * yang hanya berbeda penguatan ReplayGain, rantai yang sama diteruskan ([DspChain.retune]).
  */
 data class DspConfig(
     /** Penguatan total sebelum EQ (ReplayGain lagu ini + preamp EQ efektif), dB. */
@@ -13,14 +14,31 @@ data class DspConfig(
     val limiter: Boolean = false,
 )
 
-class DspChain(sampleRate: Int, val channels: Int, val config: DspConfig) {
-    private val gain = ReplayGain.linear(config.gainDb)
+class DspChain(val sampleRate: Int, val channels: Int, config: DspConfig) {
+    /** Pengaturan yang sedang dipakai; penguatannya bisa diganti tanpa mengosongkan status filter ([retune]). */
+    var config: DspConfig = config
+        private set
+    private var gain = ReplayGain.linear(config.gainDb)
     private val eq = BiquadCascade(config.eqBands.filter { it.enabled }.map { BiquadCoefs.design(it, sampleRate.toDouble()) }.filter { it != BiquadCoefs.IDENTITY }, channels)
     private val crossfeed = config.crossfeed?.takeIf { channels == 2 }?.let { Crossfeed(it, sampleRate) }
     private val limiter = if (config.limiter) PeakLimiter(sampleRate, channels) else null
 
     /** Tidak ada yang mengubah sampel: data bisa diteruskan apa adanya (bit-transparan untuk float). */
-    val isIdentity: Boolean = gain == 1f && eq.isEmpty && crossfeed == null && limiter == null
+    val isIdentity: Boolean get() = gain == 1f && eq.isEmpty && crossfeed == null && limiter == null
+
+    /**
+     * Lagu berikutnya dalam pemutaran tanpa jeda (gapless) dengan format & susunan rantai yang sama, hanya penguatan
+     * ReplayGain-nya berbeda: ganti penguatannya saja. Status filter, crossfeed, dan garis tunda pembatas tetap berjalan,
+     * jadi sambungan antarlagu tidak berbunyi klik dan tidak ada sampel yang hilang.
+     * @return false bila susunannya lain (laju sampel, kanal, pita EQ, crossfeed, atau ada/tidaknya pembatas) — buat rantai baru
+     */
+    fun retune(sampleRate: Int, channels: Int, next: DspConfig): Boolean {
+        if (sampleRate != this.sampleRate || channels != this.channels) return false
+        if (next.copy(gainDb = 0f) != config.copy(gainDb = 0f)) return false
+        config = next
+        gain = ReplayGain.linear(next.gainDb)
+        return true
+    }
 
     /** Latensi (frame) yang ditambahkan pembatas; sisa ekornya dikeluarkan dengan [drain]. */
     val latencyFrames: Int get() = limiter?.latencyFrames ?: 0

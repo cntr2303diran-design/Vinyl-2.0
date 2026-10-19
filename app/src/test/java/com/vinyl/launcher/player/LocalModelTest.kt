@@ -77,6 +77,59 @@ class LocalModelTest {
     }
 
     @Test
+    fun preparedSearchMatchesThePlainSearchAndKeepsTheSortOrder() {
+        val list = listOf(
+            LocalTrack("1", "Désert Moon", artist = "Dune Wanderer", album = "Sand"),
+            LocalTrack("2", "Neon Lama", artist = "Band Kertas", album = "Kota", fileName = "neon-lama.flac"),
+            LocalTrack("3", "Apel Merah", artist = "The Pohon", album = "Kebun"),
+        )
+        val p = LocalLibraryModel.prepare(list, LocalSort.TITLE)
+        assertEquals(listOf("3", "1", "2"), p.tracks.map { it.id })
+        assertEquals(LocalSort.TITLE, p.sort)
+        for (q in listOf("moon dune", "desert", "KERTAS", "lama.flac", "pohon apel", "", "  ", "tidak ada")) {
+            // Hasil sama dengan pencarian biasa pada daftar terurut (urutan tidak berubah)
+            assertEquals(q, LocalLibraryModel.search(p.tracks, q).map { it.id }, LocalLibraryModel.search(p, q).map { it.id })
+        }
+        // Aksen di judul tetap terlewati oleh kunci cari ("désert" ditemukan dengan "desert")
+        assertEquals(listOf("1"), LocalLibraryModel.search(p, "desert").map { it.id })
+        // Tanda gabung Unicode dibuang, huruf non-Latin tetap
+        assertEquals("cafe", LocalLibraryModel.sortKey("Café"))
+        assertEquals("東京", LocalLibraryModel.sortKey("東京"))
+    }
+
+    @Test
+    fun unsupportedFormatsStayListedButAreLeftOutOfTheQueue() {
+        val flac = LocalTrack("1", "A", mime = "audio/flac", fileName = "a.flac")
+        val aiff = LocalTrack("2", "B", mime = "audio/x-aiff", fileName = "b.aiff")
+        val mp3 = LocalTrack("3", "C", mime = "audio/mpeg", fileName = "c.mp3")
+        val dsd = LocalTrack("4", "D", mime = "application/octet-stream", fileName = "d.dsf")
+        val wma = LocalTrack("5", "E", mime = "audio/x-ms-wma", fileName = "e.wma")
+        val alac = LocalTrack("6", "F", mime = "audio/mp4", fileName = "f.m4a", bitsPerSample = 24)
+        assertTrue(LocalFormat.playable(flac))
+        assertFalse(LocalFormat.playable(aiff))
+        assertFalse(LocalFormat.playable(dsd))
+        assertFalse(LocalFormat.playable(wma))
+        // ALAC dicoba (tergantung dekoder perangkat; bila gagal, pemutar melompat ke lagu berikutnya)
+        assertTrue(LocalFormat.playable(alac))
+        val shown = listOf(flac, aiff, mp3, dsd, wma, alac)
+        assertEquals(listOf("1", "3", "6") to 1, LocalLibraryModel.queue(shown, mp3))
+        assertEquals(listOf("1", "3", "6") to 2, LocalLibraryModel.queue(shown, alac))
+        assertNull(LocalLibraryModel.queue(shown, aiff))
+        // Lagu yang tidak ada di daftar yang tampil tidak memulai antrean yang salah
+        assertNull(LocalLibraryModel.queue(listOf(flac), mp3))
+    }
+
+    @Test
+    fun playbackErrorsExplainWhatWentWrong() {
+        assertEquals("\"Lagu A\" dilewati: berkas tidak ditemukan (dipindah atau dihapus)", PlaybackErrors.message("Lagu A", 2005, skipped = true))
+        assertEquals("Satu lagu tidak bisa diputar: dekoder perangkat ini tidak mendukung formatnya", PlaybackErrors.message("", 4005, skipped = false))
+        assertEquals("izin folder sudah tidak berlaku", PlaybackErrors.reason(2006))
+        assertEquals("format berkas tidak dikenali atau rusak", PlaybackErrors.reason(3003))
+        assertEquals("keluaran audio menolak formatnya", PlaybackErrors.reason(5001))
+        assertEquals("galat pemutaran (kode 1000)", PlaybackErrors.reason(1000))
+    }
+
+    @Test
     fun fallbackTitlesAndTrackNumbers() {
         assertEquals("Lagu Saya", LocalLibraryModel.titleFromFileName("01 - Lagu Saya.flac"))
         assertEquals("Intro", LocalLibraryModel.titleFromFileName("3. Intro.mp3"))

@@ -74,14 +74,18 @@ class HiFiAudioSink(sink: AudioSink, private val usbRate: UsbRateMatch? = null) 
             HiFi.updatePath { it.copy(decoded = "passthrough", output = "passthrough", transparent = true) }
             return
         }
+        val newChannels = inputFormat.channelCount.coerceAtLeast(1)
+        val newRate = inputFormat.sampleRate.coerceAtLeast(8_000)
+        // Lagu berikutnya dengan susunan PCM yang sama (pemutaran tanpa jeda): rantai boleh diteruskan tanpa reset
+        val samePcm = pcm == inputPcm && newChannels == channels && newRate == sampleRate
         this.inputPcm = pcm
         this.inputFormat = inputFormat
-        channels = inputFormat.channelCount.coerceAtLeast(1)
-        sampleRate = inputFormat.sampleRate.coerceAtLeast(8_000)
+        channels = newChannels
+        sampleRate = newRate
         val dsp = HiFi.dsp
         outputFloat = dsp.floatOutput
         gainDb = replayGainDb(inputFormat.metadata, dsp)
-        rebuildChain(dsp)
+        rebuildChain(dsp, keepState = samePcm)
         // Mixer USB disiapkan SEBELUM AudioTrack untuk format ini dibuka
         usbRate?.let { u -> u.prepare(sampleRate).let { status -> HiFi.updatePath { it.copy(usbRate = status) } } }
         val out = inputFormat.buildUpon().setPcmEncoding(if (outputFloat) C.ENCODING_PCM_FLOAT else C.ENCODING_PCM_16BIT).build()
@@ -195,12 +199,17 @@ class HiFiAudioSink(sink: AudioSink, private val usbRate: UsbRateMatch? = null) 
         super.reset()
     }
 
-    private fun rebuildChain(dsp: HiFi.Dsp) {
+    /**
+     * @param keepState lagu baru dengan format PCM yang sama: bila hanya penguatannya berbeda, rantai lama diteruskan
+     *  ([DspChain.retune]) agar sambungan gapless tidak berbunyi klik. Perubahan pengaturan selalu membuat rantai baru.
+     */
+    private fun rebuildChain(dsp: HiFi.Dsp, keepState: Boolean = false) {
         chainVersion = dsp.version
         val pcm = inputPcm ?: return
         // Keluaran float/16-bit dipilih saat configure; perubahan sakelar berlaku di lagu berikutnya
         val cfg = DspPlan.config(gainDb, dsp.eq, dsp.autoHeadroom, dsp.crossfeed)
-        val c = DspChain(sampleRate, channels, cfg)
+        val old = chain
+        val c = if (keepState && old != null && old.retune(sampleRate, channels, cfg)) old else DspChain(sampleRate, channels, cfg)
         chain = c
         HiFi.updatePath {
             it.copy(

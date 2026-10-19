@@ -28,6 +28,10 @@ class UsbRateMatch(context: Context) {
     @Volatile
     private var appliedTo: AudioDeviceInfo? = null
 
+    /** Laju & status permintaan terakhir: lagu berikutnya dengan laju yang sama tidak meminta ulang (tanpa jeda). */
+    @Volatile
+    private var applied: Pair<Int, String>? = null
+
     /** Siapkan mixer untuk [sampleRate]; mengembalikan teks status jujur (kosong bila fitur mati). */
     fun prepare(sampleRate: Int): String {
         if (!enabled) {
@@ -48,6 +52,10 @@ class UsbRateMatch(context: Context) {
             clear()
             return "Tidak ada DAC USB tersambung"
         }
+        // Mixer sudah berjalan di laju ini untuk DAC yang sama: meminta ulang bisa membuka ulang keluaran (bunyi putus
+        // di sambungan lagu gapless), jadi tidak diulang
+        val last = applied
+        if (appliedTo?.id == dev.id && last != null && last.first == sampleRate) return last.second
         return try {
             val pick = m.getSupportedMixerAttributes(dev)
                 .filter { it.mixerBehavior == AudioMixerAttributes.MIXER_BEHAVIOR_DEFAULT && it.format.sampleRate == sampleRate }
@@ -58,6 +66,7 @@ class UsbRateMatch(context: Context) {
             } else if (m.setPreferredMixerAttributes(attrs, dev, pick)) {
                 appliedTo = dev
                 "Mixer USB ${LocalFormat.khz(sampleRate)} kHz ${bits(pick.format.encoding)} (tanpa resampling Android)"
+                    .also { applied = sampleRate to it }
             } else {
                 "Ditolak sistem"
             }
@@ -69,6 +78,7 @@ class UsbRateMatch(context: Context) {
 
     /** Kembalikan mixer USB ke pengaturan sistem. */
     fun clear() {
+        applied = null
         val dev = appliedTo ?: return
         appliedTo = null
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {

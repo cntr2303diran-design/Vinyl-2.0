@@ -19,6 +19,8 @@ object LocalPlayer {
     /** Putar [ids] (urutan daftar yang tampil) mulai dari [start]. */
     fun play(context: Context, ids: List<String>, start: Int) {
         if (ids.isEmpty()) return
+        // Antrean baru: keterangan lagu yang dilewati di antrean sebelumnya tidak relevan lagi
+        HiFi.updatePath { it.copy(skipped = "") }
         val app = context.applicationContext
         val f = future ?: MediaController.Builder(app, SessionToken(app, ComponentName(app, PlayerService::class.java)))
             .buildAsync()

@@ -35,7 +35,8 @@ class VinylApp : Application() {
         val settings = SettingsRepository.get(this).settings
         // Audio Console: sesi efek dari aplikasi musik, EQ, dan aturan otomasi (tanpa layanan latar tambahan)
         AdvancedAccess.start(this)
-        BluetoothBattery.load(this) // level terakhir yang diingat (perkiraan sampai laporan baru datang)
+        // Level terakhir yang diingat (perkiraan sampai laporan baru datang); dibaca di thread latar
+        appScope.launch { BluetoothBattery.load(this@VinylApp) }
         BluetoothBattery.refresh(this) // hanya mendaftar bila izinnya sudah diberikan
         AudioConsoleRuntime.start(this, appScope)
         appScope.launch {

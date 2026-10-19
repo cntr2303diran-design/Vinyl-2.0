@@ -95,7 +95,6 @@ fun RoomOsd(
             onQuickSettings = { SystemActions.expandQuickSettings(context) },
             onNotifications = { SystemActions.expandNotifications(context) },
             onClock = { SystemActions.openAlarms(context) },
-            onBattery = { SystemActions.openBatteryUsage(context) },
         )
     }
     VhsOsd(state, landscape, actions, modifier)

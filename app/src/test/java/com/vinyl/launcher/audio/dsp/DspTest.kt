@@ -137,6 +137,42 @@ class DspTest {
     }
 
     @Test
+    fun gaplessRetuneChangesOnlyTheGainAndKeepsFilterStateRunning() {
+        // EQ hanya memotong & ReplayGain negatif → tanpa pembatas, jadi rantai linear dan bisa dibandingkan persis
+        val bands = listOf(EqBand(FilterType.PEAK, 200f, -6f, 1.0f), EqBand(FilterType.HIGH_SHELF, 6000f, -3f, 0.7f))
+        val first = DspConfig(gainDb = -2f, eqBands = bands)
+        val next = DspConfig(gainDb = -7f, eqBands = bands)
+        assertFalse(DspPlan.limiterNeeded(first.gainDb, bands) || DspPlan.limiterNeeded(next.gainDb, bands))
+        fun tone(from: Int, n: Int) = FloatArray(n * 2) { i -> (0.5 * sin(2 * PI * 150.0 * (from + i / 2) / fs)).toFloat() }
+
+        val kept = DspChain(48_000, 2, first)
+        val reference = DspChain(48_000, 2, first)
+        val a1 = tone(0, 512); kept.process(a1, 512)
+        val b1 = tone(0, 512); reference.process(b1, 512)
+        // Lagu berikutnya: hanya penguatan yang berbeda → rantai yang sama diteruskan
+        assertTrue(kept.retune(48_000, 2, next))
+        assertEquals(next, kept.config)
+        // Pembanding tanpa retune menerima masukan yang sudah dikali selisih penguatannya: hasilnya harus identik,
+        // artinya status filter tidak dikosongkan di sambungan (tidak ada klik)
+        val a2 = tone(512, 512); kept.process(a2, 512)
+        val step = ReplayGain.linear(-5f)
+        val b2 = tone(512, 512).map { it * step }.toFloatArray(); reference.process(b2, 512)
+        for (i in a2.indices) assertEquals(b2[i], a2[i], 1e-5f)
+        // Rantai baru (status nol) berbeda nyata pada sampel pertama sambungan
+        val fresh = DspChain(48_000, 2, next)
+        val c2 = tone(512, 512); fresh.process(c2, 512)
+        assertTrue(abs(c2[0] - a2[0]) > 1e-3f)
+
+        // Susunan lain tidak bisa diteruskan
+        assertFalse(kept.retune(44_100, 2, next))
+        assertFalse(kept.retune(48_000, 1, next))
+        assertFalse(kept.retune(48_000, 2, next.copy(eqBands = bands.take(1))))
+        assertFalse(kept.retune(48_000, 2, next.copy(limiter = true)))
+        assertFalse(kept.retune(48_000, 2, next.copy(crossfeed = CrossfeedLevel.NATURAL)))
+        assertEquals(next, kept.config)
+    }
+
+    @Test
     fun replayGainParsesTagsInTheirCommonSpellings() {
         assertEquals(-7.21f, ReplayGain.parseGain("-7.21 dB")!!, 1e-4f)
         assertEquals(-7.21f, ReplayGain.parseGain("−7,21 dB")!!, 1e-4f)

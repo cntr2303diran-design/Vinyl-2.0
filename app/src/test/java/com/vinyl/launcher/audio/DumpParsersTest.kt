@@ -108,4 +108,17 @@ class DumpParsersTest {
         val noRate = players.map { it.copy(sampleRate = 0) }
         assertEquals(Source.UNAVAILABLE, AdvancedReport.build(buds, null, thread, noRate, 10234).resampling.source)
     }
+
+    @Test
+    fun ldacQualityModeIsReadFromCodecSpecific1() {
+        fun cfg(v: Long) = "=== A2dpStateMachine for XX (Active) ===\n mCodecConfig: {codecName:LDAC,mCodecType:4,mCodecPriority:0," +
+            "mSampleRate:0x8(96000),mBitsPerSample:0x2(24),mChannelMode:0x2(STEREO),mCodecSpecific1:$v,mCodecSpecific2:0}"
+        assertEquals("990 kbps (kualitas audio)", DumpParsers.activeA2dpCodec(cfg(1000))!!.ldacMode)
+        assertEquals("660 kbps (seimbang)", DumpParsers.activeA2dpCodec(cfg(1001))!!.ldacMode)
+        assertEquals("330 kbps (koneksi)", DumpParsers.activeA2dpCodec(cfg(1002))!!.ldacMode)
+        assertEquals("bitrate adaptif", DumpParsers.activeA2dpCodec(cfg(1003))!!.ldacMode)
+        // Nilai bawaan 0 / tak dikenal tidak ditebak; codec lain tidak punya mode LDAC
+        assertNull(DumpParsers.activeA2dpCodec(cfg(0))!!.ldacMode)
+        assertNull(DumpParsers.Codec("AAC", emptyList(), emptyList(), 1000).ldacMode)
+    }
 }

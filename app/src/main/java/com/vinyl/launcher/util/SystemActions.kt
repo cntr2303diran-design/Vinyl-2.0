@@ -103,9 +103,6 @@ object SystemActions {
     /** Daftar alarm di aplikasi jam bawaan (ketuk jam/tanggal di OSD). */
     fun openAlarms(context: Context) = startSafe(context, Intent(android.provider.AlarmClock.ACTION_SHOW_ALARMS))
 
-    /** Penggunaan baterai (ketuk ikon baterai di OSD). */
-    fun openBatteryUsage(context: Context) = startSafe(context, Intent(Intent.ACTION_POWER_USAGE_SUMMARY))
-
     fun openAccessibilitySettings(context: Context) = startSafe(context, Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
 
     fun openNotificationAccessSettings(context: Context) =

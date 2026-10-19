@@ -112,7 +112,6 @@ class OsdActions(
     val onQuickSettings: () -> Unit,
     val onNotifications: () -> Unit,
     val onClock: () -> Unit,
-    val onBattery: () -> Unit,
 )
 
 /** Batas skala huruf OSD: teks dasarnya sudah besar (20–32sp); di atas 1,5× pita OSD akan menutupi TV. */

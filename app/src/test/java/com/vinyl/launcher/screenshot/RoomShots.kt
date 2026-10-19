@@ -111,7 +111,7 @@ internal fun StagePreview(np: NowPlaying, retro: RetroSettings, seek: SeekState?
                     hasTrack = np.hasTrack, positionMs = s.previewMs ?: np.positionMs, durationMs = np.durationMs, canSeek = np.canSeek,
                 ),
                 landscape = landscape,
-                actions = OsdActions({}, {}, {}, {}, {}),
+                actions = OsdActions({}, {}, {}, {}),
             )
         }
     }
