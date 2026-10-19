@@ -180,6 +180,20 @@
             </intent-filter>
         </service>
 
+        <!--
+          Tombol putar (headset, Bluetooth, layar kunci) setelah proses aplikasi dimatikan sistem: menyalakan PlayerService
+          untuk melanjutkan antrean terakhir. Diekspor karena sistem yang mengirim tombol media; layanan hanya dinyalakan
+          bila ada antrean tersimpan (lihat PlayerButtonReceiver), siaran lain diabaikan.
+        -->
+        <receiver
+            android:name=".player.PlayerButtonReceiver"
+            android:exported="true"
+            tools:ignore="ExportedReceiver">
+            <intent-filter>
+                <action android:name="android.intent.action.MEDIA_BUTTON" />
+            </intent-filter>
+        </receiver>
+
         <service
             android:name=".service.CoverService"
             android:exported="false"

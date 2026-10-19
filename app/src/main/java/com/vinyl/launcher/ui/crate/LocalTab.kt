@@ -121,7 +121,7 @@ internal fun LocalTab(
         EmptyState(
             "Putar berkas musik di HP",
             "FLAC dan WAV (termasuk 24-bit hi-res), MP3, AAC, OGG, dan Opus diputar langsung oleh pemutar bawaan, dengan ReplayGain, " +
-                "EQ parametrik & AutoEQ di Audio Console. ALAC bila perangkat punya dekodernya; AIFF, DSD, APE, dan WMA belum didukung. " +
+                "EQ parametrik & AutoEQ di Audio Console. ALAC bila perangkat punya dekodernya; DSD, APE, dan WMA belum didukung. " +
                 "Launcher hanya bisa membaca folder yang Anda pilih (tanpa izin penyimpanan).",
         ) {
             TextButton(onClick = { picker.launch(null) }, modifier = Modifier.padding(top = 16.dp)) { Text("Pilih folder musik", color = RetroColors.CreamText) }
@@ -250,7 +250,7 @@ private fun TrackRow(t: LocalTrack, playing: Boolean, showNumber: Boolean, onCli
     val playable = remember(t) { LocalFormat.playable(t) }
     // Lencana emas hanya untuk hi-res yang memang bisa diputar
     val hiRes = remember(t) { playable && LocalFormat.hiRes(t) }
-    // Format yang belum bisa dibaca pemutar bawaan (AIFF, DSD, APE, WMA): tetap tampil, dengan alasannya, tanpa aksi putar.
+    // Format yang belum bisa dibaca pemutar bawaan (DSD, APE, WMA): tetap tampil, dengan alasannya, tanpa aksi putar.
     // Nama format sudah ada di lencana, jadi keterangannya pendek agar muat di ponsel.
     val sub = if (!playable) "Belum didukung pemutar bawaan"
     else listOf(t.artist, t.album).filter { it.isNotBlank() }.joinToString(" — ")

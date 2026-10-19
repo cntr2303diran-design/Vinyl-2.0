@@ -146,6 +146,20 @@ object OsdGlyphs {
         ),
     )
 
+    /** Kunci: VPN aktif (seperti ikon kunci di status bar). */
+    val VPN = Glyph(
+        listOf(
+            ".###.",
+            "#...#",
+            "#...#",
+            ".###.",
+            "..#..",
+            "..##.",
+            "..#..",
+            "..##.",
+        ),
+    )
+
     /** Semua glyph (untuk pengujian). */
-    val ALL = listOf(WIFI, BLUETOOTH, BELL, BELL_OFF, VIBRATE, DO_NOT_DISTURB, ALARM, AIRPLANE, BOLT, NO_SIM)
+    val ALL = listOf(WIFI, BLUETOOTH, BELL, BELL_OFF, VIBRATE, DO_NOT_DISTURB, ALARM, AIRPLANE, BOLT, NO_SIM, VPN)
 }

@@ -257,6 +257,7 @@ private fun StatusCluster(state: OsdState, actions: OsdActions) {
             if (s.hasCellular && !s.airplane) {
                 if (s.simAbsent) PixelGlyph(OsdGlyphs.NO_SIM) else if (s.cellLevel >= 0) CellBars(s.cellLevel, s.mobileData)
             }
+            if (s.vpn) PixelGlyph(OsdGlyphs.VPN)
             if (s.bluetooth == Bluetooth.CONNECTED || s.bluetooth == Bluetooth.ON) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     PixelGlyph(OsdGlyphs.BLUETOOTH, dim = s.bluetooth != Bluetooth.CONNECTED)

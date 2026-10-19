@@ -3,6 +3,8 @@ package com.vinyl.launcher.player
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.os.Handler
+import android.os.Looper
 import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
@@ -10,25 +12,32 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.common.Timeline
 import androidx.media3.common.Tracks
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
+import com.google.common.util.concurrent.SettableFuture
 import com.vinyl.launcher.data.SettingsRepository
 import com.vinyl.launcher.ui.home.HomeActivity
+import java.util.concurrent.Executors
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * Pemutar bawaan: ExoPlayer + sesi media (Media3). Berkas dibaca langsung dari folder pilihan pengguna lewat URI SAF.
@@ -43,6 +52,7 @@ class PlayerService : MediaSessionService() {
     private var session: MediaSession? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private lateinit var usbRate: UsbRateMatch
+    private var queueSaver: QueueSaver? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -52,6 +62,7 @@ class PlayerService : MediaSessionService() {
                 HiFiAudioSink(DefaultAudioSink.Builder(context).setEnableFloatOutput(true).build(), usbRate)
         }
         val player = ExoPlayer.Builder(this, renderers)
+            .setMediaSourceFactory(DefaultMediaSourceFactory(this, PlayerExtractors.factory))
             .setAudioAttributes(
                 AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).build(),
                 /* handleAudioFocus = */ true,
@@ -61,6 +72,7 @@ class PlayerService : MediaSessionService() {
             .build()
         player.addListener(PathListener(player))
         player.addListener(SkipOnError(player))
+        queueSaver = QueueSaver(player).also(player::addListener)
         val open = PendingIntent.getActivity(
             this, 0,
             Intent(this, HomeActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP),
@@ -84,6 +96,8 @@ class PlayerService : MediaSessionService() {
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = session
 
     override fun onDestroy() {
+        queueSaver?.flush()
+        queueSaver = null
         scope.cancel()
         session?.run {
             player.release()
@@ -106,6 +120,94 @@ class PlayerService : MediaSessionService() {
                 ?: return Futures.immediateFailedFuture(IllegalStateException("folder musik belum dipilih"))
             val resolved = mediaItems.mapNotNull { item -> LocalLibrary.track(item.mediaId)?.let { item(folder, it) } }
             return Futures.immediateFuture(resolved.toMutableList())
+        }
+
+        /**
+         * Tombol putar (headset, Bluetooth, layar kunci) setelah proses dimatikan sistem: pasang kembali antrean
+         * terakhir pada lagu dan posisi yang tersimpan. Menunggu indeks pustaka selesai dimuat (cepat: dari berkas
+         * lokal) paling lama [RESUME_WAIT_MS]; tanpa antrean tersimpan yang masih valid, tidak memutar apa-apa.
+         */
+        override fun onPlaybackResumption(
+            mediaSession: MediaSession,
+            controller: MediaSession.ControllerInfo,
+        ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> {
+            val result = SettableFuture.create<MediaSession.MediaItemsWithStartPosition>()
+            scope.launch {
+                val library = withTimeoutOrNull(RESUME_WAIT_MS) { LocalLibrary.state.first { it.loaded } }
+                val folder = library?.folderUri
+                val saved = folder?.let { withContext(Dispatchers.IO) { QueueStore.load(this@PlayerService, it) } }
+                val resume = saved?.let { s -> QueueRules.resolve(s) { id -> LocalLibrary.track(id)?.let(LocalFormat::playable) == true } }
+                val items = if (folder == null || resume == null) emptyList<MediaItem>()
+                else resume.ids.mapNotNull { id -> LocalLibrary.track(id)?.let { item(folder, it) } }
+                if (resume == null || items.isEmpty()) {
+                    result.setException(IllegalStateException("tidak ada antrean yang bisa dilanjutkan"))
+                } else {
+                    result.set(MediaSession.MediaItemsWithStartPosition(items, resume.startIndex.coerceIn(0, items.lastIndex), resume.positionMs))
+                }
+            }
+            return result
+        }
+    }
+
+    /**
+     * Menyimpan antrean dan posisi putar ke [QueueStore] supaya bisa dilanjutkan setelah proses dimatikan sistem.
+     * Daftar id ditulis di thread latar hanya bila berubah; posisi disimpan saat lagu berganti, jeda, loncat, dan tiap
+     * [POSITION_EVERY_MS] selama memutar.
+     */
+    private inner class QueueSaver(private val player: Player) : Player.Listener {
+        private val handler = Handler(Looper.getMainLooper())
+
+        /** Satu thread: penulisan antrean lama tidak boleh menimpa yang baru. */
+        private val io = Executors.newSingleThreadExecutor()
+        private var lastIds: List<String>? = null
+        private val tick = object : Runnable {
+            override fun run() {
+                savePosition()
+                if (player.isPlaying) handler.postDelayed(this, POSITION_EVERY_MS)
+            }
+        }
+
+        override fun onTimelineChanged(timeline: Timeline, reason: Int) {
+            // Hanya perubahan isi antrean; pembaruan durasi sumber (SOURCE_UPDATE) tidak mengubah daftar lagu
+            if (reason == Player.TIMELINE_CHANGE_REASON_PLAYLIST_CHANGED) saveQueue()
+        }
+
+        override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) = savePosition()
+
+        override fun onPositionDiscontinuity(oldPosition: Player.PositionInfo, newPosition: Player.PositionInfo, reason: Int) = savePosition()
+
+        override fun onIsPlayingChanged(isPlaying: Boolean) {
+            savePosition()
+            handler.removeCallbacks(tick)
+            if (isPlaying) handler.postDelayed(tick, POSITION_EVERY_MS)
+        }
+
+        /** Saat layanan berhenti: posisi terakhir, lalu hentikan penyimpanan berkala. */
+        fun flush() {
+            handler.removeCallbacks(tick)
+            savePosition()
+            // Tulisan yang sudah antre tetap diselesaikan
+            io.shutdown()
+        }
+
+        private fun saveQueue() {
+            val folder = LocalLibrary.state.value.folderUri ?: return
+            val ids = List(player.mediaItemCount) { player.getMediaItemAt(it).mediaId }
+            val previous = lastIds
+            if (ids == previous) return
+            // Pemutar baru menyala dengan antrean kosong: jangan menghapus antrean tersimpan sebelum sempat dilanjutkan
+            if (ids.isEmpty() && previous.isNullOrEmpty()) return
+            lastIds = ids
+            val current = player.currentMediaItem?.mediaId
+            val position = player.currentPosition
+            val app = applicationContext
+            if (!io.isShutdown) io.execute { QueueStore.saveQueue(app, folder, ids, current, position) }
+        }
+
+        private fun savePosition() {
+            val folder = LocalLibrary.state.value.folderUri ?: return
+            val current = player.currentMediaItem?.mediaId ?: return
+            QueueStore.savePosition(applicationContext, folder, current, player.currentPosition)
         }
     }
 
@@ -184,5 +286,13 @@ class PlayerService : MediaSessionService() {
         private companion object {
             const val MAX_SKIPS = 20
         }
+    }
+
+    private companion object {
+        /** Batas menunggu indeks pustaka saat melanjutkan antrean (dibaca dari berkas lokal, biasanya < 1 detik). */
+        const val RESUME_WAIT_MS = 8_000L
+
+        /** Selang penyimpanan posisi putar selama memutar. */
+        const val POSITION_EVERY_MS = 15_000L
     }
 }

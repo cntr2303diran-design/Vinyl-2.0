@@ -32,6 +32,8 @@ data class DeviceStatus(
     /** Internet sedang lewat data seluler. */
     val mobileData: Boolean = false,
     val airplane: Boolean = false,
+    /** Internet sedang lewat VPN (jaringan bawaan punya transport VPN). */
+    val vpn: Boolean = false,
     val bluetooth: Bluetooth = Bluetooth.UNKNOWN,
     /** Nama perangkat audio Bluetooth yang tersambung (dari daftar keluaran audio), bila ada. */
     val bluetoothDevice: String? = null,
@@ -148,6 +150,7 @@ object StatusText {
             s.simAbsent -> add("Tidak ada kartu SIM")
             s.cellLevel >= 0 -> add("Sinyal seluler ${s.cellLevel} dari 4" + if (s.mobileData) ", data seluler dipakai" else "")
         }
+        if (s.vpn) add("VPN aktif")
         when (s.bluetooth) {
             Bluetooth.CONNECTED -> add(
                 "Bluetooth tersambung" + (s.bluetoothDevice?.let { " ke $it" } ?: "") +

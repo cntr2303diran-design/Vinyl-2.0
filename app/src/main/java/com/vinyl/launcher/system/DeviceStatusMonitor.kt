@@ -41,6 +41,7 @@ import java.time.ZoneId
  *  - sinyal seluler: TelephonyManager.getSignalStrength() (tanpa izin), dibaca ulang tiap 15 detik
  *  - Bluetooth: BluetoothAdapter.isEnabled (tanpa izin di Android 12+, izin biasa BLUETOOTH di Android 10–11) dan
  *    daftar keluaran audio Bluetooth dari AudioManager (tanpa izin)
+ *  - VPN: transport VPN pada jaringan bawaan yang sama (tanpa izin tambahan)
  *  - mode dering, Jangan Ganggu, alarm berikutnya, mode pesawat: API publik tanpa izin
  *  - notifikasi: hitungan dari [NotificationIcons] (diisi layanan akses notifikasi yang sudah ada)
  * Tidak ada yang disimpan ke penyimpanan.
@@ -212,7 +213,9 @@ object DeviceStatusMonitor {
         // Menyala-tapi-tidak-tersambung butuh izin tambahan (ACCESS_WIFI_STATE); OSD cukup menampilkan Wi-Fi yang
         // tersambung, seperti status bar
         val wifi = if (wifiTransport) Wifi.CONNECTED else Wifi.UNKNOWN
-        _state.update { it.copy(wifi = wifi, wifiLevel = StatusText.wifiLevel(rssi), mobileData = cellTransport) }
+        // VPN: jaringan bawaan bertransport VPN (ikon kunci di status bar); tanpa izin tambahan
+        val vpn = caps?.hasTransport(NetworkCapabilities.TRANSPORT_VPN) == true
+        _state.update { it.copy(wifi = wifi, wifiLevel = StatusText.wifiLevel(rssi), mobileData = cellTransport, vpn = vpn) }
     }
 
     private fun readCellular(tm: TelephonyManager) {

@@ -77,11 +77,11 @@ object LocalFormat {
     }
 
     /**
-     * Format yang wadahnya tidak bisa dibaca pemutar bawaan (Media3 tanpa ekstensi FFmpeg tidak punya pengurai AIFF, DSF/DFF,
-     * APE, dan WMA). Tetap tampil di daftar dengan tanda "belum didukung" dan dilewati saat membuat antrean. Format lain
+     * Format yang wadahnya tidak bisa dibaca pemutar bawaan (Media3 tanpa ekstensi FFmpeg tidak punya pengurai DSF/DFF,
+     * APE, dan WMA; AIFF dibaca oleh [AiffExtractor] buatan sendiri). Tetap tampil di daftar dengan tanda "belum didukung" dan dilewati saat membuat antrean. Format lain
      * dicoba; bila dekoder perangkat menolaknya (mis. ALAC di sebagian perangkat), pemutar melompat ke lagu berikutnya.
      */
-    val UNSUPPORTED = setOf("AIFF", "DSD", "APE", "WMA")
+    val UNSUPPORTED = setOf("DSD", "APE", "WMA")
 
     fun playable(t: LocalTrack): Boolean = codec(t.mime, t.fileName) !in UNSUPPORTED
 

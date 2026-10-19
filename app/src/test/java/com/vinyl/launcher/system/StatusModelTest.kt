@@ -87,6 +87,8 @@ class StatusModelTest {
             StatusText.spoken(s),
         )
         assertTrue(StatusText.spoken(DeviceStatus(hasCellular = true, simAbsent = true)).contains("Tidak ada kartu SIM"))
+        assertEquals("VPN aktif", StatusText.spoken(DeviceStatus(vpn = true)))
+        assertEquals("Wi-Fi tersambung, sinyal 2 dari 4. VPN aktif. Bluetooth menyala", StatusText.spoken(DeviceStatus(wifi = Wifi.CONNECTED, wifiLevel = 2, vpn = true, bluetooth = Bluetooth.ON)))
     }
 
     @Test

@@ -106,15 +106,17 @@ class LocalModelTest {
         val wma = LocalTrack("5", "E", mime = "audio/x-ms-wma", fileName = "e.wma")
         val alac = LocalTrack("6", "F", mime = "audio/mp4", fileName = "f.m4a", bitsPerSample = 24)
         assertTrue(LocalFormat.playable(flac))
-        assertFalse(LocalFormat.playable(aiff))
+        // AIFF dibaca extractor buatan sendiri; DSD/APE/WMA belum ada pengurainya
+        assertTrue(LocalFormat.playable(aiff))
         assertFalse(LocalFormat.playable(dsd))
         assertFalse(LocalFormat.playable(wma))
         // ALAC dicoba (tergantung dekoder perangkat; bila gagal, pemutar melompat ke lagu berikutnya)
         assertTrue(LocalFormat.playable(alac))
         val shown = listOf(flac, aiff, mp3, dsd, wma, alac)
-        assertEquals(listOf("1", "3", "6") to 1, LocalLibraryModel.queue(shown, mp3))
-        assertEquals(listOf("1", "3", "6") to 2, LocalLibraryModel.queue(shown, alac))
-        assertNull(LocalLibraryModel.queue(shown, aiff))
+        assertEquals(listOf("1", "2", "3", "6") to 2, LocalLibraryModel.queue(shown, mp3))
+        assertEquals(listOf("1", "2", "3", "6") to 3, LocalLibraryModel.queue(shown, alac))
+        assertNull(LocalLibraryModel.queue(shown, dsd))
+        assertEquals(listOf("1", "2", "3", "6") to 1, LocalLibraryModel.queue(shown, aiff))
         // Lagu yang tidak ada di daftar yang tampil tidak memulai antrean yang salah
         assertNull(LocalLibraryModel.queue(listOf(flac), mp3))
     }

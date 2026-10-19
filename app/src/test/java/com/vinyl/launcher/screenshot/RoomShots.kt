@@ -72,7 +72,7 @@ internal fun playing(art: ImageBitmap?) = NowPlaying(
 internal fun fakeStatus() = DeviceStatus(
     batteryLevel = 72, charging = false, wifi = Wifi.CONNECTED, wifiLevel = 3, hasCellular = true, cellLevel = 2,
     bluetooth = Bluetooth.CONNECTED, bluetoothDevice = "Buds Pro", bluetoothBattery = "70%", ringer = Ringer.VIBRATE, nextAlarm = LocalTime.of(6, 30),
-    notifications = 3,
+    notifications = 3, vpn = true,
 )
 
 /** Ikon notifikasi rekaan (lonceng putih), bukan ikon aplikasi sungguhan. */
