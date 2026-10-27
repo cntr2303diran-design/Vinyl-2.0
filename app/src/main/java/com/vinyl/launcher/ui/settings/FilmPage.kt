@@ -24,7 +24,8 @@ import com.vinyl.launcher.ui.film.FilmSiteData
 
 /**
  * Pengaturan laci kaset di meja ruang TV. Kaset sendiri ditambah, diubah, dan dihapus dari laci (tahan sebuah kaset);
- * halaman ini memuat pilihan umum, memulihkan kaset bawaan, dan menghapus data situs film (cookie, penyimpanan lokal, cache).
+ * halaman ini memuat pilihan umum, memulihkan kaset bawaan, rekor game Ular, dan menghapus data situs film (cookie,
+ * penyimpanan lokal, cache).
  */
 @Composable
 fun FilmControls(film: FilmSettings, onChange: (FilmSettings) -> Unit) {
@@ -53,6 +54,15 @@ fun FilmControls(film: FilmSettings, onChange: (FilmSettings) -> Unit) {
         )
         OutlinedButton(onClick = { confirm = FilmConfirm.RESTORE }, modifier = Modifier.fillMaxWidth()) { Text("Pulihkan kaset bawaan") }
         Text(
+            "Kaset Ular (game) selalu ada di laci. Rekor game tersimpan di perangkat ini saja: ${if (film.snakeBest > 0) "${film.snakeBest}" else "belum ada"}.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 8.dp),
+        )
+        if (film.snakeBest > 0) {
+            OutlinedButton(onClick = { confirm = FilmConfirm.RESET_SNAKE }, modifier = Modifier.fillMaxWidth()) { Text("Setel ulang rekor Ular") }
+        }
+        Text(
             "Situs film menyimpan cookie dan data lokal di perangkat ini saja (misalnya agar tetap masuk akun). Anda bisa menghapusnya kapan saja.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -77,6 +87,7 @@ fun FilmControls(film: FilmSettings, onChange: (FilmSettings) -> Unit) {
                     confirm = null
                     when (c) {
                         FilmConfirm.RESTORE -> onChange(film.copy(cassettes = FilmRules.defaults()))
+                        FilmConfirm.RESET_SNAKE -> onChange(film.copy(snakeBest = 0))
                         FilmConfirm.CLEAR -> {
                             FilmSiteData.clear(context)
                             Toast.makeText(context, "Data situs film dihapus.", Toast.LENGTH_SHORT).show()
@@ -94,6 +105,11 @@ private enum class FilmConfirm(val title: String, val message: String, val actio
         "Pulihkan kaset bawaan?",
         "Semua kaset di laci diganti dengan kaset bawaan. Kaset yang Anda tambahkan sendiri akan hilang.",
         "Pulihkan",
+    ),
+    RESET_SNAKE(
+        "Setel ulang rekor?",
+        "Rekor game Ular kembali ke nol. Ini tidak bisa dibatalkan.",
+        "Setel ulang",
     ),
     CLEAR(
         "Hapus data situs film?",

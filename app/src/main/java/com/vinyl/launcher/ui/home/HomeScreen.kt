@@ -167,6 +167,11 @@ import com.vinyl.launcher.ui.film.FilmWebHolder
 import com.vinyl.launcher.ui.film.Tape
 import com.vinyl.launcher.ui.film.TapeFlow
 import com.vinyl.launcher.ui.film.TrayItem
+import com.vinyl.launcher.ui.game.Dir
+import com.vinyl.launcher.ui.game.Games
+import com.vinyl.launcher.ui.game.SnakeHud
+import com.vinyl.launcher.ui.game.SnakePhase
+import com.vinyl.launcher.ui.game.SnakeTvScreen
 import com.vinyl.launcher.ui.room.stage.DeckDisplay
 import com.vinyl.launcher.ui.room.stage.DeckTape
 import com.vinyl.launcher.ui.room.stage.StageDrawerInfo
@@ -191,6 +196,8 @@ fun HomeScreen(vm: HomeViewModel) {
     val tapeState by vm.tape.collectAsStateWithLifecycle()
     val trayOpen by vm.trayOpen.collectAsStateWithLifecycle()
     val theatre by vm.theatre.collectAsStateWithLifecycle()
+    val tvPower by vm.tvPower.collectAsStateWithLifecycle()
+    val snakeHud by vm.snakeHud.collectAsStateWithLifecycle()
     // Yang tampil di ruang TV: lagu (kaset musik) atau film dari laci. np tetap lagu aplikasi musik (perpustakaan, lirik, drawer).
     val shown by vm.roomNowPlaying.collectAsStateWithLifecycle()
     val tape = tapeState.tape
@@ -218,8 +225,14 @@ fun HomeScreen(vm: HomeViewModel) {
 
     // Timer tidur selesai → TV "dimatikan" sampai musik diputar lagi
     val slept by SleepTimer.slept.collectAsStateWithLifecycle()
-    LaunchedEffect(np.isPlaying) { if (np.isPlaying) SleepTimer.clearSlept() }
-    val tvOff = slept && !np.isPlaying && tapeIsMusic
+    // Lagu mulai diputar: TV yang dimatikan (timer tidur atau tombol dayanya) menyala lagi
+    LaunchedEffect(np.isPlaying) {
+        if (np.isPlaying) {
+            SleepTimer.clearSlept()
+            vm.wakeTv()
+        }
+    }
+    val tvOff = (slept && !np.isPlaying && tapeIsMusic) || !tvPower
 
     // Bunyi TV: "thunk" saat layar menyala dari siaga, statis singkat saat pindah halaman ("ganti channel")
     var hadTrack by remember { mutableStateOf(shown.hasTrack) }
@@ -311,8 +324,9 @@ fun HomeScreen(vm: HomeViewModel) {
         reapplyKey = resumed to fullscreen,
     )
 
-    // ----- Film di layar TV: dibuka/ditutup mengikuti kaset di deck, dijeda bila ruang TV tidak tampil, dibaca tiap detik -----
-    val filmVisible = resumed && page == RoomPage.ROOM && !drawerOpen && !lyricsOpen
+    // ----- Film di layar TV: dibuka/ditutup mengikuti kaset di deck, dijeda bila ruang TV tidak tampil atau TV dimatikan, dibaca tiap detik -----
+    val roomVisible = resumed && page == RoomPage.ROOM && !drawerOpen && !lyricsOpen
+    val filmVisible = roomVisible && !tvOff
     LaunchedEffect(filmCassette?.id, filmCassette?.url) {
         val c = filmCassette
         if (c != null) filmHolder.open(c.url) else filmHolder.close()
@@ -325,8 +339,22 @@ fun HomeScreen(vm: HomeViewModel) {
             delay(FILM_POLL_MS)
         }
     }
-    // Layar tetap menyala selama film diputar dan terlihat
-    KeepScreenOn(filmVisible && tape is Tape.Film && shown.isPlaying)
+    // ----- Game Ular: berjalan hanya selama ruang TV tampil, TV menyala, laci tertutup, dan bukan mode edit -----
+    val gameActive = roomVisible && !tvOff && !trayOpen && !editing
+    val gameRunning = tape is Tape.Game && snakeHud?.phase == SnakePhase.RUNNING
+    LaunchedEffect(gameRunning, gameActive) {
+        if (!gameRunning) return@LaunchedEffect
+        if (!gameActive) {
+            vm.snakePause()
+            return@LaunchedEffect
+        }
+        while (true) {
+            delay(vm.snakeTickMs())
+            vm.snakeStep()
+        }
+    }
+    // Layar tetap menyala selama film atau game berjalan dan terlihat
+    KeepScreenOn((filmVisible && tape is Tape.Film && shown.isPlaying) || (gameActive && gameRunning))
 
     // ----- Video milik pengguna di layar TV (folder SAF). Pemutar hanya ada selama ruang TV benar-benar tampil -----
     val video = settings.video
@@ -379,11 +407,20 @@ fun HomeScreen(vm: HomeViewModel) {
     }
 
     // Kaset film di meja (label dan warnanya milik kaset itu) dan isi laci
-    val tapeLabel = remember(filmCassette) {
-        filmCassette?.let { CassetteLabel("film\u0000${it.id}", it.name, FilmRules.hostOf(it.url), null, CassetteShell.COLORED, Color(it.color)) }
+    val gameId = (tape as? Tape.Game)?.id
+    val tapeLabel = remember(filmCassette, gameId) {
+        when {
+            filmCassette != null -> CassetteLabel("film\u0000${filmCassette.id}", filmCassette.name, FilmRules.hostOf(filmCassette.url), null, CassetteShell.COLORED, Color(filmCassette.color))
+            gameId != null -> CassetteLabel("game\u0000$gameId", Games.title(gameId).uppercase(), "Game", null, CassetteShell.COLORED, Color(Games.color(gameId)))
+            else -> null
+        }
     }
-    val trayItems = remember(settings.film.cassettes) {
-        settings.film.cassettes.map { c -> TrayItem(Tape.Film(c.id), c.name, FilmRules.hostOf(c.url), Color(c.color), c) }
+    val trayItems = remember(settings.film.cassettes, settings.film.snakeBest) {
+        settings.film.cassettes.map { c -> TrayItem(Tape.Film(c.id), c.name, FilmRules.hostOf(c.url), Color(c.color), c) } +
+            Games.all.map { id ->
+                val best = settings.film.snakeBest
+                TrayItem(Tape.Game(id), Games.title(id), if (best > 0) "Game · rekor $best" else "Game", Color(Games.color(id)), null)
+            }
     }
     val drawerInfo = remember(trayOpen, trayItems) {
         StageDrawerInfo(open = trayOpen, peek = trayItems.map { it.color }, count = trayItems.size)
@@ -527,6 +564,8 @@ fun HomeScreen(vm: HomeViewModel) {
                 theatre = theatre,
                 drawerInfo = drawerInfo,
                 effects = settings.effects,
+                snakeHud = snakeHud,
+                gameActive = gameActive,
                 vm = vm,
             )
         }
@@ -543,6 +582,8 @@ fun HomeScreen(vm: HomeViewModel) {
                 onSeek = onOsdSeek,
                 modifier = Modifier.padding(dockPadding(settings.dock, editing)),
                 modeWord = if (tapeIsMusic) null else TapeFlow.modeWord(tape),
+                // Game punya skornya sendiri di layar TV; garis waktu pita hanya untuk lagu dan film
+                showCounter = tape !is Tape.Game,
             )
         }
 
@@ -772,6 +813,8 @@ private fun HomeContent(
     theatre: Boolean,
     drawerInfo: StageDrawerInfo,
     effects: EffectSettings,
+    snakeHud: SnakeHud?,
+    gameActive: Boolean,
     vm: HomeViewModel,
 ) {
     val density = LocalDensity.current
@@ -798,31 +841,60 @@ private fun HomeContent(
     val lyrics = rememberLyrics(np, lyricsVisible, lyricsOnline)
     val transport = StatusText.transport(np.hasTrack, np.isPlaying, seek.deltaMs?.takeIf { seek.touching })
     val isFilm = tape is Tape.Film
+    val isGame = tape is Tape.Game
     val info = StageInfo(
-        tvVfd = VfdTicker.playback(np.hasTrack, np.isPlaying),
-        deck = if (isFilm) filmDeck(transport)
-        else deckDisplay(transport, tapeMode(np, context.packageName, hifi), audio, hifi.takeIf { np.packageName == context.packageName && it.active }),
+        tvVfd = if (isGame) gameVfd(snakeHud) else VfdTicker.playback(np.hasTrack, np.isPlaying),
+        deck = when {
+            isFilm -> filmDeck(transport)
+            isGame -> gameDeck(snakeHud)
+            else -> deckDisplay(transport, tapeMode(np, context.packageName, hifi), audio, hifi.takeIf { np.packageName == context.packageName && it.active })
+        },
         tapeTime = tapeTime(np),
+        tvState = if (isGame) gameSpoken(snakeHud) else null,
     )
-    val actions = remember(vm, isFilm, filmHolder, effects) {
-        if (isFilm) {
-            StageActions(
-                onPrevious = filmHolder::backOrHome,
-                onRewind = { filmHolder.seekBy(-FILM_STEP_MS) },
+    val gamePhase = snakeHud?.phase
+    val actions = remember(vm, isFilm, isGame, gamePhase, filmHolder, effects) {
+        when {
+            isFilm -> StageActions(
+                onPrevious = { if (!vm.wakeTv()) filmHolder.backOrHome() },
+                onRewind = { if (!vm.wakeTv()) filmHolder.seekBy(-FILM_STEP_MS) },
                 onPlayPause = {
-                    if (vm.roomNowPlaying.value.isPlaying) SoundFx.stopKey(context, effects) else SoundFx.playKey(context, effects)
-                    filmHolder.toggle()
+                    if (!vm.wakeTv()) {
+                        if (vm.roomNowPlaying.value.isPlaying) SoundFx.stopKey(context, effects) else SoundFx.playKey(context, effects)
+                        filmHolder.toggle()
+                    }
                 },
-                onNext = { filmHolder.seekBy(FILM_STEP_MS) },
+                onNext = { if (!vm.wakeTv()) filmHolder.seekBy(FILM_STEP_MS) },
                 onSeek = filmHolder::seekTo,
                 onTick = vm::tick,
                 onOpenLyrics = {},
                 onToggleDrawer = vm::toggleTray,
-                onVfdClick = vm::openTheatre,
+                onVfdClick = { if (!vm.wakeTv()) vm.openTheatre() },
                 vfdClickLabel = "Buka mode Teater, film layar penuh",
+                onPower = vm::toggleTvPower,
             )
-        } else {
-            StageActions(
+            isGame -> StageActions(
+                onPrevious = { vm.snakeTurn(Dir.LEFT) },
+                onRewind = { vm.snakeTurn(Dir.UP) },
+                onPlayPause = { vm.snakeTurn(Dir.DOWN) },
+                onNext = { vm.snakeTurn(Dir.RIGHT) },
+                onSeek = {},
+                onTick = vm::tick,
+                onOpenLyrics = {},
+                onToggleDrawer = vm::toggleTray,
+                onVfdClick = vm::snakeTap,
+                vfdClickLabel = gameTapLabel(gamePhase),
+                onCassette = vm::snakeTap,
+                onPower = vm::toggleTvPower,
+                tvActions = listOf<Pair<String, () -> Unit>>(
+                    gameTapLabel(gamePhase) to vm::snakeTap,
+                    "Belok kiri" to { vm.snakeTurn(Dir.LEFT) },
+                    "Belok kanan" to { vm.snakeTurn(Dir.RIGHT) },
+                    "Naik" to { vm.snakeTurn(Dir.UP) },
+                    "Turun" to { vm.snakeTurn(Dir.DOWN) },
+                ),
+            )
+            else -> StageActions(
                 onPrevious = vm::previous,
                 onRewind = { vm.seek((vm.nowPlaying.value.positionAt() - 10_000L).coerceAtLeast(0L)) },
                 onPlayPause = { if (vm.nowPlaying.value.hasTrack) vm.togglePlay() else vm.openMusic() },
@@ -831,12 +903,23 @@ private fun HomeContent(
                 onTick = vm::tick,
                 onOpenLyrics = vm::openLyrics,
                 onToggleDrawer = vm::toggleTray,
+                onPower = vm::toggleTvPower,
             )
         }
     }
-    val tvScreen: (@Composable () -> Unit)? = if (isFilm) {
-        { FilmTvScreen(filmHolder, theatre, motionAllowed) }
-    } else null
+    val tvScreen: (@Composable () -> Unit)? = when {
+        isFilm -> {
+            val content: @Composable () -> Unit = { FilmTvScreen(filmHolder, theatre, motionAllowed) }
+            content
+        }
+        isGame -> {
+            val content: @Composable () -> Unit = {
+                SnakeTvScreen(vm.snake, enabled = !editing && gameActive, motionAllowed = motionAllowed, onTurn = vm::snakeTurn, onTap = vm::snakeTap)
+            }
+            content
+        }
+        else -> null
+    }
     Box(Modifier.fillMaxSize()) {
         RoomStage(
             np = np, retro = retro, tone = look.tone, tvSize = home.turntableSize, accent = accent,
@@ -853,7 +936,11 @@ private fun HomeContent(
             showTitle = home.trackInfoVisible && lyrics == null,
             tvOff = tvOff,
             screenVideo = screenVideo,
-            tape = if (isFilm) DeckTape.FILM else DeckTape.MUSIC,
+            tape = when {
+                isFilm -> DeckTape.FILM
+                isGame -> DeckTape.GAME
+                else -> DeckTape.MUSIC
+            },
             tapeLabel = tapeLabel,
             tvScreen = tvScreen,
             drawer = drawerInfo,
@@ -895,6 +982,51 @@ private fun filmDeck(t: Transport): DeckDisplay {
         Transport.STOP -> "■"
     }
     return DeckDisplay("FILM $symbol", "TEATER")
+}
+
+/** VFD deck untuk kaset game: kata mode + tanda transport, dan skor (atau rekor bila belum mulai). */
+private fun gameDeck(h: SnakeHud?): DeckDisplay {
+    val symbol = when (h?.phase) {
+        SnakePhase.RUNNING -> "▶"
+        SnakePhase.PAUSED -> "❚❚"
+        else -> "■"
+    }
+    val line = when {
+        h == null -> ""
+        h.phase == SnakePhase.READY -> if (h.best > 0) "REKOR ${h.best}" else "SIAP MAIN"
+        else -> "SKOR ${h.score}"
+    }
+    return DeckDisplay("GAME $symbol", line)
+}
+
+/** Baris VFD kecil di panel TV (± tujuh huruf): keadaan permainan. */
+private fun gameVfd(h: SnakeHud?): String = when (h?.phase) {
+    SnakePhase.RUNNING -> "PLAY"
+    SnakePhase.PAUSED -> "PAUSE"
+    SnakePhase.OVER -> "OVER"
+    SnakePhase.WON -> "WIN"
+    else -> "READY"
+}
+
+/** Nama aksi ketuk pada layar/kaset/VFD game menurut keadaannya (juga untuk pembaca layar). */
+private fun gameTapLabel(phase: SnakePhase?): String = when (phase) {
+    SnakePhase.RUNNING -> "Jeda game"
+    SnakePhase.PAUSED -> "Lanjutkan game"
+    SnakePhase.OVER, SnakePhase.WON -> "Main lagi"
+    else -> "Mulai game"
+}
+
+/** Keadaan game untuk pembaca layar. */
+private fun gameSpoken(h: SnakeHud?): String? {
+    h ?: return null
+    val state = when (h.phase) {
+        SnakePhase.READY -> "Siap main"
+        SnakePhase.RUNNING -> "Berjalan"
+        SnakePhase.PAUSED -> "Dijeda"
+        SnakePhase.OVER -> "Game over"
+        SnakePhase.WON -> "Menang, papan penuh"
+    }
+    return "$state. Skor ${h.score}, rekor ${h.best}"
 }
 
 /** Ruang yang dipakai Taskbar TV di sisi tempat ia menempel (tidak ada saat mengedit). */
@@ -1036,9 +1168,13 @@ private fun OsdLayer(
     onSeek: (Long) -> Unit,
     modifier: Modifier = Modifier,
     modeWord: String? = null,
+    showCounter: Boolean = true,
 ) {
     val position = rememberPositionMs(np)
-    RoomOsd(np = np, positionMs = position.longValue, seek = seek, osd = osd, clock = clock, landscape = landscape, onSeek = onSeek, modifier = modifier, modeWord = modeWord)
+    RoomOsd(
+        np = np, positionMs = position.longValue, seek = seek, osd = osd, clock = clock, landscape = landscape, onSeek = onSeek,
+        modifier = modifier, modeWord = modeWord, showCounter = showCounter,
+    )
 }
 
 /** Butir VHS berhenti menggambar ulang selama halaman bergerak (dibaca di sini agar hanya lapisan ini yang disusun ulang). */

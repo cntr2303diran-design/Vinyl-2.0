@@ -37,8 +37,8 @@ object PrivacyInfo {
             "Kaset bawaan hanya menunjuk sumber film legal (domain publik, film terbuka, Dewan Film Nasional Kanada); alamat lain " +
             "Anda tambahkan sendiri, dan isinya sepenuhnya milik situs itu. Halaman tidak punya jembatan ke aplikasi, tidak bisa " +
             "meminta lokasi, kamera, mikrofon, berkas, atau unduhan, dan hanya https yang dimuat. Cookie dan data situs film ada di " +
-            "perangkat ini saja dan bisa dihapus di Pengaturan → Laci kaset. Alamat kaset ikut berkas cadangan; skor game di laci " +
-            "tersimpan lokal.",
+            "perangkat ini saja dan bisa dihapus di Pengaturan → Laci kaset. Alamat kaset ikut berkas cadangan. Game Ular di laci " +
+            "tidak memakai internet; rekornya (satu angka) tersimpan lokal dan bisa disetel ulang di Pengaturan → Laci kaset.",
         "Pemutar musik bawaan (opsional) juga hanya membaca folder musik yang Anda pilih sendiri, tanpa izin penyimpanan. Daftar lagu " +
             "(judul, artis, album, format) disimpan di memori internal aplikasi agar pemindaian berikutnya cepat; berkas musik tidak " +
             "disalin, tidak diubah, dan tidak diunggah. Folder musik tidak ikut berkas cadangan.",

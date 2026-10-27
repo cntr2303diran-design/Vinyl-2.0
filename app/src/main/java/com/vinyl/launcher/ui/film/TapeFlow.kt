@@ -1,5 +1,7 @@
 package com.vinyl.launcher.ui.film
 
+import com.vinyl.launcher.ui.game.Games
+
 /*
  * Alur kaset di deck: kaset musik (bawaan, menampilkan lagu yang diputar aplikasi musik) bisa diganti kaset dari laci —
  * kaset film (situs di layar TV) atau kaset game. Murni (tanpa Android) agar aturan jeda/lanjut musiknya bisa diuji.
@@ -52,12 +54,13 @@ object TapeFlow {
         else TapeStep(TapeState(Tape.Music, musicWasPlaying = false), if (s.musicWasPlaying && resumeMusic) MusicEffect.RESUME else MusicEffect.NONE)
 
     /**
-     * Kaset film di deck sudah tidak ada di laci (dihapus dari pengaturan): kembali ke kaset musik. Musik TIDAK dilanjutkan
-     * otomatis di sini — penghapusan bukan perintah "kembalikan musik".
+     * Kaset film di deck sudah tidak ada di laci (dihapus dari pengaturan), atau kaset game tidak dikenal: kembali ke kaset
+     * musik. Musik TIDAK dilanjutkan otomatis di sini — penghapusan bukan perintah "kembalikan musik".
      */
-    fun reconcile(s: TapeState, filmExists: (String) -> Boolean): TapeState {
+    fun reconcile(s: TapeState, filmExists: (String) -> Boolean, gameExists: (String) -> Boolean = Games::exists): TapeState {
         val t = s.tape
-        return if (t is Tape.Film && !filmExists(t.id)) TapeState(Tape.Music, musicWasPlaying = false) else s
+        val gone = (t is Tape.Film && !filmExists(t.id)) || (t is Tape.Game && !gameExists(t.id))
+        return if (gone) TapeState(Tape.Music, musicWasPlaying = false) else s
     }
 
     /** Teks VFD deck/TV untuk kaset [tape] dan keadaannya, mis. "FILM ▶". */

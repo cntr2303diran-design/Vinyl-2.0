@@ -1,5 +1,6 @@
 package com.vinyl.launcher.ui.film
 
+import com.vinyl.launcher.ui.game.Games
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -8,7 +9,7 @@ import org.junit.Test
 class TapeFlowTest {
     private val film = Tape.Film("f1")
     private val other = Tape.Film("f2")
-    private val game = Tape.Game("ular")
+    private val game = Tape.Game(Games.SNAKE)
     private val music = TapeState()
 
     @Test
@@ -103,6 +104,32 @@ class TapeFlowTest {
         assertEquals(music, TapeFlow.reconcile(music, filmExists = { false }))
         val g = TapeFlow.press(music, game, musicPlaying = false, resumeMusic = true).state
         assertEquals(g, TapeFlow.reconcile(g, filmExists = { false }))
+    }
+
+    @Test
+    fun aGameCassetteTheAppDoesNotKnowReturnsTheDeckToMusicWithoutResuming() {
+        val unknown = TapeState(Tape.Game("tidak-ada"), musicWasPlaying = true)
+        assertEquals(TapeState(), TapeFlow.reconcile(unknown, filmExists = { true }))
+        // pemeriksa bisa diganti (mis. uji)
+        assertEquals(unknown, TapeFlow.reconcile(unknown, filmExists = { true }, gameExists = { true }))
+    }
+
+    @Test
+    fun aFilmCassetteDeletedWhileAGameIsInTheDeckDoesNotTouchTheGame() {
+        val g = TapeFlow.press(music, game, musicPlaying = true, resumeMusic = true).state
+        assertEquals(g, TapeFlow.reconcile(g, filmExists = { false }))
+    }
+
+    @Test
+    fun switchingBetweenAFilmAndAGameKeepsTheMemoryOfTheMusic() {
+        val inFilm = TapeFlow.press(music, film, musicPlaying = true, resumeMusic = true).state
+        val inGame = TapeFlow.press(inFilm, game, musicPlaying = false, resumeMusic = true)
+        assertEquals(game, inGame.state.tape)
+        assertTrue(inGame.state.musicWasPlaying)
+        assertEquals(MusicEffect.NONE, inGame.music)
+        val back = TapeFlow.press(inGame.state, game, musicPlaying = false, resumeMusic = true)
+        assertEquals(Tape.Music, back.state.tape)
+        assertEquals(MusicEffect.RESUME, back.music)
     }
 
     @Test

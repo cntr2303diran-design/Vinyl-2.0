@@ -315,3 +315,69 @@ pilihan warna di editor adalah grup tombol radio 48 dp dengan tanda centang berk
   terbaca benar karena tipografi aplikasi memakai `TextDirection.Content`.
 - Teks di layar TV dan VFD tidak ikut skala huruf sistem (bagian dari gambar TV, ukurannya mengikuti TV); teks baki dan editor ikut skala 200%
   (editor menggulir, baki menggulir mendatar). Tangkapan layar otomatis: ponsel, ponsel kecil + huruf 200%, tablet, RTL, laci kosong.
+
+---
+
+## Fitur iseng di ruang TV: game Ular, tombol daya, "ganti channel" (Tahap 14)
+
+Aturan yang dijaga: **tidak ada menu atau layar baru.** Setiap fitur iseng adalah benda di ruangan — game adalah kaset di laci, daya TV
+adalah tombol fisik di panel TV, "ganti channel" adalah hujan statis di tabung — jadi bahasa desain peralatan analog tidak berubah.
+
+### Prinsip yang dipakai
+
+| Prinsip | Sumber | Dipakai untuk |
+|---|---|---|
+| Informasi menjadi bagian dari dunia | Game horor *found footage* (prinsip, bukan aset) | Game dipilih dengan mengambil kaset berlabel *ULAR* dari laci; skor tampil di layar TV dan di VFD deck (`GAME ▶` · `SKOR 12`), bukan di panel mengambang |
+| Manipulasi langsung, umpan balik seketika | Apple HIG | Ular dikendalikan dengan usapan langsung di layar TV; cincin kecil saat makan dan papan bergetar saat kalah (260 / 320 ms); semuanya hilang bila gerak dimatikan |
+| Aksi utama dalam jangkauan jempol | Samsung One UI | Usapan boleh di bagian layar mana pun (tidak ada tombol arah kecil yang harus dibidik); tombol panah deck sebagai cadangan; tombol daya 48 dp |
+| Lapisan dengan kedalaman, material tembus pandang subtil | Microsoft Fluent | Panel "SIAP / JEDA / GAME OVER" adalah hitam tembus pandang (alpha 0,86) di atas papan, jadi ular tetap terlihat samar di belakangnya |
+| Bentuk bulat, warna dari konten, tipografi jelas | Material 3 | Kaset game berwarna hijau lumut sendiri; ular dan apel berbentuk bulat; teks papan memakai huruf VFD yang sama dengan OSD |
+
+### Perilaku
+
+- **Kaset Ular** selalu ada di ujung baki (setelah kaset film), bernama *ULAR* dengan keterangan "Game · rekor N". Ketuk = masuk ke deck (musik dijeda,
+  papan baru), ketuk lagi = kembali ke kaset musik. Kaset game tidak bisa diubah atau dihapus (tidak ada aksi "Ubah kaset" padanya).
+- **Papan** 16 × 13 petak persegi (`Snake.COLS/ROWS`) dengan pita skor di atasnya (12% tinggi layar). Tidak ada dinding: ular yang keluar dari satu sisi
+  muncul di sisi seberang. Mati **hanya** bila kepala menabrak badannya sendiri; menang bila papan penuh. Kecepatan 230 ms per langkah, turun 7 ms
+  tiap apel sampai 90 ms (`Snake.tickMs`). Belokan berurutan diantre (maks 2) supaya dua usapan cepat tidak hilang, dan belok balik 180° diabaikan.
+- **Kendali:** usap (jarak minimal = lebih besar dari touch slop sistem dan 16 dp; satu usapan panjang yang berbelok memberi beberapa belokan),
+  ketuk layar / kaset / jendela VFD = mulai · jeda · lanjut · main lagi, panah deck = kiri · atas · bawah · kanan. Layar game memakai seluruh
+  gerakan jari di atasnya sehingga geser halaman beranda dan tekan-lama tidak ikut terpicu oleh usapan.
+- **Jeda otomatis:** game berhenti sendiri saat ruang TV tidak tampil (halaman lain, layar mati), laci terbuka, mode edit, atau TV dimatikan. Layar
+  perangkat tetap menyala selama game berjalan dan terlihat.
+- **Rekor** satu bilangan per perangkat, disimpan lokal bersama pengaturan (hanya dinaikkan oleh game; Pengaturan → *Laci kaset* → *Setel ulang rekor Ular*
+  menurunkannya ke nol setelah konfirmasi). Papan yang sedang berjalan tidak disimpan.
+- **Tombol daya TV** (bulat, di bawah knob SEEK; area sentuh ≥ 48 dp, digeser ke bawah bila akan menimpa area knob): menyusutkan gambar menjadi titik
+  lalu padam (`CRT_POWER_OFF_MS` 360 ms) dengan bunyi desing turun + "pop"; menyalakan lagi dengan animasi tabung menyala dan bunyi "thunk". TV mati =
+  film dan game dijeda, dan cahaya layar di dinding dan pada kaset meredup. TV menyala sendiri bila kaset dimasukkan, lagu mulai diputar, atau tombol deck musik ditekan; pada kaset
+  film/game, sentuhan pertama setelah TV mati **hanya** menyalakan TV (tidak ikut menjalankan perintahnya). Keadaan daya tidak disimpan.
+- **Ganti channel:** setiap kaset berganti, layar TV menampilkan hujan statis 320 ms (`Tokens.Motion.STATIC_BURST_MS`) — empat bitmap derau 80 × 60 yang
+  digambar bergantian tanpa penghalusan, alpha menurun linear. Tidak ada saat komposisi pertama, saat mode edit, atau saat gerak dimatikan. Ganti lagu pada
+  kaset musik tidak memicunya (satu identitas).
+- **Bunyi** (semuanya disintesis di perangkat, tanpa berkas suara): TV padam (siulan jatuh + dentum), laci ditarik/didorong (gesekan kayu + ketukan), makan apel
+  (dua nada naik), game over (empat nada turun), menang (empat nada naik). Bunyi mengikuti *Bunyi tombol kaset & TV*, getar mengikuti *Getar*; bunyi dan getar laci dan
+  game juga hanya aktif bila *Efek saat knob & tombol disentuh* menyala. TV padam/menyala hanya berbunyi (tanpa getar).
+
+### Token (`Tokens.Game`, `Tokens.Motion.STATIC_BURST_MS`) dan kontras
+
+| Token | Nilai | Pemakaian |
+|---|---|---|
+| `BOARD_TOP` / `BOARD_BOTTOM` | `#07140B` / `#030A06` | Papan (gradien vertikal hijau sangat gelap) |
+| `GRID_DOT` | `#1B3B26` | Titik petak samar (hiasan) |
+| `SNAKE_HEAD` / `SNAKE_TAIL` | `#C9F7BF` / `#2F9E58` | Ular: gradien dari kepala ke ekor |
+| `SNAKE_DEAD` | `#E5533D` | Ular setelah menabrak badannya sendiri (dicampur 70% ke warna ular) |
+| `PANEL_ALPHA` | 0,86 | Panel tengah (hitam) |
+| `STATIC_BURST_MS` | 320 ms | Lama hujan statis ganti channel |
+
+`GamePaletteTest` menguji: SKOR putih di atas papan 18,9–20,0 : 1, REKOR amber 8,5–9,0 : 1; teks panel (judul putih ≥ 15,5 : 1, keterangan krem ≥ 12,2 : 1, "REKOR BARU!"
+amber ≥ 7,0 : 1) di atas bagian papan yang paling terang di belakangnya; bentuk penting ≥ 3 : 1 terhadap papan — kepala 15,7 : 1, ekor 5,5 : 1, ular mati 5,1 : 1, apel 8,5 : 1.
+Ular mati tidak hanya berbeda warna: matanya menjadi silang dan papan bergetar. Apel berbentuk bola bertepi gelap, berbeda bentuk dari ular (tidak bergantung pada warna).
+
+### Aksesibilitas, RTL, huruf 200%
+
+- Isi layar CRT disembunyikan dari pembaca layar (bagian dari gambar), jadi keadaan dan aksi game dipasang di **tingkat TV**: keterangan "TV menampilkan game Ular",
+  keadaan ("Berjalan. Skor 12, rekor 30"), dan aksi khusus *Mulai/Jeda/Lanjutkan/Main lagi game*, *Belok kiri/kanan*, *Naik*, *Turun* — game bisa dimainkan lengkap lewat TalkBack tanpa usapan.
+- Tombol daya, kaset, dan laci ≥ 48 dp, berlabel ("Tombol daya TV", keadaan "Mati/Menyala", aksi "Nyalakan TV/Matikan TV"). TV yang mati dibaca "TV mati".
+- Teks papan adalah bagian dari gambar TV: ukurannya mengikuti TV, tidak ikut skala huruf sistem (sama seperti OSD dan VFD). Papan sendiri tidak berisi teks selain SKOR/REKOR dan panel.
+- Panggung tetap kiri→kanan pada RTL (benda fisik), jadi arah usapan selalu arah fisik layar. Tangkapan layar otomatis: siap, jalan, jeda (ponsel), game over + rekor baru (tablet),
+  ular melintasi tepi (ponsel mendatar), ponsel kecil + huruf 200%, RTL, dan TV mati.

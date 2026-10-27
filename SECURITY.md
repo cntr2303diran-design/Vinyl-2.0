@@ -51,7 +51,8 @@ Laci kaset film di meja (Tahap 13) tidak menambah izin dan tidak mengirim data p
 | Daftar kaset film (nama, alamat `https`, warna; maks 24) | DataStore (bersama pengaturan lain) | Ikut berkas cadangan agar bisa dipindah. Dibersihkan ulang saat dibaca atau diimpor: hanya `https`, tanpa alamat IP/`localhost`/info login di alamat, maks 500 karakter |
 | Cookie, penyimpanan lokal, dan cache situs film | Folder internal WebView milik aplikasi ini | Tidak ikut cadangan (allowBackup mati). Cookie pihak ketiga dimatikan. Hapus lewat Pengaturan → *Laci kaset* → *Hapus cookie & data situs film* |
 | Posisi dan durasi film yang sedang tampil | Hanya memori | Dibaca tiap detik lewat skrip tetap milik aplikasi, hanya selama film tampil, untuk menampilkan waktu dan menggeser; tidak disimpan dan tidak dikirim |
-| Skor terbaik permainan di laci | DataStore (bersama pengaturan lain) | Satu bilangan; lokal |
+| Rekor game Ular (kaset game di laci) | DataStore (bersama pengaturan lain) | Satu bilangan bulat; lokal, tidak dikirim ke mana pun. Ikut berkas cadangan; saat dibaca atau diimpor dipaksa ke 0–99.999 (`FilmRules.MAX_SNAKE`), jadi cadangan yang diubah tangan tidak bisa menyimpan nilai aneh. Hanya dinaikkan oleh game; Pengaturan → *Laci kaset* → *Setel ulang rekor Ular* (dengan konfirmasi) mengembalikannya ke nol |
+| Papan game yang sedang berjalan, keadaan daya TV | Hanya memori | Tidak disimpan; hilang bila proses dimulai ulang |
 
 Setiap izin dan alasannya tampil di Pengaturan → *Cadangan & privasi*; daftarnya (`PrivacyInfo.kt`) dicocokkan dengan
 `AndroidManifest.xml` oleh tes otomatis, jadi izin baru tanpa alasan akan menggagalkan build.
@@ -135,6 +136,8 @@ Itu butuh langkah penandatanganan manual di luar build ini dan tidak diotomatisk
 - Video YouTube sengaja tidak dibangun: Kebijakan Pengembang YouTube API Services III.I butir 7 melarang memisahkan atau
   mengisolasi komponen audio/video konten YouTube (https://developers.google.com/youtube/terms/developer-policies), padahal
   video di layar TV diputar tanpa suara sementara musik berasal dari aplikasi lain.
+- Game Ular tidak memakai jaringan, izin, atau pustaka tambahan: seluruh permainan, gambar, dan bunyinya dihitung dan disintesis di dalam aplikasi. Belum diuji di perangkat nyata
+  (hanya tes unit mesin game, tangkapan layar, dan build CI); kenyamanan usapan dan kecepatannya perlu dirasakan langsung.
 - Laci kaset film belum diuji di perangkat nyata (hanya tes unit untuk aturan alamat, pembaca video, dan alur kaset; tangkapan layar dengan
   halaman rekaan; build CI). Layanan streaming berlangganan dengan perlindungan DRM (Widevine L1, dsb.) sering menolak diputar di dalam
   WebView aplikasi lain; kaset bawaan sengaja hanya menunjuk sumber legal. Isi, iklan, dan pelacak halaman film sepenuhnya milik situs

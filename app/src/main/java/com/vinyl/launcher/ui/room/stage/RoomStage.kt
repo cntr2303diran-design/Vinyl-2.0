@@ -8,11 +8,13 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -33,6 +35,7 @@ import com.vinyl.launcher.data.RetroSettings
 import com.vinyl.launcher.data.RoomTone
 import com.vinyl.launcher.media.NowPlaying
 import com.vinyl.launcher.ui.cassette.CassetteLabel
+import com.vinyl.launcher.ui.room.ChannelStatic
 import com.vinyl.launcher.ui.room.CrtTv
 import com.vinyl.launcher.ui.room.TvGeometry
 import com.vinyl.launcher.ui.room.TvScreen
@@ -47,6 +50,8 @@ data class StageInfo(
     val deck: DeckDisplay,
     /** Durasi lagu di label kaset (mis. "4:18"). */
     val tapeTime: String,
+    /** Keadaan layar TV untuk pembaca layar bila bukan kaset musik (mis. "Skor 12, rekor 30. Berjalan"); null = tidak ada. */
+    val tvState: String? = null,
 )
 
 class StageActions(
@@ -62,6 +67,12 @@ class StageActions(
     /** Jendela VFD deck menjadi tombol (mis. mode Teater); null = hanya tampilan. */
     val onVfdClick: (() -> Unit)? = null,
     val vfdClickLabel: String = "",
+    /** Ketuk kaset di meja; null = sama dengan [onPlayPause] (kaset game memakainya untuk mulai/jeda, bukan tombol "turun"). */
+    val onCassette: (() -> Unit)? = null,
+    /** Tombol daya TV di panel kontrol; null = tombol tidak dipasang. */
+    val onPower: (() -> Unit)? = null,
+    /** Aksi aksesibilitas pada layar TV bagi pembaca layar (mis. belokan game): nama dan aksinya. */
+    val tvActions: List<Pair<String, () -> Unit>> = emptyList(),
 )
 
 /** Keadaan laci kaset di meja: terbuka atau tidak, warna kaset yang mengintip, dan jumlah kasetnya. */
@@ -180,6 +191,7 @@ fun RoomStage(
                 .size(tv.width.dp, tv.height.dp)
                 .semantics(mergeDescendants = tvScreen == null) {
                     contentDescription = when {
+                        tvOff -> "TV mati"
                         tape == DeckTape.FILM -> "TV menampilkan film ${np.title}"
                         tape == DeckTape.GAME -> "TV menampilkan game ${np.title}"
                         mode == TvScreenMode.STANDBY -> "TV, siaga. Tidak ada lagu"
@@ -188,10 +200,15 @@ fun RoomStage(
                     if (tape == DeckTape.MUSIC) {
                         stateDescription = if (!np.hasTrack) "Siaga" else if (np.isPlaying) "Diputar" else "Dijeda"
                         customActions = listOf(CustomAccessibilityAction("Buka lirik layar penuh") { actions.onOpenLyrics(); true })
+                    } else {
+                        info.tvState?.let { stateDescription = it }
+                        if (!tvOff && actions.tvActions.isNotEmpty()) {
+                            customActions = actions.tvActions.map { (label, perform) -> CustomAccessibilityAction(label) { perform(); true } }
+                        }
                     }
                 }
                 // Layar hidup (WebView/game) menerima sentuhan sendiri; ketuk-untuk-lirik hanya untuk kaset musik
-                .clickable(enabled = !editing && np.hasTrack && tape == DeckTape.MUSIC, onClickLabel = "Buka lirik", role = Role.Button, onClick = actions.onOpenLyrics),
+                .clickable(enabled = !editing && !tvOff && np.hasTrack && tape == DeckTape.MUSIC, onClickLabel = "Buka lirik", role = Role.Button, onClick = actions.onOpenLyrics),
         ) {
             CrtTv(
                 mode = mode, art = np.art.takeIf { showCover }, title = if (showTitle) np.title else "",
@@ -203,6 +220,8 @@ fun RoomStage(
                 screenOverlay = {
                     screenExtra()
                     SeekOsd(seek, np.durationMs, tv.width.dp)
+                    // Kaset berganti = "ganti channel": hujan statis singkat (kaset musik: satu identitas, ganti lagu tidak memicunya)
+                    ChannelStatic(trigger = if (tape == DeckTape.MUSIC) tape else tapeLabel?.key, enabled = motionAllowed && !editing)
                 },
             )
         }
@@ -214,6 +233,25 @@ fun RoomStage(
             enabled = !editing && np.hasTrack && tape != DeckTape.GAME,
             onSeek = actions.onSeek, onTick = actions.onTick,
         )
+        // Tombol daya TV: area sentuh >= 48 dp di atas gambar tombol; digeser ke bawah bila akan menimpa area knob SEEK
+        actions.onPower?.let { onPower ->
+            val target = 48f
+            val knobHalf = maxOf(48f, tv.width * TvGeometry.KNOB_R * 2.8f) / 2f
+            val knobCy = tv.top + tv.height * TvGeometry.KNOB_CY
+            val cx = (tv.left + tv.width * TvGeometry.POWER_CX).coerceIn(tv.left + target / 2f, maxOf(tv.left + target / 2f, tv.left + tv.width - target / 2f))
+            val cy = maxOf(tv.top + tv.height * TvGeometry.POWER_CY, knobCy + knobHalf + target / 2f)
+            Box(
+                Modifier
+                    .offset((cx - target / 2f).dp, (cy - target / 2f).dp)
+                    .size(target.dp)
+                    .clip(CircleShape)
+                    .semantics {
+                        contentDescription = "Tombol daya TV"
+                        stateDescription = if (tvOff) "Mati" else "Menyala"
+                    }
+                    .clickable(enabled = !editing, onClickLabel = if (tvOff) "Nyalakan TV" else "Matikan TV", role = Role.Button, onClick = onPower),
+            )
+        }
 
         // ---------- Kaset 3D
         val duration = np.durationMs
@@ -226,7 +264,7 @@ fun RoomStage(
             f, label, hasSession = np.hasSession, playing = np.isPlaying, progress = progress, timeText = info.tapeTime,
             shell = retro.cassetteShell, speed = retro.reelSpeed, accent = accent, screenGlow = screenGlow,
             glow = retro.glowIntensity * if (screenOn) 1f else 0.2f, motionAllowed = motionAllowed && !editing,
-            enabled = !editing, onPlayPause = actions.onPlayPause,
+            enabled = !editing, onPlayPause = actions.onCassette ?: actions.onPlayPause,
         )
 
         // ---------- Deck kaset di rak meja

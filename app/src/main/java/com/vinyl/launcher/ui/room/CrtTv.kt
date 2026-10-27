@@ -166,8 +166,13 @@ fun CrtTv(
     // "Power off": gambar menyusut tegak menjadi garis, lalu mendatar menjadi titik terang, lalu gelap
     val off = remember { Animatable(if (poweredOff) 1f else 0f) }
     LaunchedEffect(poweredOff) {
-        if (!poweredOff) off.snapTo(0f)
-        else if (reduceMotion) off.snapTo(1f)
+        if (!poweredOff) {
+            // Dinyalakan lagi setelah dimatikan: garis mengembang menjadi gambar, seperti keluar dari siaga
+            val expand = off.value > 0f && !reduceMotion && mode != TvScreenMode.STANDBY
+            if (expand) power.snapTo(0f)   // lebih dulu: gambar baru muncul setelah garisnya siap
+            off.snapTo(0f)
+            if (expand) power.animateTo(1f, tween(Tokens.Motion.CRT_POWER_ON_MS, easing = LinearEasing))
+        } else if (reduceMotion) off.snapTo(1f)
         else off.animateTo(1f, tween(Tokens.Motion.CRT_POWER_OFF_MS, easing = LinearEasing))
     }
     val dark = mode == TvScreenMode.STANDBY || (poweredOff && off.value >= 1f)

@@ -21,6 +21,7 @@ import com.vinyl.launcher.ui.cassette.CassetteLabel
 import com.vinyl.launcher.ui.film.FilmTray
 import com.vinyl.launcher.ui.film.Tape
 import com.vinyl.launcher.ui.film.TrayItem
+import com.vinyl.launcher.ui.game.Games
 import com.vinyl.launcher.ui.room.stage.DeckTape
 import com.vinyl.launcher.ui.room.stage.StageDrawerInfo
 import com.vinyl.launcher.ui.theme.OsdFamily
@@ -31,10 +32,10 @@ import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
-/** Isi laci rekaan: tiga kaset bawaan. */
+/** Isi laci rekaan: tiga kaset film bawaan dan kaset game Ular (rekor 24). */
 private fun trayItems() = FilmRules.defaults().map { c ->
     TrayItem(Tape.Film(c.id), c.name, FilmRules.hostOf(c.url), Color(c.color), c)
-}
+} + Games.all.map { id -> TrayItem(Tape.Game(id), Games.title(id), "Game · rekor 24", Color(Games.color(id)), null) }
 
 private fun drawerInfo(open: Boolean) = StageDrawerInfo(open, trayItems().map { it.color }, trayItems().size)
 
@@ -54,7 +55,7 @@ private fun filmLabel(): CassetteLabel {
 
 /** Halaman web rekaan di layar TV (tanpa WebView sungguhan). */
 @androidx.compose.runtime.Composable
-private fun fakePage() {
+private fun FakePage() {
     Box(
         Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF22344F), Color(0xFF0B1019)))),
         contentAlignment = Alignment.Center,
@@ -102,7 +103,7 @@ class FilmShots {
         compose.setContent {
             StagePreview(
                 filmPlaying(), RetroSettings(tvBody = TvBody.WALNUT), landscape = false,
-                tape = DeckTape.FILM, tapeLabel = filmLabel(), tvScreen = { fakePage() }, drawer = drawerInfo(false),
+                tape = DeckTape.FILM, tapeLabel = filmLabel(), tvScreen = { FakePage() }, drawer = drawerInfo(false),
             )
         }
         shot("tahap13_film_ponsel")
@@ -115,7 +116,7 @@ class FilmShots {
             Box(Modifier.fillMaxSize()) {
                 StagePreview(
                     filmPlaying(), RetroSettings(tvBody = TvBody.WALNUT), landscape = false,
-                    tape = DeckTape.FILM, tapeLabel = filmLabel(), tvScreen = { fakePage() }, drawer = drawerInfo(true),
+                    tape = DeckTape.FILM, tapeLabel = filmLabel(), tvScreen = { FakePage() }, drawer = drawerInfo(true),
                 )
                 VinylTheme {
                     FilmTray(

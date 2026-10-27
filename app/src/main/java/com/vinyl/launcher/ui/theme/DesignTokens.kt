@@ -152,6 +152,24 @@ object Tokens {
         const val LOST_MESSAGE_ALPHA = 0.82
     }
 
+    /**
+     * Game Ular di layar TV: papan hijau-hitam seperti tabung fosfor. Angka skor dan rekor ditulis di pita sendiri di atas
+     * papan; tulisan di tengah papan (SIAP / JEDA / GAME OVER) berdiri di atas panel gelap, jadi kontrasnya tidak bergantung
+     * pada posisi ular. Pasangan teks/latar dan kontras bentuk (ular, makanan) dijaga oleh GamePaletteTest.
+     */
+    object Game {
+        const val BOARD_TOP = 0xFF07140BL
+        const val BOARD_BOTTOM = 0xFF030A06L
+        /** Titik petak samar di papan (hiasan). */
+        const val GRID_DOT = 0xFF1B3B26L
+        const val SNAKE_HEAD = 0xFFC9F7BFL
+        const val SNAKE_TAIL = 0xFF2F9E58L
+        /** Warna ular setelah menabrak tubuhnya sendiri. */
+        const val SNAKE_DEAD = 0xFFE5533DL
+        /** Panel di tengah papan: hitam dengan alpha ini. */
+        const val PANEL_ALPHA = 0.86
+    }
+
     /** Jarak dalam dp. Kelipatan 4 supaya ritme tata letak konsisten. */
     object Space {
         const val XS = 4
@@ -205,6 +223,8 @@ object Tokens {
         /** Jeda rata-rata antara dua gangguan tracking VHS. */
         const val TRACKING_EVERY_MS = 9000
         const val TRACKING_GLITCH_MS = 700
+        /** Hujan statis singkat di layar TV saat kaset berganti ("ganti channel"). */
+        const val STATIC_BURST_MS = 320
         /** Putaran gulungan kaset per menit pada kecepatan normal / cepat. */
         const val REEL_RPM_NORMAL = 40f
         const val REEL_RPM_FAST = 60f

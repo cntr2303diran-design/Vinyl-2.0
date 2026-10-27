@@ -37,11 +37,20 @@ import com.vinyl.launcher.ui.film.TapeFlow
 import com.vinyl.launcher.ui.film.TapeState
 import com.vinyl.launcher.ui.film.TapeStep
 import com.vinyl.launcher.ui.film.VideoStatus
+import com.vinyl.launcher.ui.game.Dir
+import com.vinyl.launcher.ui.game.Games
+import com.vinyl.launcher.ui.game.Snake
+import com.vinyl.launcher.ui.game.SnakeEvent
+import com.vinyl.launcher.ui.game.SnakeHud
+import com.vinyl.launcher.ui.game.SnakePhase
+import com.vinyl.launcher.ui.game.SnakeState
+import com.vinyl.launcher.ui.game.hud
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.delay
@@ -220,12 +229,13 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     // ---------- Musik ----------
     /** Tombol putar/jeda di ruang TV: bunyi tombol deck kaset (sesuai Pengaturan → Suara & getar), lalu perintahnya. */
     fun togglePlay() {
+        wakeTv()
         if (MediaRepository.state.value.isPlaying) SoundFx.stopKey(getApplication(), settings.value.effects)
         else SoundFx.playKey(getApplication(), settings.value.effects)
         MediaRepository.togglePlayPause("Ruang TV")
     }
-    fun next() { SoundFx.flip(getApplication(), settings.value.effects); MediaRepository.next() }
-    fun previous() { SoundFx.flip(getApplication(), settings.value.effects); MediaRepository.previous() }
+    fun next() { wakeTv(); SoundFx.flip(getApplication(), settings.value.effects); MediaRepository.next() }
+    fun previous() { wakeTv(); SoundFx.flip(getApplication(), settings.value.effects); MediaRepository.previous() }
     fun seek(ms: Long) = MediaRepository.seekTo(ms)
     fun openMusic() = MediaRepository.openMusicApp(getApplication())
 
@@ -247,32 +257,164 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
 
     private val _film = MutableStateFlow<FilmSample?>(null)
 
+    // ---------- Game Ular di kaset game ----------
+    private val snakeRandom = kotlin.random.Random.Default
+
+    private val _snake = MutableStateFlow<SnakeState?>(null)
+
+    /** Papan Ular selama kaset game di deck; null selain itu. Berubah tiap langkah: hanya layar game yang membacanya. */
+    val snake: StateFlow<SnakeState?> = _snake.asStateFlow()
+
+    /** Ringkasan papan (fase, skor, rekor) untuk deck, VFD, dan OSD; berubah jarang, aman dibaca beranda. */
+    val snakeHud: StateFlow<SnakeHud?> = _snake.map { it?.hud() }.distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    private val _tvPower = MutableStateFlow(true)
+
+    /** Tombol daya TV: false = TV dimatikan dengan tombolnya. Tidak disimpan; beranda yang baru dimulai selalu menyala. */
+    val tvPower: StateFlow<Boolean> = _tvPower.asStateFlow()
+
     /**
      * Apa yang sedang "diputar" di ruang TV (layar, deck, OSD, proyeksi): lagu dari aplikasi musik saat kaset musik di
-     * deck; nama kaset + keadaan video saat kaset film di deck. Perpustakaan, lirik, dan drawer tetap memakai [nowPlaying].
+     * deck; nama kaset + keadaan video saat kaset film di deck; nama game + keadaan permainan saat kaset game di deck.
+     * Perpustakaan, lirik, dan drawer tetap memakai [nowPlaying].
      */
-    val roomNowPlaying: StateFlow<NowPlaying> = combine(MediaRepository.state, _tape, _film, settings) { music, t, sample, s ->
+    val roomNowPlaying: StateFlow<NowPlaying> = combine(MediaRepository.state, _tape, _film, settings, snakeHud) { music, t, sample, s, hud ->
         when (val tape = t.tape) {
             is Tape.Film -> filmNowPlaying(s.film.cassettes.firstOrNull { it.id == tape.id }, sample)
+            is Tape.Game -> gameNowPlaying(tape.id, hud)
             else -> music
         }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, MediaRepository.state.value)
 
     init {
-        // Kaset film yang dihapus dari laci saat sedang di deck → kaset musik kembali (musik tidak dilanjutkan otomatis)
+        // Kaset film yang dihapus dari laci (atau kaset game yang tidak dikenal) saat sedang di deck → kaset musik kembali
+        // (musik tidak dilanjutkan otomatis)
         viewModelScope.launch {
             settings.collect { s ->
                 _tape.update { TapeFlow.reconcile(it, filmExists = { id -> s.film.cassettes.any { c -> c.id == id } }) }
                 if (_tape.value.tape !is Tape.Film) _theatre.value = false
+                if (_tape.value.tape !is Tape.Game) _snake.value = null
+            }
+        }
+        // Rekor disetel ulang dari Pengaturan: papan yang sedang terbuka ikut memakai rekor yang lebih rendah itu
+        // (rekor hanya pernah dinaikkan oleh game ini, jadi nilai yang lebih rendah selalu berarti penyetelan ulang)
+        viewModelScope.launch {
+            settings.map { it.film.snakeBest }.distinctUntilChanged().collect { best ->
+                _snake.update { s -> if (s != null && best < s.best) s.copy(best = best) else s }
             }
         }
     }
 
     fun toggleTray() {
         if (_draft.value != null) return
-        _trayOpen.value = !_trayOpen.value
+        setTray(!_trayOpen.value)
     }
-    fun closeTray() { _trayOpen.value = false }
+    fun closeTray() { setTray(false) }
+
+    // Laci di meja berbunyi saat ditarik atau didorong (penutupan senyap oleh halaman/mode lain tidak berbunyi)
+    private fun setTray(open: Boolean) {
+        if (_trayOpen.value == open) return
+        _trayOpen.value = open
+        SoundFx.drawer(getApplication(), settings.value.effects, open)
+    }
+
+    // ---------- Tombol daya TV ----------
+    /** Tombol daya TV ditekan: layar menyusut jadi titik (atau menyala lagi). Game yang berjalan dijeda saat TV dimatikan. */
+    fun toggleTvPower() {
+        val on = !_tvPower.value
+        _tvPower.value = on
+        if (on) SoundFx.crtOn(settings.value.effects)
+        else {
+            SoundFx.crtOff(settings.value.effects)
+            snakePause()
+        }
+    }
+
+    /**
+     * Nyalakan TV bila sedang dimatikan dengan tombolnya. True bila tadi mati: sentuhan yang membangunkan TV tidak ikut
+     * menjalankan perintahnya (pemanggil berhenti di situ untuk film dan game, yang tadinya dijeda).
+     */
+    fun wakeTv(): Boolean {
+        if (_tvPower.value) return false
+        _tvPower.value = true
+        SoundFx.crtOn(settings.value.effects)
+        return true
+    }
+
+    // ---------- Kendali game Ular ----------
+    /** Belok ke [d] (usapan, panah deck, aksi aksesibilitas). Gerakan pertama juga memulai permainan. */
+    fun snakeTurn(d: Dir) {
+        val s = _snake.value ?: return
+        if (wakeTv()) return
+        val next = Snake.turn(s, d)
+        if (next == s) return
+        _snake.value = next
+        SoundFx.tick(getApplication(), settings.value.effects)
+    }
+
+    /** Ketuk: mulai, jeda, lanjut, atau (setelah selesai) main lagi dengan rekor yang dibawa. */
+    fun snakeTap() {
+        val s = _snake.value ?: return
+        if (wakeTv()) return
+        val next = Snake.tap(s, snakeRandom)
+        _snake.value = next
+        if (next.phase == SnakePhase.RUNNING) SoundFx.playKey(getApplication(), settings.value.effects)
+        else if (next.phase == SnakePhase.PAUSED) {
+            SoundFx.stopKey(getApplication(), settings.value.effects)
+            persistSnakeBest(next)
+        }
+    }
+
+    /** Jeda bila sedang berjalan (ruang TV tidak tampil, TV dimatikan, laci dibuka, aplikasi ke latar); rekor ikut disimpan. */
+    fun snakePause() {
+        val s = _snake.value ?: return
+        val next = Snake.pause(s)
+        if (next == s) return
+        _snake.value = next
+        persistSnakeBest(next)
+    }
+
+    /** Jeda antar langkah untuk skor sekarang (makin cepat setiap makan). */
+    fun snakeTickMs(): Long = Snake.tickMs(_snake.value?.score ?: 0)
+
+    /** Satu langkah permainan; bunyi dan getar menurut kejadiannya. */
+    fun snakeStep() {
+        val s = _snake.value ?: return
+        val step = Snake.step(s, snakeRandom)
+        if (step.state == s) return
+        _snake.value = step.state
+        val fx = settings.value.effects
+        when (step.event) {
+            SnakeEvent.ATE -> SoundFx.gameEat(getApplication(), fx)
+            SnakeEvent.DIED -> { SoundFx.gameOver(getApplication(), fx); persistSnakeBest(step.state) }
+            SnakeEvent.WON -> { SoundFx.gameWin(getApplication(), fx); persistSnakeBest(step.state) }
+            SnakeEvent.NONE -> Unit
+        }
+    }
+
+    /** Rekor tersimpan lokal bersama pengaturan; hanya dinaikkan, tidak pernah diturunkan oleh permainan. */
+    private fun persistSnakeBest(s: SnakeState) {
+        val best = s.shownBest
+        if (best > settings.value.film.snakeBest) {
+            updateSettings { cur -> cur.copy(film = FilmRules.withSnakeScore(cur.film, best)) }
+        }
+    }
+
+    private fun gameNowPlaying(id: String, hud: SnakeHud?): NowPlaying {
+        val color = Games.color(id)
+        return NowPlaying(
+            hasSession = true,
+            title = Games.title(id),
+            artist = "Game",
+            isPlaying = hud?.phase == SnakePhase.RUNNING,
+            dominantColor = color,
+            accentColor = color,
+            swatches = listOf(color),
+            // Tidak ada garis waktu: posisi diam, supaya penghitung posisi tidak menyusun ulang OSD tiap detak
+            speed = 0f,
+        )
+    }
 
     /** Kaset di laci ditekan: masuk ke deck, atau (bila sudah di deck) keluar dan kaset musik kembali. Laci menutup sebentar kemudian. */
     fun pressTape(pressed: Tape) {
@@ -281,6 +423,12 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun applyTape(step: TapeStep) {
+        val before = _tape.value.tape
+        val after = step.state.tape
+        // Kaset game keluar dari deck: rekor disimpan; kaset game masuk: papan baru dengan rekor tersimpan
+        if (before is Tape.Game) _snake.value?.let { persistSnakeBest(it) }
+        _snake.value = if (after is Tape.Game) Snake.newGame(settings.value.film.snakeBest, snakeRandom) else null
+        wakeTv()
         _tape.value = step.state
         _film.value = null
         if (step.state.tape !is Tape.Film) _theatre.value = false
@@ -290,6 +438,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
             MusicEffect.NONE -> Unit
         }
         SoundFx.flip(getApplication(), settings.value.effects)
+        SoundFx.channel(settings.value.effects)
     }
 
     // Laci menutup setelah kaset berpindah supaya pergantian kaset di meja terlihat
@@ -298,7 +447,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         closeTrayJob?.cancel()
         closeTrayJob = viewModelScope.launch {
             delay(TRAY_CLOSE_DELAY_MS)
-            _trayOpen.value = false
+            setTray(false)
         }
     }
 

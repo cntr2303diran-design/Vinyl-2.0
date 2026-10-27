@@ -99,6 +99,9 @@ internal fun StagePreview(
     tapeLabel: CassetteLabel? = null,
     tvScreen: (@Composable () -> Unit)? = null,
     drawer: StageDrawerInfo? = null,
+    tvOff: Boolean = false,
+    /** Baris kedua VFD deck untuk kaset game (mis. "SKOR 7"). */
+    gameLine: String = "",
 ) {
     val s = seek ?: remember { SeekState() }
     VinylTheme {
@@ -109,21 +112,28 @@ internal fun StagePreview(
                 editing = false, position = { np.positionMs }, titleScrimAlpha = 0.25f, seek = s,
                 info = StageInfo(
                     tvVfd = if (np.hasTrack) "PLAY" else "STANDBY",
-                    deck = if (tape == DeckTape.FILM) DeckDisplay("FILM ▶", "TEATER")
-                    else DeckDisplay(StatusText.modeLine(transport) + if (np.hasTrack) " SP" else "", "48K BUDS PRO"),
+                    deck = when (tape) {
+                        DeckTape.FILM -> DeckDisplay("FILM ▶", "TEATER")
+                        DeckTape.GAME -> DeckDisplay("GAME " + (if (np.isPlaying) "▶" else "■"), gameLine)
+                        DeckTape.MUSIC -> DeckDisplay(StatusText.modeLine(transport) + if (np.hasTrack) " SP" else "", "48K BUDS PRO")
+                    },
                     tapeTime = if (np.durationMs > 0) "4:18" else "",
                 ),
-                actions = StageActions({}, {}, {}, {}, {}, {}, {}, onVfdClick = if (tape == DeckTape.FILM) ({}) else null, vfdClickLabel = "Buka mode Teater"),
+                actions = StageActions(
+                    {}, {}, {}, {}, {}, {}, {},
+                    onVfdClick = if (tape != DeckTape.MUSIC) ({}) else null, vfdClickLabel = "Buka mode Teater",
+                    onPower = {},
+                ),
                 projection = np.art?.let { ProjectionContent.Picture(it) },
-                tape = tape, tapeLabel = tapeLabel, tvScreen = tvScreen, drawer = drawer,
+                tape = tape, tapeLabel = tapeLabel, tvScreen = tvScreen, drawer = drawer, tvOff = tvOff,
             )
             VhsFilm(animate = false, modifier = Modifier.fillMaxSize())
             VhsOsd(
                 OsdState(
                     now = LocalDateTime.of(2026, 10, 18, 19, 21, 7), use24h = true, seconds = true, showClock = true,
                     status = fakeStatus(), notifications = List(2) { NotificationIcons.Entry("contoh.app$it", fakeNotificationIcon()) },
-                    showNotifications = true, transport = transport, tapeMode = if (np.hasTrack) "SP" else null, sleepLine = null,
-                    hasTrack = np.hasTrack, positionMs = s.previewMs ?: np.positionMs, durationMs = np.durationMs, canSeek = np.canSeek,
+                    showNotifications = true, transport = transport, tapeMode = if (tape != DeckTape.MUSIC) tape.name else if (np.hasTrack) "SP" else null, sleepLine = null,
+                    hasTrack = np.hasTrack && tape != DeckTape.GAME, positionMs = s.previewMs ?: np.positionMs, durationMs = np.durationMs, canSeek = np.canSeek,
                 ),
                 landscape = landscape,
                 actions = OsdActions({}, {}, {}, {}),

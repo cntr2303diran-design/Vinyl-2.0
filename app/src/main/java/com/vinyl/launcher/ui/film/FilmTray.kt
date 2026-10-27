@@ -58,6 +58,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -140,40 +141,49 @@ internal fun FilmTray(
         ) {
             DrawerLip()
             Column(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(FeltTop, FeltBottom)))) {
+                // Judul bergaya OSD memperbesar sampai 1,3× saja (jendelanya sempit); petunjuk di bawahnya ikut skala penuh
+                val fontScale = LocalDensity.current.fontScale
+                val titleSize = (24f * fontScale.coerceAtMost(1.3f) / fontScale).sp
                 Row(
                     Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Column(Modifier.weight(1f).padding(vertical = 6.dp)) {
-                        Text(
-                            "LACI KASET",
-                            color = RetroColors.CreamText,
-                            fontFamily = OsdFamily,
-                            fontSize = 24.sp,
-                            lineHeight = 24.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.semantics { heading() },
-                        )
-                        Text(
-                            if (current == Tape.Music) "Ketuk kaset untuk memasukkannya ke TV · tahan untuk mengubah"
-                            else "Ketuk kaset yang bertanda DI TV untuk mengembalikan kaset musik",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = RetroColors.CreamTextSecondary,
-                        )
-                    }
+                    Text(
+                        "LACI KASET",
+                        color = RetroColors.CreamText,
+                        fontFamily = OsdFamily,
+                        fontSize = titleSize,
+                        lineHeight = titleSize,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f).padding(vertical = 10.dp).semantics { heading() },
+                    )
                     if (canAdd) {
-                        Row(
-                            Modifier
-                                .minimumInteractiveComponentSize()
-                                .clip(RoundedCornerShape(50))
-                                .border(1.dp, RetroColors.CreamTextSecondary.copy(alpha = 0.6f), RoundedCornerShape(50))
-                                .clickable(onClickLabel = "Tambah kaset film", role = Role.Button, onClick = onAdd)
-                                .padding(horizontal = 12.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Icon(Icons.Rounded.Add, null, tint = RetroColors.CreamText, modifier = Modifier.size(18.dp))
-                            Text("TAMBAH", color = RetroColors.CreamText, style = MaterialTheme.typography.labelLarge, maxLines = 1)
+                        // Pada huruf besar tombol hanya berisi ikon (label tetap dibacakan pembaca layar): teksnya tidak muat di baris judul
+                        if (fontScale > 1.3f) {
+                            Box(
+                                Modifier
+                                    .size(Tokens.A11y.MIN_TOUCH_DP.dp)
+                                    .clip(CircleShape)
+                                    .border(1.dp, RetroColors.CreamTextSecondary.copy(alpha = 0.6f), CircleShape)
+                                    .clickable(onClickLabel = "Tambah kaset film", role = Role.Button, onClick = onAdd),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(Icons.Rounded.Add, contentDescription = "Tambah kaset film", tint = RetroColors.CreamText, modifier = Modifier.size(22.dp))
+                            }
+                        } else {
+                            Row(
+                                Modifier
+                                    .minimumInteractiveComponentSize()
+                                    .clip(RoundedCornerShape(50))
+                                    .border(1.dp, RetroColors.CreamTextSecondary.copy(alpha = 0.6f), RoundedCornerShape(50))
+                                    .clickable(onClickLabel = "Tambah kaset film", role = Role.Button, onClick = onAdd)
+                                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(Icons.Rounded.Add, null, tint = RetroColors.CreamText, modifier = Modifier.size(18.dp))
+                                Text("TAMBAH", color = RetroColors.CreamText, style = MaterialTheme.typography.labelLarge, maxLines = 1)
+                            }
                         }
                     }
                     Box(
@@ -186,6 +196,13 @@ internal fun FilmTray(
                         Icon(Icons.Rounded.Close, contentDescription = "Tutup laci", tint = RetroColors.CreamText)
                     }
                 }
+                Text(
+                    if (current == Tape.Music) "Ketuk kaset untuk memasukkannya ke TV · tahan untuk mengubah"
+                    else "Ketuk kaset yang bertanda DI TV untuk mengembalikan kaset musik",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = RetroColors.CreamTextSecondary,
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 2.dp),
+                )
                 if (items.isEmpty()) {
                     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("Laci masih kosong.", color = RetroColors.CreamText, style = MaterialTheme.typography.bodyLarge)

@@ -57,6 +57,8 @@ fun RoomOsd(
     modifier: Modifier = Modifier,
     /** Kata mode pita untuk kaset selain musik (mis. "FILM"); null = "SP"/"HI-FI" dari lagu yang diputar. */
     modeWord: String? = null,
+    /** Penghitung dan garis waktu pita di bawah; false untuk kaset yang tidak punya garis waktu (game). */
+    showCounter: Boolean = true,
 ) {
     val context = LocalContext.current
     val now by rememberNow()
@@ -86,7 +88,7 @@ fun RoomOsd(
         transport = StatusText.transport(np.hasTrack, np.isPlaying, seek.deltaMs?.takeIf { seek.touching }),
         tapeMode = modeWord ?: tapeMode(np, context.packageName, path),
         sleepLine = StatusText.sleepLine(sleepMs),
-        hasTrack = np.hasTrack,
+        hasTrack = np.hasTrack && showCounter,
         positionMs = seek.previewMs ?: positionMs,
         durationMs = np.durationMs,
         canSeek = np.canSeek,

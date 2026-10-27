@@ -26,6 +26,8 @@ import kotlin.random.Random
  * - [tick]: klik kecil saat knob seek diputar (tiap "gigi")
  * - [flip]: desing pita digulung cepat saat ganti lagu, ditutup klik
  * - [startCrackle]/[stopCrackle]: desis pita pelan berulang selama lagu diputar (tanpa letupan)
+ * - [drawer]: laci kaset di meja ditarik/didorong; [crtOff]: TV dimatikan (siulan jatuh + dentum)
+ * - [gameEat]/[gameOver]/[gameWin]: bunyi dan getar game Ular di kaset game
  *
  * Suara diputar TANPA meminta audio focus, sehingga musik tidak terhenti. Nama field pengaturan (needleSound, crackle)
  * dipertahankan dari tema vinyl agar pengaturan & cadangan lama tetap terbaca.
@@ -75,6 +77,12 @@ object SoundFx {
 
     private val crtPcm: ShortArray by lazy { synthCrtOn() }
     private val staticPcm: ShortArray by lazy { synthStatic() }
+    private val crtOffPcm: ShortArray by lazy { synthCrtOff() }
+    private val drawerOpenPcm: ShortArray by lazy { synthDrawer(open = true) }
+    private val drawerClosePcm: ShortArray by lazy { synthDrawer(open = false) }
+    private val eatPcm: ShortArray by lazy { synthTones(doubleArrayOf(988.0, 1319.0), noteSec = 0.05, decay = 22.0, level = 0.5) }
+    private val overPcm: ShortArray by lazy { synthTones(doubleArrayOf(392.0, 330.0, 262.0, 196.0), noteSec = 0.13, decay = 8.0, level = 0.55) }
+    private val winPcm: ShortArray by lazy { synthTones(doubleArrayOf(523.0, 659.0, 784.0, 1047.0), noteSec = 0.11, decay = 6.0, level = 0.5) }
 
     /**
      * Membuat semua buffer suara sekali di thread latar. Tanpa ini buffer dibuat (malas) di thread yang pertama kali
@@ -82,7 +90,8 @@ object SoundFx {
      */
     fun warmUp() {
         scope.launch {
-            val samples = dropPcm.size + liftPcm.size + tickPcm.size + flipPcm.size + crtPcm.size + staticPcm.size
+            val samples = dropPcm.size + liftPcm.size + tickPcm.size + flipPcm.size + crtPcm.size + staticPcm.size +
+                crtOffPcm.size + drawerOpenPcm.size + drawerClosePcm.size + eatPcm.size + overPcm.size + winPcm.size
             check(samples > 0)
         }
     }
@@ -92,9 +101,42 @@ object SoundFx {
         if (fx.needleSound) play(crtPcm, gain(fx.volume) * 0.8f)
     }
 
+    /** TV dimatikan dengan tombol dayanya: siulan tabung yang jatuh, lalu dentum kecil. Mengikuti sakelar bunyi tombol & TV. */
+    fun crtOff(fx: EffectSettings) {
+        if (fx.needleSound) play(crtOffPcm, gain(fx.volume) * 0.7f)
+    }
+
     /** Pindah halaman (ganti "channel"): desis statis sangat singkat. Mengikuti sakelar efek sentuh. */
     fun channel(fx: EffectSettings) {
         if (fx.interactionFx && fx.needleSound) play(staticPcm, gain(fx.volume) * 0.45f)
+    }
+
+    /** Laci kaset di meja ditarik ([open]) atau didorong: gesekan kayu lalu ketukan di ujung gerak. */
+    fun drawer(context: Context, fx: EffectSettings, open: Boolean) {
+        if (!fx.interactionFx) return
+        if (fx.haptics) buzz(context, fx.hapticStrength, longArrayOf(26, 22, 18), intArrayOf(120, 0, if (open) 150 else 230))
+        if (fx.needleSound) play(if (open) drawerOpenPcm else drawerClosePcm, gain(fx.volume) * 0.9f)
+    }
+
+    /** Ular makan: dua nada pendek naik, getar tipis. */
+    fun gameEat(context: Context, fx: EffectSettings) {
+        if (!fx.interactionFx) return
+        if (fx.haptics) buzz(context, fx.hapticStrength, longArrayOf(12), intArrayOf(170))
+        if (fx.needleSound) play(eatPcm, gain(fx.volume) * 0.7f)
+    }
+
+    /** Ular menabrak tubuhnya: nada turun, getar dua kali. */
+    fun gameOver(context: Context, fx: EffectSettings) {
+        if (!fx.interactionFx) return
+        if (fx.haptics) buzz(context, fx.hapticStrength, longArrayOf(60, 50, 90), intArrayOf(255, 0, 180))
+        if (fx.needleSound) play(overPcm, gain(fx.volume) * 0.8f)
+    }
+
+    /** Papan penuh: nada naik, getar bergelombang. */
+    fun gameWin(context: Context, fx: EffectSettings) {
+        if (!fx.interactionFx) return
+        if (fx.haptics) buzz(context, fx.hapticStrength, longArrayOf(30, 30, 30, 30, 70), intArrayOf(150, 0, 190, 0, 255))
+        if (fx.needleSound) play(winPcm, gain(fx.volume) * 0.8f)
     }
 
     /** Desis pita pelan yang diulang terus sampai [stopCrackle] dipanggil. */
@@ -240,6 +282,73 @@ object SoundFx {
             val env = sin(PI * (t / 0.16)).coerceAtLeast(0.0)
             toShort((rnd.nextDouble() * 2 - 1) * env * 0.5)
         }
+    }
+
+    /**
+     * TV mati: siulan tabung yang nadanya jatuh cepat dari ±1,8 kHz ke ±60 Hz dan memudar, lalu "pop" dan dentum 70 Hz kecil
+     * di akhir (±0,42 detik). Selubungnya menuju nol sebelum dentum berakhir, jadi tidak ada klik di ujung buffer.
+     */
+    private fun synthCrtOff(): ShortArray {
+        val n = (RATE * 0.42).toInt()
+        val rnd = Random(83)
+        var phase = 0.0
+        return ShortArray(n) { i ->
+            val t = i.toDouble() / RATE
+            val k = t / 0.42
+            val freq = 1800.0 * exp(-k * 4.2) + 60.0
+            phase += 2 * PI * freq / RATE
+            val env = (1.0 - k).coerceAtLeast(0.0)
+            val attack = (t / 0.003).coerceAtMost(1.0)
+            val whine = sin(phase) * 0.35 * env * env * attack
+            val dt = t - 0.30
+            val pop = if (dt in 0.0..0.004) (rnd.nextDouble() * 2 - 1) * 0.7 else 0.0
+            val thump = if (dt >= 0.0) sin(2 * PI * 70 * dt) * exp(-dt * 30) * 0.8 else 0.0
+            val edge = ((n - 1 - i) / (RATE * 0.006)).coerceAtMost(1.0)
+            toShort((whine + pop + thump) * edge)
+        }
+    }
+
+    /**
+     * Laci kayu: gesekan rendah (noise terfilter, selubung naik-turun) lalu ketukan kayu di ujung gerak. Laci yang
+     * didorong menutup berketuk lebih berat dan rendah daripada yang ditarik terbuka.
+     */
+    private fun synthDrawer(open: Boolean): ShortArray {
+        val n = (RATE * 0.36).toInt()
+        val rnd = Random(if (open) 101 else 103)
+        val knockAt = if (open) 0.285 else 0.295
+        val knockHz = if (open) 190.0 else 140.0
+        var lp = 0.0
+        return ShortArray(n) { i ->
+            val t = i.toDouble() / RATE
+            lp += 0.06 * ((rnd.nextDouble() * 2 - 1) - lp)
+            val slideEnv = if (t < 0.30) sin(PI * t / 0.30) else 0.0
+            val slide = lp * 2.2 * slideEnv * 0.55
+            val dt = t - knockAt
+            val knock = if (dt >= 0.0) {
+                sin(2 * PI * knockHz * dt) * exp(-dt * 55) * 0.75 + (if (dt < 0.003) (rnd.nextDouble() * 2 - 1) * 0.4 else 0.0)
+            } else 0.0
+            val edge = ((n - 1 - i) / (RATE * 0.006)).coerceAtMost(1.0)
+            toShort((slide + knock) * edge)
+        }
+    }
+
+    /**
+     * Rangkaian nada pendek [freqs] (Hz), masing-masing [noteSec] detik, dengan serangan 4 ms, peredaman [decay] per detik,
+     * dan pelepasan 10 ms di ujung tiap nada supaya sambungan antarnada tidak berbunyi klik. Dipakai bunyi game.
+     */
+    private fun synthTones(freqs: DoubleArray, noteSec: Double, decay: Double, level: Double): ShortArray {
+        val per = (RATE * noteSec).toInt()
+        val out = ShortArray(per * freqs.size)
+        var phase = 0.0
+        for (k in freqs.indices) for (j in 0 until per) {
+            val t = j.toDouble() / RATE
+            phase += 2 * PI * freqs[k] / RATE
+            val attack = (t / 0.004).coerceAtMost(1.0)
+            val release = ((noteSec - t) / 0.010).coerceIn(0.0, 1.0)
+            val tone = (sin(phase) + 0.25 * sin(2 * phase)) * level * attack * release * exp(-t * decay)
+            out[k * per + j] = toShort(tone)
+        }
+        return out
     }
 
     /** Getar bergelombang; [strength] 0.3..1 menskalakan amplitudo. */
