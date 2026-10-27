@@ -150,6 +150,26 @@ import com.vinyl.launcher.data.DockSettings
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.platform.LocalView
+import com.vinyl.launcher.data.CassetteShell
+import com.vinyl.launcher.data.EffectSettings
+import com.vinyl.launcher.data.FilmCassette
+import com.vinyl.launcher.data.FilmRules
+import com.vinyl.launcher.system.StatusText.Transport
+import com.vinyl.launcher.ui.cassette.CassetteLabel
+import com.vinyl.launcher.ui.film.FilmCassetteEditor
+import com.vinyl.launcher.ui.film.FilmFullscreen
+import com.vinyl.launcher.ui.film.FilmTray
+import com.vinyl.launcher.ui.film.FilmTvScreen
+import com.vinyl.launcher.ui.film.FilmWebHolder
+import com.vinyl.launcher.ui.film.Tape
+import com.vinyl.launcher.ui.film.TapeFlow
+import com.vinyl.launcher.ui.film.TrayItem
+import com.vinyl.launcher.ui.room.stage.DeckDisplay
+import com.vinyl.launcher.ui.room.stage.DeckTape
+import com.vinyl.launcher.ui.room.stage.StageDrawerInfo
 
 /** Warna netral saat tidak ada musik. */
 private val NeutralBg = Color(0xFF1C1B19) // charcoal hangat bila tidak ada cover
@@ -168,13 +188,20 @@ fun HomeScreen(vm: HomeViewModel) {
     val queue by vm.queue.collectAsStateWithLifecycle()
     val history by vm.history.collectAsStateWithLifecycle()
     val page by vm.page.collectAsStateWithLifecycle()
+    val tapeState by vm.tape.collectAsStateWithLifecycle()
+    val trayOpen by vm.trayOpen.collectAsStateWithLifecycle()
+    val theatre by vm.theatre.collectAsStateWithLifecycle()
+    // Yang tampil di ruang TV: lagu (kaset musik) atau film dari laci. np tetap lagu aplikasi musik (perpustakaan, lirik, drawer).
+    val shown by vm.roomNowPlaying.collectAsStateWithLifecycle()
+    val tape = tapeState.tape
+    val tapeIsMusic = tape is Tape.Music
     val context = LocalContext.current
     val haptics = LocalHapticFeedback.current
     val editing = draft != null
 
     // Efek visual (Tahap 4): satu keputusan (FxPlan) dari pengaturan + lingkungan; tertutup overlay = semua efek berhenti
     val fx = rememberFxState()
-    val fxPlan = rememberFxPlan(settings.visual, np.isPlaying, screenVisible = (page == RoomPage.ROOM || page == RoomPage.CONSOLE) && !drawerOpen && !lyricsOpen, fx = fx)
+    val fxPlan = rememberFxPlan(settings.visual, shown.isPlaying, screenVisible = (page == RoomPage.ROOM || page == RoomPage.CONSOLE) && !drawerOpen && !lyricsOpen, fx = fx)
     FxRunner(fx, fxPlan)
     val visualizerState by VisualizerStatus.state.collectAsStateWithLifecycle()
     val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
@@ -192,13 +219,13 @@ fun HomeScreen(vm: HomeViewModel) {
     // Timer tidur selesai → TV "dimatikan" sampai musik diputar lagi
     val slept by SleepTimer.slept.collectAsStateWithLifecycle()
     LaunchedEffect(np.isPlaying) { if (np.isPlaying) SleepTimer.clearSlept() }
-    val tvOff = slept && !np.isPlaying
+    val tvOff = slept && !np.isPlaying && tapeIsMusic
 
     // Bunyi TV: "thunk" saat layar menyala dari siaga, statis singkat saat pindah halaman ("ganti channel")
-    var hadTrack by remember { mutableStateOf(np.hasTrack) }
-    LaunchedEffect(np.hasTrack) {
-        if (np.hasTrack && !hadTrack) SoundFx.crtOn(settings.effects)
-        hadTrack = np.hasTrack
+    var hadTrack by remember { mutableStateOf(shown.hasTrack) }
+    LaunchedEffect(shown.hasTrack) {
+        if (shown.hasTrack && !hadTrack) SoundFx.crtOn(settings.effects)
+        hadTrack = shown.hasTrack
     }
     var lastPage by remember { mutableStateOf(page) }
     LaunchedEffect(page) {
@@ -207,9 +234,17 @@ fun HomeScreen(vm: HomeViewModel) {
     }
 
     // Warna dari cover album (Palette); netral saat tidak ada musik
-    val dominant = if (np.hasTrack) np.dominantColor?.toComposeColor() ?: NeutralBg else NeutralBg
-    val accent = if (np.hasTrack) np.accentColor?.toComposeColor() ?: NeutralLabel else NeutralLabel
+    val dominant = if (shown.hasTrack) shown.dominantColor?.toComposeColor() ?: NeutralBg else NeutralBg
+    val accent = if (shown.hasTrack) shown.accentColor?.toComposeColor() ?: NeutralLabel else NeutralLabel
     val bgColor = dominant.darken(0.12f)
+
+    // ----- Laci kaset: SATU WebView film seumur beranda (dipasang bergantian di layar TV dan di Teater) -----
+    val filmHolder = remember { FilmWebHolder(context).also { it.onVideo = vm::onFilmVideo } }
+    DisposableEffect(filmHolder) { onDispose { filmHolder.close() } }
+    val filmCassette = (tape as? Tape.Film)?.let { t -> settings.film.cassettes.firstOrNull { it.id == t.id } }
+    var editorTarget by remember { mutableStateOf<EditorTarget?>(null) }
+    // Layar penuh: Teater, atau tampilan layar penuh yang diminta pemutar di halaman film
+    val fullscreen = (theatre && tape is Tape.Film) || filmHolder.customView != null
 
     // SELALU tangani tombol/gestur Back di launcher. Tanpa ini, Android memutar animasi
     // "kembali" (predictive back) ke Home… yang adalah launcher itu sendiri → layar berkedip/glitch.
@@ -217,6 +252,8 @@ fun HomeScreen(vm: HomeViewModel) {
         when {
             lyricsOpen -> vm.closeLyrics()
             drawerOpen -> vm.closeDrawer()
+            trayOpen -> vm.closeTray()
+            page == RoomPage.ROOM && tape is Tape.Film && filmHolder.canGoBack -> filmHolder.backOrHome()
             page != RoomPage.ROOM -> vm.showPage(RoomPage.ROOM)
             editing -> vm.cancelEdit()
             else -> Unit // sudah di Home: abaikan
@@ -271,8 +308,25 @@ fun HomeScreen(vm: HomeViewModel) {
     // Status bar Samsung disembunyikan selama ruang TV tampil; infonya ada di OSD
     SystemStatusBar(
         hidden = settings.retro.osd.hideStatusBar && settings.retro.osd.visible && page == RoomPage.ROOM && !drawerOpen && !lyricsOpen && !editing,
-        reapplyKey = resumed,
+        reapplyKey = resumed to fullscreen,
     )
+
+    // ----- Film di layar TV: dibuka/ditutup mengikuti kaset di deck, dijeda bila ruang TV tidak tampil, dibaca tiap detik -----
+    val filmVisible = resumed && page == RoomPage.ROOM && !drawerOpen && !lyricsOpen
+    LaunchedEffect(filmCassette?.id, filmCassette?.url) {
+        val c = filmCassette
+        if (c != null) filmHolder.open(c.url) else filmHolder.close()
+    }
+    SideEffect { filmHolder.setActive(filmVisible) }
+    LaunchedEffect(filmCassette?.id, filmVisible) {
+        if (filmCassette == null || !filmVisible) return@LaunchedEffect
+        while (true) {
+            filmHolder.poll()
+            delay(FILM_POLL_MS)
+        }
+    }
+    // Layar tetap menyala selama film diputar dan terlihat
+    KeepScreenOn(filmVisible && tape is Tape.Film && shown.isPlaying)
 
     // ----- Video milik pengguna di layar TV (folder SAF). Pemutar hanya ada selama ruang TV benar-benar tampil -----
     val video = settings.video
@@ -280,8 +334,8 @@ fun HomeScreen(vm: HomeViewModel) {
     LaunchedEffect(video.enabled, video.folderUri, resumed) {
         if (video.enabled && resumed) VideoLibrary.scan(context, video.folderUri)
     }
-    val videoMatch = remember(video, videoLib, np.artist, np.album, np.title, np.hasTrack) {
-        if (!video.enabled || !np.hasTrack || video.folderUri == null || videoLib.folderUri != video.folderUri) null
+    val videoMatch = remember(video, videoLib, np.artist, np.album, np.title, np.hasTrack, tapeIsMusic) {
+        if (!tapeIsMusic || !video.enabled || !np.hasTrack || video.folderUri == null || videoLib.folderUri != video.folderUri) null
         else VideoMatch.find(videoLib.files, VideoRules.linkMap(video), np.artist, np.album, np.title)
     }
     // Berkas yang gagal diputar tidak dicoba terus-menerus; cover tetap tampil
@@ -303,7 +357,7 @@ fun HomeScreen(vm: HomeViewModel) {
     // ----- Ruang TV: dinding, proyeksi, nada teks -----
     val motionAllowed = !reduceMotion && !rememberPowerSave()
     val picture = if (home.background.type == BackgroundType.IMAGE) rememberFileImage(home.background.imagePath) else null
-    val cover = np.art.takeIf { np.hasTrack }
+    val cover = shown.art.takeIf { shown.hasTrack }
     val projected = if (home.background.type == BackgroundType.IMAGE) picture else if (home.background.type == BackgroundType.ALBUM) cover else null
     val look = rememberRoomLook(settings.retro.room, home.background, projected)
     // Knob SEEK: dibagi panggung (jarum & layar TV) dan OSD (mode FF/REW, penghitung pita)
@@ -316,12 +370,23 @@ fun HomeScreen(vm: HomeViewModel) {
         { ScreenVideo(uri, np.isPlaying, onError = { failedVideo = videoMatch?.file?.documentId }, Modifier.fillMaxSize()) }
     }
     val projection: ProjectionContent? = when {
-        !np.hasTrack || projector.source == ProjectorSource.OFF -> null
+        !shown.hasTrack || projector.source == ProjectorSource.OFF -> null
         projector.source == ProjectorSource.VISUALIZER && showBars -> ProjectionContent.Visualizer {
             SpectrumBars(fx, accent, Modifier.fillMaxSize().padding(horizontal = 24.dp, vertical = 18.dp).clearAndSetSemantics { })
         }
         cover != null -> ProjectionContent.Picture(cover)
         else -> ProjectionContent.Tint(accent)
+    }
+
+    // Kaset film di meja (label dan warnanya milik kaset itu) dan isi laci
+    val tapeLabel = remember(filmCassette) {
+        filmCassette?.let { CassetteLabel("film\u0000${it.id}", it.name, FilmRules.hostOf(it.url), null, CassetteShell.COLORED, Color(it.color)) }
+    }
+    val trayItems = remember(settings.film.cassettes) {
+        settings.film.cassettes.map { c -> TrayItem(Tape.Film(c.id), c.name, FilmRules.hostOf(c.url), Color(c.color), c) }
+    }
+    val drawerInfo = remember(trayOpen, trayItems) {
+        StageDrawerInfo(open = trayOpen, peek = trayItems.map { it.color }, count = trayItems.size)
     }
 
     // Tata letak ruang TV tidak ikut animasi bilah status (lihat RoomInsets): bilah itu naik-turun tiap pindah halaman
@@ -437,7 +502,7 @@ fun HomeScreen(vm: HomeViewModel) {
         ) {
             HomeContent(
                 home = home,
-                np = np,
+                np = shown,
                 accent = accent,
                 weather = settings.weather,
                 lyricsOnline = settings.music.lyricsOnline,
@@ -449,13 +514,19 @@ fun HomeScreen(vm: HomeViewModel) {
                 look = look,
                 motionAllowed = motionAllowed,
                 wallPicture = picture,
-                lyricsVisible = home.lyricsVisible,
+                lyricsVisible = home.lyricsVisible && tapeIsMusic,
                 tvOff = tvOff,
                 seek = seekState,
                 projection = projection,
                 screenVideo = screenVideo,
                 dock = settings.dock,
                 onWidgetChange = { updated -> vm.updateDraft { h -> h.copy(widgets = h.widgets.map { if (it.id == updated.id) updated else it }) } },
+                tape = tape,
+                tapeLabel = tapeLabel,
+                filmHolder = filmHolder,
+                theatre = theatre,
+                drawerInfo = drawerInfo,
+                effects = settings.effects,
                 vm = vm,
             )
         }
@@ -464,10 +535,33 @@ fun HomeScreen(vm: HomeViewModel) {
         if (settings.retro.osd.film) RoomFilm(base = motionAllowed && resumed && page == RoomPage.ROOM, pager = pager, Modifier.fillMaxSize())
         if (settings.retro.osd.visible) {
             // Detak posisi hidup di dalam OsdLayer: hanya OSD yang dikomposisi ulang, bukan seluruh beranda
+            val onOsdSeek = remember(vm, filmHolder, tape is Tape.Film) {
+                if (tape is Tape.Film) filmHolder::seekTo else vm::seek
+            }
             OsdLayer(
-                np = np, seek = seekState, osd = settings.retro.osd, clock = home.clock, landscape = landscape,
-                onSeek = vm::seek,
+                np = shown, seek = seekState, osd = settings.retro.osd, clock = home.clock, landscape = landscape,
+                onSeek = onOsdSeek,
                 modifier = Modifier.padding(dockPadding(settings.dock, editing)),
+                modeWord = if (tapeIsMusic) null else TapeFlow.modeWord(tape),
+            )
+        }
+
+        // Baki kaset (isi laci di meja): kaset berwarna; ketuk memasukkan ke TV atau mengeluarkannya
+        AnimatedVisibility(
+            visible = trayOpen && !editing,
+            enter = slideInVertically(tween(Tokens.Motion.MEDIUM_MS, easing = Ease.decelerate)) { it / 2 } + fadeIn(tween(Tokens.Motion.MEDIUM_MS)),
+            exit = slideOutVertically(tween(Tokens.Motion.MEDIUM_MS, easing = Ease.accelerate)) { it / 2 } + fadeOut(tween(Tokens.Motion.FAST_MS)),
+        ) {
+            FilmTray(
+                items = trayItems,
+                current = tape,
+                canAdd = settings.film.cassettes.size < FilmRules.MAX_CASSETTES,
+                onPress = vm::pressTape,
+                onAdd = { editorTarget = EditorTarget(null) },
+                onEdit = { editorTarget = EditorTarget(it) },
+                onRestoreDefaults = vm::restoreFilmDefaults,
+                onClose = vm::closeTray,
+                sheetModifier = Modifier.padding(dockPadding(settings.dock, editing)).windowInsetsPadding(roomInsets()),
             )
         }
     }
@@ -603,7 +697,49 @@ fun HomeScreen(vm: HomeViewModel) {
         ) {
             HomeEditorPanel(vm = vm, landscape = landscape, apps = allApps)
         }
+
+        // Teater / layar penuh dari pemutar film: menutupi seluruh beranda
+        if (fullscreen) {
+            FilmFullscreen(
+                holder = filmHolder,
+                theatre = theatre && tape is Tape.Film,
+                landscape = settings.film.theaterLandscape,
+                onExitTheatre = vm::closeTheatre,
+            )
+        }
     }
+    }
+
+    // Tambah / ubah kaset film
+    editorTarget?.let { target ->
+        FilmCassetteEditor(
+            initial = target.film,
+            onSave = { name, url, color ->
+                vm.saveFilmCassette(target.film?.id, name, url, color)
+                editorTarget = null
+            },
+            onDelete = target.film?.let { f -> { vm.deleteFilmCassette(f.id); editorTarget = null } },
+            onDismiss = { editorTarget = null },
+        )
+    }
+}
+
+/** Kaset film yang sedang dibuka di editor; [film] null = kaset baru. */
+private class EditorTarget(val film: FilmCassette?)
+
+/** Selang pembacaan keadaan video di halaman film (ms). */
+private const val FILM_POLL_MS = 1_000L
+
+/** Selang lompat maju/mundur tombol deck saat kaset film (ms). */
+private const val FILM_STEP_MS = 10_000L
+
+/** Layar tidak padam selama [on] (film sedang diputar dan terlihat). */
+@Composable
+private fun KeepScreenOn(on: Boolean) {
+    val view = LocalView.current
+    DisposableEffect(on) {
+        view.keepScreenOn = on
+        onDispose { view.keepScreenOn = false }
     }
 }
 
@@ -630,6 +766,12 @@ private fun HomeContent(
     screenVideo: (@Composable () -> Unit)?,
     dock: DockSettings,
     onWidgetChange: (WidgetConfig) -> Unit,
+    tape: Tape,
+    tapeLabel: CassetteLabel?,
+    filmHolder: FilmWebHolder,
+    theatre: Boolean,
+    drawerInfo: StageDrawerInfo,
+    effects: EffectSettings,
     vm: HomeViewModel,
 ) {
     val density = LocalDensity.current
@@ -655,22 +797,46 @@ private fun HomeContent(
     }
     val lyrics = rememberLyrics(np, lyricsVisible, lyricsOnline)
     val transport = StatusText.transport(np.hasTrack, np.isPlaying, seek.deltaMs?.takeIf { seek.touching })
+    val isFilm = tape is Tape.Film
     val info = StageInfo(
         tvVfd = VfdTicker.playback(np.hasTrack, np.isPlaying),
-        deck = deckDisplay(transport, tapeMode(np, context.packageName, hifi), audio, hifi.takeIf { np.packageName == context.packageName && it.active }),
+        deck = if (isFilm) filmDeck(transport)
+        else deckDisplay(transport, tapeMode(np, context.packageName, hifi), audio, hifi.takeIf { np.packageName == context.packageName && it.active }),
         tapeTime = tapeTime(np),
     )
-    val actions = remember(vm) {
-        StageActions(
-            onPrevious = vm::previous,
-            onRewind = { vm.seek((vm.nowPlaying.value.positionAt() - 10_000L).coerceAtLeast(0L)) },
-            onPlayPause = { if (vm.nowPlaying.value.hasTrack) vm.togglePlay() else vm.openMusic() },
-            onNext = vm::next,
-            onSeek = vm::seek,
-            onTick = vm::tick,
-            onOpenLyrics = vm::openLyrics,
-        )
+    val actions = remember(vm, isFilm, filmHolder, effects) {
+        if (isFilm) {
+            StageActions(
+                onPrevious = filmHolder::backOrHome,
+                onRewind = { filmHolder.seekBy(-FILM_STEP_MS) },
+                onPlayPause = {
+                    if (vm.roomNowPlaying.value.isPlaying) SoundFx.stopKey(context, effects) else SoundFx.playKey(context, effects)
+                    filmHolder.toggle()
+                },
+                onNext = { filmHolder.seekBy(FILM_STEP_MS) },
+                onSeek = filmHolder::seekTo,
+                onTick = vm::tick,
+                onOpenLyrics = {},
+                onToggleDrawer = vm::toggleTray,
+                onVfdClick = vm::openTheatre,
+                vfdClickLabel = "Buka mode Teater, film layar penuh",
+            )
+        } else {
+            StageActions(
+                onPrevious = vm::previous,
+                onRewind = { vm.seek((vm.nowPlaying.value.positionAt() - 10_000L).coerceAtLeast(0L)) },
+                onPlayPause = { if (vm.nowPlaying.value.hasTrack) vm.togglePlay() else vm.openMusic() },
+                onNext = vm::next,
+                onSeek = vm::seek,
+                onTick = vm::tick,
+                onOpenLyrics = vm::openLyrics,
+                onToggleDrawer = vm::toggleTray,
+            )
+        }
     }
+    val tvScreen: (@Composable () -> Unit)? = if (isFilm) {
+        { FilmTvScreen(filmHolder, theatre, motionAllowed) }
+    } else null
     Box(Modifier.fillMaxSize()) {
         RoomStage(
             np = np, retro = retro, tone = look.tone, tvSize = home.turntableSize, accent = accent,
@@ -687,6 +853,10 @@ private fun HomeContent(
             showTitle = home.trackInfoVisible && lyrics == null,
             tvOff = tvOff,
             screenVideo = screenVideo,
+            tape = if (isFilm) DeckTape.FILM else DeckTape.MUSIC,
+            tapeLabel = tapeLabel,
+            tvScreen = tvScreen,
+            drawer = drawerInfo,
             atmosphere = {
                 // Debu halus melayang di cahaya proyeksi (di depan dinding, di belakang TV)
                 if (fxPlan.particles) {
@@ -713,6 +883,18 @@ private fun HomeContent(
             }
         }
     }
+}
+
+/** VFD deck untuk kaset film: kata mode + tanda transport, dan petunjuk bahwa jendela ini membuka Teater. */
+private fun filmDeck(t: Transport): DeckDisplay {
+    val symbol = when (t) {
+        Transport.PLAY -> "▶"
+        Transport.PAUSE -> "❚❚"
+        Transport.FORWARD -> "▶▶"
+        Transport.REWIND -> "◀◀"
+        Transport.STOP -> "■"
+    }
+    return DeckDisplay("FILM $symbol", "TEATER")
 }
 
 /** Ruang yang dipakai Taskbar TV di sisi tempat ia menempel (tidak ada saat mengedit). */
@@ -853,9 +1035,10 @@ private fun OsdLayer(
     landscape: Boolean,
     onSeek: (Long) -> Unit,
     modifier: Modifier = Modifier,
+    modeWord: String? = null,
 ) {
     val position = rememberPositionMs(np)
-    RoomOsd(np = np, positionMs = position.longValue, seek = seek, osd = osd, clock = clock, landscape = landscape, onSeek = onSeek, modifier = modifier)
+    RoomOsd(np = np, positionMs = position.longValue, seek = seek, osd = osd, clock = clock, landscape = landscape, onSeek = onSeek, modifier = modifier, modeWord = modeWord)
 }
 
 /** Butir VHS berhenti menggambar ulang selama halaman bergerak (dibaca di sini agar hanya lapisan ini yang disusun ulang). */

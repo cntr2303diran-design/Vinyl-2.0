@@ -58,6 +58,7 @@ object SettingsSanitizer {
         retro = retro(s.retro),
         audio = AudioConsoleRules.sanitize(s.audio),
         video = VideoRules.sanitize(s.video),
+        film = FilmRules.sanitize(s.film),
         player = PlayerRules.sanitize(s.player),
         customGestures = s.customGestures
             .filter { g -> g.points.size == GESTURE_POINTS * 2 && g.points.all { it.isFinite() && it in -2f..2f } }

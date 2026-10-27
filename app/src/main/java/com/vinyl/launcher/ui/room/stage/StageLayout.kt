@@ -44,6 +44,11 @@ object StageLayout {
     private const val CASSETTE_TILT_DEG = 11f
     /** Jarak tepi kanan TV ke pusat kaset. */
     private const val CASSETTE_GAP = 14.5f
+    /** Laci kaset: lebar minimum bilik samping (dp), tinggi minimum muka laci di bawah rak (dp), dan target sentuh. */
+    private const val BAY_MIN_W = 56f
+    private const val BAY_MIN_H = 48f
+    private const val DRAWER_UNDER_MIN_H = 22f
+    const val DRAWER_TOUCH = 48f
 
     /** Mata kamera: sedikit di kiri dan di atas meja, seperti duduk di lantai ruangan. */
     val EYE = V3(-46f, 120f, -155f)
@@ -88,6 +93,11 @@ object StageLayout {
         val grilleRight: SRect?,
         /** Batas layar kaset (area sentuh ≥ 48dp). */
         val cassetteBounds: SRect,
+        /** Muka laci kaset di meja (gambar) dan area sentuhnya (≥ 48dp, tidak menyentuh deck maupun pita OSD bawah). */
+        val drawer: SRect,
+        val drawerHit: SRect,
+        /** True bila laci menempati bilik samping meja (layar mendatar); false = di bawah rak deck. */
+        val drawerInBay: Boolean,
         /** Gambar proyeksi di dinding belakang. */
         val projection: SRect,
         /** Garis temu dinding–lantai dan tepi atas lis dinding (y layar). */
@@ -139,7 +149,6 @@ object StageLayout {
         val tvX = if (landscape) 0f else -9f
 
         val tv = Solid.axisAligned(tvX - TV_W / 2f, tvX + TV_W / 2f, STAND_H, STAND_H + TV_H, TV_FRONT_Z, TV_FRONT_Z + TV_D)
-        val stand = Solid.axisAligned(-STAND_HALF_W, STAND_HALF_W, 0f, STAND_H, STAND_FRONT_Z, STAND_BACK_Z)
         val cassette = Solid(
             CASSETTE_W, CASSETTE_H, CASSETTE_D,
             origin = V3(tvX + TV_W / 2f + CASSETTE_GAP, STAND_H, TV_FRONT_Z + 1.5f),
@@ -166,23 +175,47 @@ object StageLayout {
         // Bingkai akhir sedikit berbeda dari putaran sebelumnya: pastikan deck tetap memenuhi batas minimum di layar
         fitDeck()
 
+        // Layar mendatar yang sempit: meja dilebarkan secukupnya agar ada bilik samping untuk laci kaset di kanan rak
+        val sFront = cam.scaleAt(STAND_FRONT_Z)
+        val shelfHalf = deckW / 2f + SHELF_SIDE
+        val standHalfW = if (landscape) maxOf(STAND_HALF_W, shelfHalf + 12f + maxOf(14f, (BAY_MIN_W + 4f) / sFront)) else STAND_HALF_W
+        val stand = Solid.axisAligned(-standHalfW, standHalfW, 0f, STAND_H, STAND_FRONT_Z, STAND_BACK_Z)
+
         // Deck di tengah konsol (bukan di bawah TV yang pada layar tegak digeser ke kiri demi kaset)
         val deck = cam.rectAt(-deckW / 2f, deckW / 2f, deckTop - deckH, deckTop, STAND_FRONT_Z)
         val shelfX0 = -deckW / 2f - SHELF_SIDE
         val shelfX1 = deckW / 2f + SHELF_SIDE
         val shelfY0 = deckTop - deckH - SHELF_LIP
         val shelf = cam.rectAt(shelfX0, shelfX1, shelfY0, deckTop + SHELF_TOP, STAND_FRONT_Z)
-        val slabEdge = cam.rectAt(-STAND_HALF_W, STAND_HALF_W, STAND_H - SLAB_T, STAND_H, STAND_FRONT_Z)
-        val plinth = cam.rectAt(-STAND_HALF_W + 3f, STAND_HALF_W - 3f, 0f, PLINTH_H, STAND_FRONT_Z + 2.5f)
+        val slabEdge = cam.rectAt(-standHalfW, standHalfW, STAND_H - SLAB_T, STAND_H, STAND_FRONT_Z)
+        val plinth = cam.rectAt(-standHalfW + 3f, standHalfW - 3f, 0f, PLINTH_H, STAND_FRONT_Z + 2.5f)
         // Kisi speaker kain di kiri & kanan rak (konsol stereo); dilewati bila terlalu sempit
         val gy0 = PLINTH_H + 5f
         val gy1 = STAND_H - SLAB_T - 5f
-        val grilleLeft = (-STAND_HALF_W + 6f to shelfX0 - 6f).takeIf { it.second - it.first >= 14f }
+        val grilleLeft = (-standHalfW + 6f to shelfX0 - 6f).takeIf { it.second - it.first >= 14f }
             ?.let { cam.rectAt(it.first, it.second, gy0, gy1, STAND_FRONT_Z) }
-        val grilleRight = (shelfX1 + 6f to STAND_HALF_W - 6f).takeIf { it.second - it.first >= 14f }
+        val grilleRight = (shelfX1 + 6f to standHalfW - 6f).takeIf { it.second - it.first >= 14f }
             ?.let { cam.rectAt(it.first, it.second, gy0, gy1, STAND_FRONT_Z) }
         val tvFront = cam.rectAt(tv.origin.x - TV_W / 2f, tv.origin.x + TV_W / 2f, STAND_H, STAND_H + TV_H, TV_FRONT_Z)
-        val standFront = cam.rectAt(-STAND_HALF_W, STAND_HALF_W, 0f, STAND_H, STAND_FRONT_Z)
+        val standFront = cam.rectAt(-standHalfW, standHalfW, 0f, STAND_H, STAND_FRONT_Z)
+
+        // ---------- Laci kaset: bilik kanan (menggantikan kisi speaker kanan) di layar mendatar, selain itu di bawah rak deck
+        val osdY = h - osdBottom
+        val bay = grilleRight?.let { g ->
+            val r = SRect(maxOf(g.left, SIDE), g.top, minOf(g.right, w - SIDE), minOf(g.bottom, osdY - 2f))
+            r.takeIf { it.width >= BAY_MIN_W && it.height >= BAY_MIN_H }
+        }
+        val under = SRect(
+            maxOf(shelf.left, SIDE), shelf.bottom + 3f, minOf(shelf.right, w - SIDE),
+            minOf(plinth.top + plinth.height * 0.35f, osdY - 2f),
+        ).let { if (it.height >= DRAWER_UNDER_MIN_H && it.width >= 120f) it else null }
+        val inBay = if (landscape) bay != null else bay != null && under == null
+        val drawer = (if (inBay) bay else under) ?: bay ?: SRect(
+            maxOf(shelf.left, SIDE), shelf.bottom + 3f, minOf(shelf.right, w - SIDE), maxOf(shelf.bottom + 3f + DRAWER_UNDER_MIN_H, minOf(plinth.bottom, osdY - 2f)),
+        )
+        val drawerIsBay = inBay || (under == null && bay != null)
+        // Area sentuh boleh menutupi bibir rak (kayu) dan 3 dp pita OSD (teks, bukan kontrol) agar selalu mencapai 48 dp
+        val drawerHit = growDrawerHit(drawer, w, minY = if (drawerIsBay) slabEdge.bottom + 1f else shelf.bottom - 1.5f, maxY = maxOf(osdY + 3f, drawer.bottom))
         val casPts = cassette.corners().map(cam::project)
         val casRaw = SRect.around(casPts)
         // Area sentuh kaset minimal 48 × 48 dp walau kaset tergambar kecil
@@ -195,7 +228,8 @@ object StageLayout {
         return Frame(
             width = w, height = h, landscape = landscape, camera = cam, tv = tv, stand = stand, cassette = cassette,
             tvFront = tvFront, standFront = standFront, shelf = shelf, deck = deck, slabEdge = slabEdge, plinth = plinth,
-            grilleLeft = grilleLeft, grilleRight = grilleRight, cassetteBounds = cassetteBounds,
+            grilleLeft = grilleLeft, grilleRight = if (drawerIsBay) null else grilleRight, cassetteBounds = cassetteBounds,
+            drawer = drawer, drawerHit = drawerHit, drawerInBay = drawerIsBay,
             projection = projection, floorLine = floorLine, baseboardTop = baseboardTop, osdTop = top, osdBottom = h - osdBottom,
         )
     }
@@ -245,6 +279,30 @@ object StageLayout {
         val cx = SIDE + (availW - f * (uMax - uMin)) / 2f - f * uMin
         val cy = top + (availH - f * (vMax - vMin)) / 2f - f * vMin
         return StageCamera(e, f, cx, cy)
+    }
+
+    /**
+     * Area sentuh laci ≥ 48 × 48 dp: muka laci yang lebih kecil diperbesar ke bawah dulu (kayu plint/lantai bukan kontrol),
+     * lalu ke atas, tanpa melewati [minY] (rak deck / papan atas) atau [maxY] (pita OSD bawah), dan ke samping dalam layar.
+     */
+    private fun growDrawerHit(r: SRect, w: Float, minY: Float, maxY: Float): SRect {
+        var top = r.top
+        var bottom = r.bottom
+        var need = DRAWER_TOUCH - (bottom - top)
+        if (need > 0f) {
+            val down = minOf(need, (maxY - bottom).coerceAtLeast(0f))
+            bottom += down; need -= down
+        }
+        if (need > 0f) top -= minOf(need, (top - minY).coerceAtLeast(0f))
+        var left = r.left
+        var right = r.right
+        val wide = DRAWER_TOUCH - (right - left)
+        if (wide > 0f) {
+            left -= wide / 2f; right += wide / 2f
+            if (left < 0f) { right -= left; left = 0f }
+            if (right > w) { left -= right - w; right = w }
+        }
+        return SRect(left, top, right, bottom)
     }
 
     /**

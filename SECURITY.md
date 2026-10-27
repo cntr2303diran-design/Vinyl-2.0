@@ -15,6 +15,7 @@ Dokumen ini menjelaskan apa yang dilindungi Vinyl Launcher, apa yang belum, dan 
 | Lirik | `lrclib.net` | judul, artis, album, durasi lagu yang sedang diputar. Bisa dimatikan total di Pengaturan → Musik → *Cari lirik online*: bila mati, tidak ada permintaan jaringan sama sekali |
 | Cuaca | `api.open-meteo.com` | koordinat kota yang Anda isi sendiri (4 desimal) |
 | Cover album | tautan `https` yang diberikan aplikasi musik | alamat IP perangkat (seperti permintaan web biasa) |
+| Situs film (laci kaset) | alamat `https` yang Anda isi sendiri di sebuah kaset film (bawaan: `archive.org`, `studio.blender.org`, `www.nfb.ca`) | Hanya terjadi setelah Anda menekan kaset film. Jendela web tertanam memuat halaman seperti peramban biasa: alamat IP, serta cookie, skrip, dan pelacak milik situs itu sendiri — di luar kendali aplikasi ini. Aplikasi tidak mengirim judul lagu, daftar aplikasi, atau pengaturan ke situs mana pun |
 
 Tidak ada yang dikirim ke internet dari fitur app drawer (kategori, Sering dipakai, lencana, pencarian). Datanya:
 
@@ -43,6 +44,15 @@ Beranda VHS, pemutar bawaan, dan Audio Console juga tidak mengirim apa pun ke in
 | Level baterai earphone yang diingat (`bt_battery`) | `SharedPreferences` internal | Paling banyak 16 perangkat (yang terbaru); laporan lebih tua dari 3 hari tidak ditampilkan. Kuncinya 16 karakter awal SHA-256 alamat Bluetooth, **bukan** alamatnya; isinya hanya level & waktu laporan. Catatan jujur: ruang alamat Bluetooth kecil, jadi orang yang bisa membaca berkas ini (butuh akses root; cadangan Android dimatikan) secara teori bisa menebak alamatnya dari sidik itu |
 | Profil EQ & pengaturan pemutar | DataStore (bersama pengaturan lain) | Ikut berkas cadangan **kecuali** folder musik (URI folder melekat pada perangkat dan izin SAF-nya) |
 
+Laci kaset film di meja (Tahap 13) tidak menambah izin dan tidak mengirim data pengguna:
+
+| Data | Disimpan di | Catatan |
+|---|---|---|
+| Daftar kaset film (nama, alamat `https`, warna; maks 24) | DataStore (bersama pengaturan lain) | Ikut berkas cadangan agar bisa dipindah. Dibersihkan ulang saat dibaca atau diimpor: hanya `https`, tanpa alamat IP/`localhost`/info login di alamat, maks 500 karakter |
+| Cookie, penyimpanan lokal, dan cache situs film | Folder internal WebView milik aplikasi ini | Tidak ikut cadangan (allowBackup mati). Cookie pihak ketiga dimatikan. Hapus lewat Pengaturan → *Laci kaset* → *Hapus cookie & data situs film* |
+| Posisi dan durasi film yang sedang tampil | Hanya memori | Dibaca tiap detik lewat skrip tetap milik aplikasi, hanya selama film tampil, untuk menampilkan waktu dan menggeser; tidak disimpan dan tidak dikirim |
+| Skor terbaik permainan di laci | DataStore (bersama pengaturan lain) | Satu bilangan; lokal |
+
 Setiap izin dan alasannya tampil di Pengaturan → *Cadangan & privasi*; daftarnya (`PrivacyInfo.kt`) dicocokkan dengan
 `AndroidManifest.xml` oleh tes otomatis, jadi izin baru tanpa alasan akan menggagalkan build.
 
@@ -65,6 +75,8 @@ Setiap izin dan alasannya tampil di Pengaturan → *Cadangan & privasi*; daftarn
 | Laju sampel USB | Hanya `setPreferredMixerAttributes` untuk uid aplikasi ini, `USAGE_MEDIA`, dan DAC USB (batasan Android); perilaku mixer *default* (volume sistem tetap berlaku). Dikembalikan ke pengaturan sistem saat fitur dimatikan atau layanan pemutar berhenti |
 | Shizuku | `ShizukuProvider` dilindungi `INTERACT_ACROSS_USERS_FULL` (hanya sistem/Shizuku). `ShellService` (proses shell) hanya punya satu operasi tetap: `pm grant com.vinyl.launcher android.permission.DUMP`; AIDL-nya tidak menerima teks/perintah (dijaga `PrivacyInfoTest`). Dijalankan hanya setelah dialog yang menampilkan perintahnya disetujui |
 | Video di layar TV | Hanya folder yang dipilih pengguna (Storage Access Framework, izin baca persisten untuk folder itu saja; dilepas saat ganti/lepas folder). Hanya nama & jenis berkas tingkat teratas yang dibaca (maks 2000). Diputar tanpa suara, tanpa audio focus, maks 720p, hanya selama ruang TV tampil. URI folder tidak ikut berkas cadangan |
+| Laci kaset: jendela web | Satu WebView, hanya dibuat saat kaset film dipakai dan dihancurkan saat kaset musik kembali ke deck atau beranda ditutup. JavaScript menyala (situs film memerlukannya) tetapi **tanpa jembatan** `addJavascriptInterface`: halaman tidak bisa memanggil kode aplikasi. Hanya `https` (`http` dinaikkan ke https; skema lain, alamat IP, `localhost`, dan alamat > 8192 karakter diblokir di setiap pindah halaman, termasuk pengalihan). Akses berkas & konten dimatikan, permintaan lokasi/kamera/mikrofon/izin lain ditolak, unduhan diabaikan, pemilih berkas tidak ada, jendela baru tidak dibuka, dialog JavaScript dibatalkan, cookie pihak ketiga dimatikan, konten campuran tidak pernah diizinkan, Safe Browsing menyala, dan galat sertifikat SSL selalu dibatalkan (tanpa tombol "lanjutkan"). Bila proses render halaman mati, WebView dibuang dan layar menampilkan "sinyal hilang" (ketuk untuk mencoba lagi) — aplikasi tidak ikut mati |
+| Laci kaset: pembaca video | Aplikasi membaca dan mengendalikan `<video>` dengan skrip tetap (`FilmProbe`) lewat `evaluateJavascript`; hanya bilangan bulat yang disisipkan ke skrip (tidak ada teks dari halaman maupun pengguna). Jawaban halaman tidak dipercaya: harus tepat empat bilangan bulat yang masuk akal (maks ±100 jam, panjang ≤ 64), selain itu dibuang. Diuji unit (`FilmProbeTest`, `FilmRulesTest`) |
 | Komponen | `BootReceiver` tidak diekspor (siaran boot/pembaruan dikirim sistem). `PlayerButtonReceiver` (tombol media setelah proses dimatikan) diekspor karena sistem yang mengirim tombol media; ia menyalakan `PlayerService` HANYA bila ada antrean tersimpan, jadi siaran `MEDIA_BUTTON` dari aplikasi lain tanpa antrean diabaikan (dengan antrean, paling jauh memutar kembali lagu pengguna sendiri; di Android 12+ latar belakang tetap dibatasi sistem). Yang tetap diekspor memang harus: Home dan Onboarding (dipanggil sistem/peluncur), serta layanan notifikasi & aksesibilitas yang hanya bisa di-bind sistem lewat izin `BIND_*` |
 
 ## Kunci tanda tangan — perlu keputusan Anda
@@ -123,6 +135,10 @@ Itu butuh langkah penandatanganan manual di luar build ini dan tidak diotomatisk
 - Video YouTube sengaja tidak dibangun: Kebijakan Pengembang YouTube API Services III.I butir 7 melarang memisahkan atau
   mengisolasi komponen audio/video konten YouTube (https://developers.google.com/youtube/terms/developer-policies), padahal
   video di layar TV diputar tanpa suara sementara musik berasal dari aplikasi lain.
+- Laci kaset film belum diuji di perangkat nyata (hanya tes unit untuk aturan alamat, pembaca video, dan alur kaset; tangkapan layar dengan
+  halaman rekaan; build CI). Layanan streaming berlangganan dengan perlindungan DRM (Widevine L1, dsb.) sering menolak diputar di dalam
+  WebView aplikasi lain; kaset bawaan sengaja hanya menunjuk sumber legal. Isi, iklan, dan pelacak halaman film sepenuhnya milik situs
+  yang dibuka; aplikasi ini tidak menyaring isi halaman, hanya membatasi apa yang boleh dilakukan halaman terhadap aplikasi dan perangkat.
 - Overlay (layar kunci, taskbar, tombol navigasi) memerlukan izin "tampil di atas aplikasi lain"; ini inheren pada fiturnya.
 
 ## Melapor kerentanan

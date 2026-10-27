@@ -20,6 +20,7 @@ import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material.icons.rounded.Movie
 import androidx.compose.material.icons.rounded.TouchApp
 import androidx.compose.material.icons.rounded.VerifiedUser
 import androidx.compose.material.icons.rounded.Vibration
@@ -114,6 +115,7 @@ private enum class Page(val title: String, val subtitle: String, val icon: Image
     TASKBAR("Taskbar", "Bar aplikasi gaya PC", Icons.Rounded.Dock, Color(0xFFFF9F43)),
     NAV("Tombol navigasi", "Kembali, Home, Terbaru", Icons.Rounded.TouchApp, Color(0xFF64D2FF)),
     VISUAL("Gambar & efek", "Video di TV, distorsi, cahaya, partikel, parallax, visualizer", Icons.Rounded.GraphicEq, Color(0xFF00C7BE)),
+    FILM("Laci kaset", "Kaset film di TV, Teater, data situs", Icons.Rounded.Movie, Color(0xFFE0A15A)),
     FX("Suara & getar", "Tombol kaset, desis pita, getar", Icons.Rounded.Vibration, Color(0xFFBF5AF2)),
     GESTURES("Gestur", "Swipe & gestur gambar sendiri", Icons.Rounded.Gesture, Color(0xFFFFD60A)),
     WEATHER("Cuaca", "Lokasi untuk widget cuaca", Icons.Rounded.WbSunny, Color(0xFFFF9F0A)),
@@ -297,6 +299,7 @@ private fun SettingsScreen(vm: SettingsViewModel, onBack: () -> Unit) {
                     VideoControls(s.video, s.player.folderUri) { f -> vm.update { it.copy(video = f(it.video)) } }
                 }
             }
+            Page.FILM -> Group("Laci kaset") { FilmControls(s.film) { f -> vm.update { it.copy(film = f) } } }
             Page.FX -> ControlCard {
 
         SwitchRow("Bunyi tombol kaset & TV", s.effects.needleSound, { on -> vm.update { it.copy(effects = it.effects.copy(needleSound = on)) } },

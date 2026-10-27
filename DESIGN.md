@@ -253,3 +253,65 @@ kaset di samping TV, dan teks layar kamera (OSD) yang menggantikan status bar. R
   menyusun ulang panggung TV, kaset, atau OSD. Kanvas yang sering digambar ulang (film VHS, kaset) punya `graphicsLayer` sendiri.
 - Cahaya proyektor tidak lagi memakai `RenderEffect` blur di layer yang beranimasi; gambarnya diperkecil sekali di thread latar
   (blur "dibakar" lewat penskalaan) lalu ditampilkan dengan filter halus. Dampak ke perangkat nyata belum diukur.
+
+---
+
+## Laci kaset: film di TV (Tahap 13)
+
+Ide: **film dipilih dengan mengambil kaset, bukan lewat menu.** Di meja ada laci. Ditarik, di dalamnya ada kaset berlabel; ketuk
+sebuah kaset dan kaset musik di deck diganti kaset itu, situsnya terbuka di layar TV. Ketuk kaset yang sama lagi dan kaset musik
+kembali. Antarmukanya tetap diegetik (benda di meja, bukan panel mengambang), sama seperti kaset, knob, dan deck.
+
+### Prinsip yang dipakai
+
+| Prinsip | Sumber | Dipakai untuk |
+|---|---|---|
+| Informasi menjadi bagian dari dunia | Game horor *found footage* (prinsip, bukan aset) | Daftar film = isi laci; film yang sedang tayang = kaset di deck dengan lampu kecil menyala di muka laci; "MEMUAT" dan "SINYAL HILANG" ditulis seperti teks layar kamera |
+| Gerak pegas yang halus dan terasa fisik | Apple HIG | Laci ditarik dengan pegas (`dampingRatio` 0,72); kaset yang diganti bergerak seperti kaset sungguhan; tanpa gerak bila *Hapus animasi* atau Penghemat baterai |
+| Aksi utama dalam jangkauan jempol | Samsung One UI | Baki naik dari tepi bawah; kaset digulir mendatar; tombol Tutup dan Tambah 48 dp di sudut baki |
+| Lapisan dengan kedalaman, material tembus pandang subtil | Microsoft Fluent | Selimut gelap tembus pandang (alpha 0,40) di belakang baki: ruang TV tetap terlihat, jadi pergantian kaset di meja bisa diikuti mata |
+| Bentuk bulat, warna dari konten, tipografi jelas | Material 3 | Cangkang kaset berwarna dari delapan warna bernama; sudut baki 14 dp; teks baki memakai tipografi aplikasi |
+
+### Perilaku
+
+- **Laci** ada di muka meja: pada layar mendatar ia menempati bilik di kanan rak deck (menggantikan kisi speaker kanan; meja
+  dilebarkan secukupnya bila bilik terlalu sempit), pada layar tegak ia di bawah rak deck (`StageLayout.drawer`, `drawerInBay`).
+  Area sentuhnya diperbesar sampai ≥ 48 dp tanpa menutupi tombol deck maupun pita OSD bawah (`drawerHit`, diuji `StageLayoutTest`
+  untuk ponsel kecil, ponsel mendatar, tablet, dan huruf besar). Laci adalah tombol dengan keadaan ("terbuka/tertutup", jumlah kaset).
+- **Baki** (`FilmTray`): judul "LACI KASET" dengan petunjuk yang berubah mengikuti keadaan, tombol TAMBAH, kartu kaset 148 dp
+  (`CassetteArt`, cangkang berwarna) dengan nama situs di bawahnya, lencana amber **DI TV** pada kaset yang sedang ada di deck.
+  Ketuk = masukkan/keluarkan; tahan = ubah (TalkBack mendapat aksi "Ubah kaset" langsung). Laci kosong menawarkan *Pulihkan kaset bawaan*.
+- **Setelah kaset ditekan**, baki menutup sendiri ±0,4 detik kemudian supaya pergantian kaset di meja terlihat.
+- **Deck** mengikuti kaset: tombol sebelumnya/mundur/putar/maju mengendalikan film (mundur/maju 10 detik), jendela VFD menulis
+  `FILM ▶` / `❚❚` / `■` dan menjadi tombol **mode Teater**. Kaset musik yang ditinggalkan dijeda dan dilanjutkan saat kembali
+  (bisa dimatikan di Pengaturan → Laci kaset).
+- **Layar TV** memperlihatkan halaman situs pada lebar "monitor" 480 dp yang dikecilkan ke ukuran layar (tata letak seluler tetap
+  terbaca). Efek shader CRT tidak dipasang pada halaman agar video tetap mulus; kaca, vinyet, dan pantulan tetap digambar di atasnya.
+  Sentuhan di layar langsung diteruskan ke halaman.
+- **Teater** = layar penuh: bilah sistem disembunyikan, layar diputar mendatar (opsional), tombol tutup 48 dp, tombol Kembali keluar.
+  WebView yang sama dipindah ke Teater (film tidak dimuat ulang). Tampilan layar penuh milik pemutar halaman juga ditampung.
+- **Memuat**: tulisan MEMUAT di sudut, garis amber di bawah menunjukkan kemajuan, dan pita tracking turun perlahan (hanya bila gerak diizinkan).
+  **Sinyal hilang** (galat jaringan, sertifikat tidak sah, proses halaman mati): layar gelap dengan teks dan "KETUK UNTUK COBA LAGI".
+
+### Token (`Tokens.Film`) dan kontras
+
+| Token | Nilai | Pemakaian |
+|---|---|---|
+| `FELT_TOP` / `FELT_BOTTOM` | `#2B1719` / `#190D0F` | Kain baki (gradien vertikal) |
+| `LOADING_SCRIM_ALPHA` | 0,78 | Peredam hitam di belakang tulisan MEMUAT |
+| `LOST_SCRIM_ALPHA` / `LOST_MESSAGE_ALPHA` | 0,94 / 0,82 | Selimut "sinyal hilang" dan alpha putih keterangannya |
+
+Halaman web bisa berwarna apa saja, jadi `FilmPaletteTest` menguji kasus terburuk (halaman putih penuh, kuning/biru terang, abu tengah):
+krem `#EDE3D1` di baki 13,3–14,9 : 1, krem sekunder `#C9BEAA` 9,2–10,3 : 1, amber `#D6A64D` 7,6–8,5 : 1, tinta di atas lencana amber 7,6 : 1;
+MEMUAT putih di atas halaman putih 11,7 : 1; SINYAL HILANG putih 19,2 : 1, keterangan 12,9 : 1, amber 8,6 : 1.
+
+Delapan warna cangkang kaset (bata, jingga, mustard, lumut, toska, biru tinta, anggur, abu hangat) masing-masing punya nama untuk pembaca layar;
+pilihan warna di editor adalah grup tombol radio 48 dp dengan tanda centang berkontras (hitam/putih sesuai terang-gelap warnanya).
+
+### Aksesibilitas, RTL, huruf 200%
+
+- Setiap kontrol punya label; laci, kaset, tombol Teater, dan tombol tutup ≥ 48 dp.
+- Panggung tetap kiri→kanan pada RTL (benda fisik); baki, judul, dan editor mengikuti arah bahasa. Teks Latin seperti alamat situs tetap
+  terbaca benar karena tipografi aplikasi memakai `TextDirection.Content`.
+- Teks di layar TV dan VFD tidak ikut skala huruf sistem (bagian dari gambar TV, ukurannya mengikuti TV); teks baki dan editor ikut skala 200%
+  (editor menggulir, baki menggulir mendatar). Tangkapan layar otomatis: ponsel, ponsel kecil + huruf 200%, tablet, RTL, laci kosong.

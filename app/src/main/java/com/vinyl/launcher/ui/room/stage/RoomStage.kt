@@ -57,7 +57,16 @@ class StageActions(
     val onSeek: (Long) -> Unit,
     val onTick: () -> Unit,
     val onOpenLyrics: () -> Unit,
+    /** Ketuk laci kaset di meja: tarik/dorong. */
+    val onToggleDrawer: () -> Unit = {},
+    /** Jendela VFD deck menjadi tombol (mis. mode Teater); null = hanya tampilan. */
+    val onVfdClick: (() -> Unit)? = null,
+    val vfdClickLabel: String = "",
 )
+
+/** Keadaan laci kaset di meja: terbuka atau tidak, warna kaset yang mengintip, dan jumlah kasetnya. */
+@Immutable
+class StageDrawerInfo(val open: Boolean, val peek: List<Color>, val count: Int)
 
 /**
  * Beranda bergaya rekaman VHS: ruangan malam, proyeksi di dinding, meja kayu dengan deck kaset di raknya, TV tabung
@@ -97,6 +106,14 @@ fun RoomStage(
     screenVideo: (@Composable () -> Unit)? = null,
     /** Lapisan di depan dinding & proyeksi, di belakang meja dan TV (mis. debu melayang). */
     atmosphere: @Composable () -> Unit = {},
+    /** Kaset di deck: menentukan tombol deck dan apa yang bisa diketuk di TV. */
+    tape: DeckTape = DeckTape.MUSIC,
+    /** Label kaset di meja bila bukan kaset musik (kaset film/game); null = kaset musik. */
+    tapeLabel: CassetteLabel? = null,
+    /** Isi layar TV yang hidup (halaman film, game); null = cover musik. */
+    tvScreen: (@Composable () -> Unit)? = null,
+    /** Laci kaset di meja; null = tanpa laci. */
+    drawer: StageDrawerInfo? = null,
     /** Isi tambahan di layar TV (subtitel lirik). Lambda terakhir. */
     screenExtra: @Composable () -> Unit = {},
 ) {
@@ -161,13 +178,20 @@ fun RoomStage(
             Modifier
                 .offset(tv.left.dp, tv.top.dp)
                 .size(tv.width.dp, tv.height.dp)
-                .semantics(mergeDescendants = true) {
-                    contentDescription = if (mode == TvScreenMode.STANDBY) "TV, siaga. Tidak ada lagu"
-                    else "TV menampilkan ${np.title}" + if (np.artist.isNotBlank()) " oleh ${np.artist}" else ""
-                    stateDescription = if (!np.hasTrack) "Siaga" else if (np.isPlaying) "Diputar" else "Dijeda"
-                    customActions = listOf(CustomAccessibilityAction("Buka lirik layar penuh") { actions.onOpenLyrics(); true })
+                .semantics(mergeDescendants = tvScreen == null) {
+                    contentDescription = when {
+                        tape == DeckTape.FILM -> "TV menampilkan film ${np.title}"
+                        tape == DeckTape.GAME -> "TV menampilkan game ${np.title}"
+                        mode == TvScreenMode.STANDBY -> "TV, siaga. Tidak ada lagu"
+                        else -> "TV menampilkan ${np.title}" + if (np.artist.isNotBlank()) " oleh ${np.artist}" else ""
+                    }
+                    if (tape == DeckTape.MUSIC) {
+                        stateDescription = if (!np.hasTrack) "Siaga" else if (np.isPlaying) "Diputar" else "Dijeda"
+                        customActions = listOf(CustomAccessibilityAction("Buka lirik layar penuh") { actions.onOpenLyrics(); true })
+                    }
                 }
-                .clickable(enabled = !editing && np.hasTrack, onClickLabel = "Buka lirik", role = Role.Button, onClick = actions.onOpenLyrics),
+                // Layar hidup (WebView/game) menerima sentuhan sendiri; ketuk-untuk-lirik hanya untuk kaset musik
+                .clickable(enabled = !editing && np.hasTrack && tape == DeckTape.MUSIC, onClickLabel = "Buka lirik", role = Role.Button, onClick = actions.onOpenLyrics),
         ) {
             CrtTv(
                 mode = mode, art = np.art.takeIf { showCover }, title = if (showTitle) np.title else "",
@@ -175,7 +199,7 @@ fun RoomStage(
                 body = retro.tvBody, knob = retro.knobStyle, vfdColor = retro.vfdColor, vfdLines = listOf(info.tvVfd),
                 crtStrength = retro.crtStrength, motion = retro.albumMotion, reduceMotion = !motionAllowed,
                 titleScrimAlpha = titleScrimAlpha, knobTurns = seek.turns, knobHighlight = seek.touching,
-                modifier = Modifier.fillMaxSize(), poweredOff = tvOff, screenVideo = screenVideo,
+                modifier = Modifier.fillMaxSize(), poweredOff = tvOff, screenVideo = screenVideo, screenLive = tvScreen,
                 screenOverlay = {
                     screenExtra()
                     SeekOsd(seek, np.durationMs, tv.width.dp)
@@ -187,16 +211,17 @@ fun RoomStage(
             seek, np,
             center = Offset(tv.left + tv.width * TvGeometry.KNOB_CX, tv.top + tv.height * TvGeometry.KNOB_CY),
             radius = tv.width * TvGeometry.KNOB_R,
-            enabled = !editing && np.hasTrack,
+            enabled = !editing && np.hasTrack && tape != DeckTape.GAME,
             onSeek = actions.onSeek, onTick = actions.onTick,
         )
 
         // ---------- Kaset 3D
         val duration = np.durationMs
         val progress: () -> Float = { if (duration > 0) position().toFloat() / duration else 0f }
-        val label = remember(np.hasTrack, np.title, np.artist, np.art) {
+        val musicLabel = remember(np.hasTrack, np.title, np.artist, np.art) {
             CassetteLabel(if (np.hasTrack) "${np.title}\u0000${np.artist}" else null, np.title, np.artist, np.art)
         }
+        val label = tapeLabel ?: musicLabel
         StageCassette(
             f, label, hasSession = np.hasSession, playing = np.isPlaying, progress = progress, timeText = info.tapeTime,
             shell = retro.cassetteShell, speed = retro.reelSpeed, accent = accent, screenGlow = screenGlow,
@@ -209,7 +234,16 @@ fun RoomStage(
             f.deck, info.deck, retro.vfdColor, hasSession = np.hasSession, playing = np.isPlaying, canSeek = np.canSeek,
             enabled = !editing, onPrevious = actions.onPrevious, onRewind = actions.onRewind,
             onPlayPause = actions.onPlayPause, onNext = actions.onNext,
+            tape = tape, onVfdClick = actions.onVfdClick, vfdClickLabel = actions.vfdClickLabel,
         )
+
+        // ---------- Laci kaset di muka meja
+        if (drawer != null) {
+            StageDrawer(
+                f, pal, open = drawer.open, peek = drawer.peek, tapeOut = tape != DeckTape.MUSIC,
+                motionAllowed = motionAllowed && !editing, enabled = !editing, count = drawer.count, onToggle = actions.onToggleDrawer,
+            )
+        }
     }
     }
 }

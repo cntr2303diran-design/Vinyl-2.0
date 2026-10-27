@@ -19,7 +19,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.rounded.FastForward
 import androidx.compose.material.icons.rounded.FastRewind
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.SkipNext
@@ -55,6 +61,9 @@ import com.vinyl.launcher.ui.theme.MonoFamily
 import com.vinyl.launcher.ui.theme.RetroColors
 import com.vinyl.launcher.ui.theme.Tokens
 
+/** Apa yang sedang dikendalikan deck: lagu, film di layar TV, atau game; menentukan ikon & fungsi keempat tombol. */
+enum class DeckTape { MUSIC, FILM, GAME }
+
 /** Isi VFD deck: baris status (mis. "▶ PLAY   HI-FI") dan baris keluaran audio (mis. "BUDS PRO · 48 kHz"). */
 data class DeckDisplay(val status: String, val output: String)
 
@@ -62,6 +71,9 @@ data class DeckDisplay(val status: String, val output: String)
  * Deck kaset hitam di rak meja: jendela VFD (status & keluaran audio) dan empat tombol perak mekanis — sebelumnya,
  * mundur 10 detik, putar/jeda, berikutnya. Tombol turun saat ditekan; tombol putar "terkunci" setengah masuk selama
  * lagu berjalan. Setiap tombol ≥ 48 dp.
+ *
+ * Kaset film: kembali · mundur 10 dtk · putar/jeda · maju 10 dtk. Kaset game: kiri · atas · bawah · kanan (jendela VFD
+ * menjadi tombol jeda/mulai ulang). Jendela VFD bisa dijadikan tombol lewat [onVfdClick] (mis. membuka mode Teater).
  */
 @Composable
 fun TapeDeck(
@@ -76,6 +88,9 @@ fun TapeDeck(
     onRewind: () -> Unit,
     onPlayPause: () -> Unit,
     onNext: () -> Unit,
+    tape: DeckTape = DeckTape.MUSIC,
+    onVfdClick: (() -> Unit)? = null,
+    vfdClickLabel: String = "",
 ) {
     BoxWithConstraints(
         Modifier
@@ -109,16 +124,46 @@ fun TapeDeck(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            DeckVfd(display, vfdColor, Modifier.weight(1f).fillMaxHeight().padding(vertical = 4.dp))
+            val vfdSlot = Modifier.weight(1f).fillMaxHeight().padding(vertical = 4.dp)
+            Box(
+                if (onVfdClick != null) {
+                    vfdSlot
+                        .clip(RoundedCornerShape(3.dp))
+                        .clickable(onClickLabel = vfdClickLabel, role = Role.Button, onClick = onVfdClick)
+                        .semantics { contentDescription = vfdClickLabel }
+                } else vfdSlot,
+            ) {
+                DeckVfd(display, vfdColor, Modifier.fillMaxSize())
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
-                DeckKey(Icons.Rounded.SkipPrevious, "Lagu sebelumnya", enabled && hasSession, keyW, keyH, onClick = onPrevious)
-                DeckKey(Icons.Rounded.FastRewind, "Mundur 10 detik", enabled && hasSession && canSeek, keyW, keyH, onClick = onRewind)
-                DeckKey(
-                    if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                    if (!hasSession) "Buka aplikasi musik" else if (playing) "Jeda" else "Putar",
-                    enabled, keyW * 1.25f, keyH, latched = playing, onClick = onPlayPause,
-                )
-                DeckKey(Icons.Rounded.SkipNext, "Lagu berikutnya", enabled && hasSession, keyW, keyH, onClick = onNext)
+                when (tape) {
+                    DeckTape.MUSIC -> {
+                        DeckKey(Icons.Rounded.SkipPrevious, "Lagu sebelumnya", enabled && hasSession, keyW, keyH, onClick = onPrevious)
+                        DeckKey(Icons.Rounded.FastRewind, "Mundur 10 detik", enabled && hasSession && canSeek, keyW, keyH, onClick = onRewind)
+                        DeckKey(
+                            if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                            if (!hasSession) "Buka aplikasi musik" else if (playing) "Jeda" else "Putar",
+                            enabled, keyW * 1.25f, keyH, latched = playing, onClick = onPlayPause,
+                        )
+                        DeckKey(Icons.Rounded.SkipNext, "Lagu berikutnya", enabled && hasSession, keyW, keyH, onClick = onNext)
+                    }
+                    DeckTape.FILM -> {
+                        DeckKey(Icons.AutoMirrored.Rounded.ArrowBack, "Halaman sebelumnya", enabled, keyW, keyH, onClick = onPrevious)
+                        DeckKey(Icons.Rounded.FastRewind, "Mundur 10 detik", enabled && canSeek, keyW, keyH, onClick = onRewind)
+                        DeckKey(
+                            if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                            if (playing) "Jeda film" else "Putar film",
+                            enabled, keyW * 1.25f, keyH, latched = playing, onClick = onPlayPause,
+                        )
+                        DeckKey(Icons.Rounded.FastForward, "Maju 10 detik", enabled && canSeek, keyW, keyH, onClick = onNext)
+                    }
+                    DeckTape.GAME -> {
+                        DeckKey(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, "Belok kiri", enabled, keyW, keyH, onClick = onPrevious)
+                        DeckKey(Icons.Rounded.KeyboardArrowUp, "Naik", enabled, keyW, keyH, onClick = onRewind)
+                        DeckKey(Icons.Rounded.KeyboardArrowDown, "Turun", enabled, keyW * 1.25f, keyH, onClick = onPlayPause)
+                        DeckKey(Icons.AutoMirrored.Rounded.KeyboardArrowRight, "Belok kanan", enabled, keyW, keyH, onClick = onNext)
+                    }
+                }
             }
         }
     }

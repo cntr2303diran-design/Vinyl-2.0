@@ -55,6 +55,8 @@ fun RoomOsd(
     landscape: Boolean,
     onSeek: (Long) -> Unit,
     modifier: Modifier = Modifier,
+    /** Kata mode pita untuk kaset selain musik (mis. "FILM"); null = "SP"/"HI-FI" dari lagu yang diputar. */
+    modeWord: String? = null,
 ) {
     val context = LocalContext.current
     val now by rememberNow()
@@ -82,7 +84,7 @@ fun RoomOsd(
         notifications = if (osd.notifications) icons else emptyList(),
         showNotifications = osd.notifications,
         transport = StatusText.transport(np.hasTrack, np.isPlaying, seek.deltaMs?.takeIf { seek.touching }),
-        tapeMode = tapeMode(np, context.packageName, path),
+        tapeMode = modeWord ?: tapeMode(np, context.packageName, path),
         sleepLine = StatusText.sleepLine(sleepMs),
         hasTrack = np.hasTrack,
         positionMs = seek.previewMs ?: positionMs,

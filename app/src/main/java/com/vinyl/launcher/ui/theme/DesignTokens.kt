@@ -136,6 +136,22 @@ object Tokens {
         const val LABEL_INK = 0xFF1C1A2EL       // spidol biru-hitam
     }
 
+    /**
+     * Laci kaset film (Tahap 13): kain baki dan lapisan di atas halaman web di layar TV. Halaman web bisa berwarna apa
+     * saja (termasuk putih penuh), jadi tulisan di atasnya bertumpu pada peredam hitam ini. Pasangan teks/latar dijaga
+     * >= 4,5:1 oleh FilmPaletteTest.
+     */
+    object Film {
+        const val FELT_TOP = 0xFF2B1719L
+        const val FELT_BOTTOM = 0xFF190D0FL
+        /** Peredam hitam di belakang tulisan "MEMUAT" yang melayang di atas halaman. */
+        const val LOADING_SCRIM_ALPHA = 0.78
+        /** Selimut "sinyal hilang" yang menutup halaman. */
+        const val LOST_SCRIM_ALPHA = 0.94
+        /** Alpha putih untuk keterangan galat di atas selimut itu. */
+        const val LOST_MESSAGE_ALPHA = 0.82
+    }
+
     /** Jarak dalam dp. Kelipatan 4 supaya ritme tata letak konsisten. */
     object Space {
         const val XS = 4

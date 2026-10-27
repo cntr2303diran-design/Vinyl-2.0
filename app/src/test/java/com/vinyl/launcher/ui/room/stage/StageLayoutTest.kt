@@ -117,9 +117,9 @@ class StageLayoutTest {
             f.grilleRight?.let { assertTrue(tag, it.left >= f.shelf.right && it.top >= f.slabEdge.bottom) }
             assertTrue(tag, f.baseboardTop < f.floorLine)
         }
-        // Di tablet mendatar kedua kisi speaker muat
+        // Di tablet mendatar ada dua bilik: kisi speaker di kiri, laci kaset di kanan
         val t = StageLayout.compute(1280f, 800f)
-        assertTrue(t.grilleLeft != null && t.grilleRight != null)
+        assertTrue(t.grilleLeft != null && t.grilleRight == null && t.drawerInBay)
     }
 
     @Test
@@ -182,6 +182,49 @@ class StageLayoutTest {
             val c = f.cassette.corners().map(f.camera::project)
             println("STAGE w=$w h=$h tv=${f.tvFront} deck=${f.deck} shelf=${f.shelf} stand=${f.standFront} slab=${f.slabEdge} gl=${f.grilleLeft} gr=${f.grilleRight} cas=${f.cassetteBounds} proj=${f.projection} floor=${f.floorLine} f=${f.camera.focal} cx=${f.camera.cx} cy=${f.camera.cy}")
             println("CAS " + c.joinToString(" ") { "%.1f,%.1f".format(it.x, it.y) })
+        }
+    }
+
+    @Test
+    fun theDrawerHasATouchTargetOfAtLeast48dpThatStaysOnScreenAboveTheOsdBandAndClearOfTheDeck() {
+        for ((w, h) in screens) for (s in sizes) {
+            val f = StageLayout.compute(w, h, s)
+            val tag = "w=$w h=$h s=$s drawer=${f.drawer} hit=${f.drawerHit} bay=${f.drawerInBay}"
+            assertTrue(tag, f.drawerHit.width >= 48f - 0.5f)
+            assertTrue(tag, f.drawerHit.height >= 48f - 0.5f)
+            assertTrue(tag, f.drawerHit.inside(w, h))
+            assertTrue(tag, f.drawerHit.contains(f.drawer, eps = 0.5f))
+            assertTrue(tag, f.drawerHit.bottom <= f.osdBottom + 3.5f)
+            assertFalse(tag, f.drawerHit.overlaps(f.deck))
+            assertFalse(tag, f.drawerHit.overlaps(f.cassetteBounds))
+            assertFalse(tag, f.drawerHit.overlaps(f.tvFront))
+        }
+    }
+
+    @Test
+    fun theDrawerSitsInsideTheTableFrontAndNeverOnTopOfTheShelf() {
+        for ((w, h) in screens) {
+            val f = StageLayout.compute(w, h)
+            val tag = "w=$w h=$h drawer=${f.drawer} bay=${f.drawerInBay}"
+            assertTrue(tag, f.drawer.top >= f.slabEdge.bottom - 0.5f)
+            assertFalse(tag, f.drawer.overlaps(f.shelf))
+            if (f.drawerInBay) assertTrue(tag, f.drawer.left >= f.shelf.right - 0.5f)
+            // Satu kisi speaker di bilik dipakai laci: tidak boleh tergambar dua benda di tempat yang sama
+            f.grilleRight?.let { assertFalse(tag, it.overlaps(f.drawer)) }
+        }
+    }
+
+    @Test
+    fun phonesInPortraitPutTheDrawerBelowTheDeckAndLandscapeScreensUseTheSideBay() {
+        for ((w, h) in listOf(360f to 780f, 393f to 852f, 411f to 891f, 480f to 1040f)) {
+            val f = StageLayout.compute(w, h)
+            assertFalse("w=$w h=$h", f.drawerInBay)
+            assertTrue("w=$w h=$h", f.drawer.top > f.deck.bottom)
+        }
+        for ((w, h) in listOf(640f to 360f, 780f to 360f, 915f to 412f, 1312f to 816f)) {
+            val f = StageLayout.compute(w, h)
+            assertTrue("w=$w h=$h", f.drawerInBay)
+            assertTrue("w=$w h=$h", f.drawer.left > f.shelf.right)
         }
     }
 }

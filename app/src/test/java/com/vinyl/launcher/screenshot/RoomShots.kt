@@ -29,7 +29,10 @@ import com.vinyl.launcher.system.NotificationIcons
 import com.vinyl.launcher.system.Ringer
 import com.vinyl.launcher.system.StatusText
 import com.vinyl.launcher.system.Wifi
+import com.vinyl.launcher.ui.cassette.CassetteLabel
 import com.vinyl.launcher.ui.room.stage.DeckDisplay
+import com.vinyl.launcher.ui.room.stage.DeckTape
+import com.vinyl.launcher.ui.room.stage.StageDrawerInfo
 import com.vinyl.launcher.ui.room.stage.ProjectionContent
 import com.vinyl.launcher.ui.room.stage.RoomStage
 import com.vinyl.launcher.ui.room.stage.SeekState
@@ -86,7 +89,17 @@ internal fun fakeNotificationIcon(): ImageBitmap {
 
 /** Beranda lengkap (panggung + film + OSD) dengan data rekaan dan waktu tetap, tanpa animasi. */
 @Composable
-internal fun StagePreview(np: NowPlaying, retro: RetroSettings, seek: SeekState? = null, tone: RoomTone = retro.room, landscape: Boolean = true) {
+internal fun StagePreview(
+    np: NowPlaying,
+    retro: RetroSettings,
+    seek: SeekState? = null,
+    tone: RoomTone = retro.room,
+    landscape: Boolean = true,
+    tape: DeckTape = DeckTape.MUSIC,
+    tapeLabel: CassetteLabel? = null,
+    tvScreen: (@Composable () -> Unit)? = null,
+    drawer: StageDrawerInfo? = null,
+) {
     val s = seek ?: remember { SeekState() }
     VinylTheme {
         Box(Modifier.fillMaxSize().background(Color(0xFF07080B))) {
@@ -96,11 +109,13 @@ internal fun StagePreview(np: NowPlaying, retro: RetroSettings, seek: SeekState?
                 editing = false, position = { np.positionMs }, titleScrimAlpha = 0.25f, seek = s,
                 info = StageInfo(
                     tvVfd = if (np.hasTrack) "PLAY" else "STANDBY",
-                    deck = DeckDisplay(StatusText.modeLine(transport) + if (np.hasTrack) " SP" else "", "48K BUDS PRO"),
+                    deck = if (tape == DeckTape.FILM) DeckDisplay("FILM ▶", "TEATER")
+                    else DeckDisplay(StatusText.modeLine(transport) + if (np.hasTrack) " SP" else "", "48K BUDS PRO"),
                     tapeTime = if (np.durationMs > 0) "4:18" else "",
                 ),
-                actions = StageActions({}, {}, {}, {}, {}, {}, {}),
+                actions = StageActions({}, {}, {}, {}, {}, {}, {}, onVfdClick = if (tape == DeckTape.FILM) ({}) else null, vfdClickLabel = "Buka mode Teater"),
                 projection = np.art?.let { ProjectionContent.Picture(it) },
+                tape = tape, tapeLabel = tapeLabel, tvScreen = tvScreen, drawer = drawer,
             )
             VhsFilm(animate = false, modifier = Modifier.fillMaxSize())
             VhsOsd(

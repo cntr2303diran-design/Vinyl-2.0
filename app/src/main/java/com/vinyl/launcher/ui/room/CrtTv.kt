@@ -143,6 +143,12 @@ fun CrtTv(
     screenOverlay: @Composable () -> Unit = {},
     /** Video milik pengguna di layar (menggantikan cover setelah frame pertamanya tampil); null = cover saja. */
     screenVideo: (@Composable () -> Unit)? = null,
+    /**
+     * Isi layar hidup (halaman film, game): menggantikan cover & judul. Lapisan ini TIDAK diberi efek tabung AGSL —
+     * RenderEffect tidak boleh dipasang pada lapisan yang memuat WebView — tetapi kaca tabung (garis pindai, vignette,
+     * kilau) tetap digambar di atasnya.
+     */
+    screenLive: (@Composable () -> Unit)? = null,
     /** TV dimatikan (mis. timer tidur selesai): gambar menyusut menjadi garis lalu titik, kemudian siaga. */
     poweredOff: Boolean = false,
 ) {
@@ -208,7 +214,7 @@ fun CrtTv(
                     Modifier
                         .fillMaxSize()
                         .graphicsLayer {
-                            if (crtShader != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            if (crtShader != null && screenLive == null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                                 renderEffect = crtShader.effect(size.width, size.height, crt)
                             }
                             if (q > 0f) {
@@ -220,13 +226,17 @@ fun CrtTv(
                             }
                         },
                 ) {
-                    ScreenPicture(art, accent, motion, mode == TvScreenMode.MOTION)
-                    screenVideo?.invoke()
-                    // Sedikit redup agar warna terasa seperti tabung; judul memakai kotak teks hitam sendiri (selalu terbaca)
-                    if (titleScrimAlpha > 0f) {
-                        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = (titleScrimAlpha * 0.45f).coerceIn(0f, 0.5f))))
+                    if (screenLive != null) {
+                        screenLive()
+                    } else {
+                        ScreenPicture(art, accent, motion, mode == TvScreenMode.MOTION)
+                        screenVideo?.invoke()
+                        // Sedikit redup agar warna terasa seperti tabung; judul memakai kotak teks hitam sendiri (selalu terbaca)
+                        if (titleScrimAlpha > 0f) {
+                            Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = (titleScrimAlpha * 0.45f).coerceIn(0f, 0.5f))))
+                        }
+                        ScreenCaption(title, artist, w)
                     }
-                    ScreenCaption(title, artist, w)
                     screenOverlay()
                     // Garis/titik yang tersisa saat dimatikan menyala putih seperti tabung sungguhan
                     if (q > 0f) Box(Modifier.fillMaxSize().background(Color.White.copy(alpha = (q * 1.4f).coerceAtMost(0.9f))))

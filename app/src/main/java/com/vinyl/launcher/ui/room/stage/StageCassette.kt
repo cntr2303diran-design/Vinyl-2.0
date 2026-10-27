@@ -63,7 +63,10 @@ fun StageCassette(
     val (shown, frame) = swapState
     val angles = rememberReelAngles(playing && motionAllowed, speed, progress)
     val text = rememberLabelText(shown.title.ifBlank { "—" }, shown.artist, timeText)
-    val look = shellLook(shell, accent)
+    // Kaset yang membawa warna sendiri (kaset film) tetap berwarna itu saat keluar, walau kaset baru berlainan
+    val shownShell = shown.shell ?: shell
+    val shownAccent = shown.tint ?: accent
+    val look = shellLook(shownShell, shownAccent)
     // Area gambar: batas kaset + ruang untuk bayangan & animasi angkat
     val area = remember(f) {
         val b = f.cassetteBounds
@@ -129,8 +132,8 @@ fun StageCassette(
                         c.save()
                         c.nativeCanvas.concat(m)
                         drawCassetteFace(
-                            look, text, accent, rl, rr, angles.left, angles.right, shown.art,
-                            shell == CassetteShell.PICTURE, light = 0.35f + 0.65f * g, glow = screenGlow,
+                            look, text, shownAccent, rl, rr, angles.left, angles.right, shown.art,
+                            shownShell == CassetteShell.PICTURE, light = 0.35f + 0.65f * g, glow = screenGlow,
                         )
                         c.restore()
                     }

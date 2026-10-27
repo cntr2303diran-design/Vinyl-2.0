@@ -22,8 +22,18 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import com.vinyl.launcher.data.CassetteShell
 import com.vinyl.launcher.data.ReelSpeed
 
-/** Isi label satu kaset (disimpan agar kaset LAMA tetap berlabel lagu lama saat keluar). */
-data class CassetteLabel(val key: String?, val title: String, val artist: String, val art: ImageBitmap?)
+/**
+ * Isi label satu kaset (disimpan agar kaset LAMA tetap berlabel lagu lama saat keluar). [shell] & [tint] bila diisi
+ * menggantikan pilihan cangkang pengguna untuk kaset ini saja (kaset film berwarna sendiri); null = ikut pengaturan.
+ */
+data class CassetteLabel(
+    val key: String?,
+    val title: String,
+    val artist: String,
+    val art: ImageBitmap?,
+    val shell: CassetteShell? = null,
+    val tint: Color? = null,
+)
 
 /**
  * Gambar kaset diam (gulungan tidak berputar) dilihat dari depan, untuk rak dan detail perpustakaan. Bentuk, label

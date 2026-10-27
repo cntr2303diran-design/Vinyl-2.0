@@ -23,15 +23,22 @@ object PrivacyInfo {
             "Riwayat aplikasi yang sering dibuka (untuk baris Sering dipakai) bisa dihapus kapan saja di Pengaturan → App drawer, " +
             "dan tidak ikut dalam berkas cadangan.",
         "Tidak ada akun, iklan, analitik, atau pelacak. Tidak ada data yang dikirim ke server milik pengembang.",
-        "Aplikasi hanya terhubung ke internet untuk tiga hal: lirik (judul dan artis lagu dikirim ke lrclib.net; " +
+        "Aplikasi hanya terhubung ke internet untuk empat hal: lirik (judul dan artis lagu dikirim ke lrclib.net; " +
             "bisa dimatikan di Pengaturan → Musik → Cari lirik online), " +
-            "cuaca (koordinat kota yang Anda isi dikirim ke open-meteo.com), dan cover album bila aplikasi musik memberi tautan https.",
+            "cuaca (koordinat kota yang Anda isi dikirim ke open-meteo.com), cover album bila aplikasi musik memberi tautan https, " +
+            "dan situs film yang Anda pilih sendiri di laci kaset (lihat di bawah).",
         "Efek visual (distorsi kaca, cahaya, partikel) digambar di perangkat dan tidak mengirim apa pun. Parallax memakai sensor gerak " +
             "(tanpa izin), hanya selama layar utama terlihat, dan datanya tidak disimpan. Visualizer \"Audio asli\" hanya membaca spektrum " +
             "frekuensi keluaran audio perangkat — bukan rekaman suara dan bukan mikrofon — dan izin mikrofon yang disyaratkan Android baru " +
             "diminta saat Anda memilih mode itu.",
         "Video di layar TV (opsional) hanya membaca folder yang Anda pilih sendiri lewat pemilih folder Android, tanpa izin " +
             "penyimpanan. Video diputar di perangkat tanpa suara; tidak ada yang diunggah. Folder dan tautannya tidak ikut berkas cadangan.",
+        "Laci kaset (opsional): kaset film membuka situs https pilihan Anda di layar TV, di dalam jendela web aplikasi ini. " +
+            "Kaset bawaan hanya menunjuk sumber film legal (domain publik, film terbuka, Dewan Film Nasional Kanada); alamat lain " +
+            "Anda tambahkan sendiri, dan isinya sepenuhnya milik situs itu. Halaman tidak punya jembatan ke aplikasi, tidak bisa " +
+            "meminta lokasi, kamera, mikrofon, berkas, atau unduhan, dan hanya https yang dimuat. Cookie dan data situs film ada di " +
+            "perangkat ini saja dan bisa dihapus di Pengaturan → Laci kaset. Alamat kaset ikut berkas cadangan; skor game di laci " +
+            "tersimpan lokal.",
         "Pemutar musik bawaan (opsional) juga hanya membaca folder musik yang Anda pilih sendiri, tanpa izin penyimpanan. Daftar lagu " +
             "(judul, artis, album, format) disimpan di memori internal aplikasi agar pemindaian berikutnya cepat; berkas musik tidak " +
             "disalin, tidak diubah, dan tidak diunggah. Folder musik tidak ikut berkas cadangan.",
@@ -40,7 +47,7 @@ object PrivacyInfo {
     )
 
     val permissions: List<Item> = listOf(
-        Item("android.permission.INTERNET", "Internet", "Lirik, cuaca, dan cover album seperti dijelaskan di atas. Hanya HTTPS."),
+        Item("android.permission.INTERNET", "Internet", "Lirik, cuaca, cover album, dan situs film yang Anda pilih di laci kaset, seperti dijelaskan di atas. Hanya HTTPS."),
         Item("android.permission.SYSTEM_ALERT_WINDOW", "Tampil di atas aplikasi lain", "Menampilkan layar kunci TV, taskbar, dan tombol navigasi."),
         Item("android.permission.FOREGROUND_SERVICE", "Layanan latar depan", "Menjaga layar kunci, taskbar, dan tombol navigasi tetap aktif."),
         Item("android.permission.FOREGROUND_SERVICE_SPECIAL_USE", "Layanan latar (khusus)", "Jenis layanan untuk tampilan di atas aplikasi lain; tidak ada kategori sistem lain yang cocok."),

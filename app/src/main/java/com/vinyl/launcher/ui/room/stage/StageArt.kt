@@ -174,8 +174,8 @@ internal fun DrawScope.drawStageFurniture(
         var z = StageLayout.STAND_FRONT_Z + 1.2f
         var i = 0
         while (z < StageLayout.STAND_BACK_Z) {
-            val a = f.camera.project(V3(-StageLayout.STAND_HALF_W, StageLayout.STAND_H, z)).px(d)
-            val b = f.camera.project(V3(StageLayout.STAND_HALF_W, StageLayout.STAND_H, z)).px(d)
+            val a = f.camera.project(V3(-f.stand.w / 2f, StageLayout.STAND_H, z)).px(d)
+            val b = f.camera.project(V3(f.stand.w / 2f, StageLayout.STAND_H, z)).px(d)
             drawLine(Color.Black.copy(alpha = if (i % 3 == 0) 0.22f else 0.10f), a, b, strokeWidth = (if (i % 3 == 0) 1.2f else 0.8f) * d)
             z += 2.1f + (i % 4) * 0.7f
             i++

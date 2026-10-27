@@ -422,6 +422,18 @@ object MediaRepository {
         _state.update { it.copy(isPlaying = false, positionMs = it.positionAt(), positionUpdateTime = SystemClock.elapsedRealtime()) }
     }
 
+    /**
+     * Putar secara eksplisit (kebalikan [pause]: tidak pernah menjeda). Dipakai saat kaset musik kembali ke deck setelah
+     * kaset film. Tidak melakukan apa pun bila tidak ada sesi atau sesi sudah memutar.
+     */
+    fun play(source: String = "TV Launcher") {
+        val c = active ?: return
+        if (c.playbackState?.state == PlaybackState.STATE_PLAYING || _state.value.isPlaying) return
+        log("$source → PUTAR dikirim ke ${appName(c.packageName)}")
+        c.transportControls.play()
+        _state.update { it.copy(isPlaying = true, positionMs = it.positionAt(), positionUpdateTime = SystemClock.elapsedRealtime()) }
+    }
+
     fun next() { log("TV Launcher → lagu berikutnya"); skip { it.skipToNext() } }
     fun previous() { log("TV Launcher → lagu sebelumnya"); skip { it.skipToPrevious() } }
 
