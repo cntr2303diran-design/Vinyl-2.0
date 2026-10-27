@@ -28,14 +28,18 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.runtime.CompositionLocalProvider
+import com.vinyl.launcher.ui.room.LocalRoomInsets
+import com.vinyl.launcher.ui.room.roomInsets
+import com.vinyl.launcher.ui.room.stableRoomInsets
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -46,6 +50,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
+import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -98,10 +104,10 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import kotlin.math.roundToInt
 import kotlin.math.abs
+import kotlin.math.sign
 import com.vinyl.launcher.util.GestureRecognizer
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 import com.vinyl.launcher.ui.console.ConsoleRoute
@@ -173,6 +179,9 @@ fun HomeScreen(vm: HomeViewModel) {
     val visualizerState by VisualizerStatus.state.collectAsStateWithLifecycle()
     val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
 
+    // Buffer suara disiapkan di thread latar sekali, bukan saat pertama kali dibunyikan
+    LaunchedEffect(Unit) { SoundFx.warmUp() }
+
     // Kresek vinyl (opsional): hanya saat layar utama terlihat & lagu diputar
     val crackleOn = settings.effects.crackle && np.isPlaying
     LifecycleResumeEffect(crackleOn, settings.effects.volume) {
@@ -217,24 +226,35 @@ fun HomeScreen(vm: HomeViewModel) {
     val gestures by rememberUpdatedState(settings.gestures)
     val customGestures by rememberUpdatedState(settings.customGestures)
 
-    // ----- Tiga halaman: perpustakaan kaset · ruang TV · konsol audio (aturan di PageNav) -----
+    // ----- Tiga halaman: perpustakaan kaset · ruang TV · konsol audio (aturan di PageNav, gerak di PagePager) -----
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     val swapPages = settings.retro.swapPages
     val reduceMotion = rememberReduceMotion()
-    val pagePosition by animateFloatAsState(
-        PageNav.indexOf(page, swapPages, rtl).toFloat(),
-        tween(if (reduceMotion) 0 else Tokens.Motion.PAGE_SLIDE_MS, easing = Ease.standard),
-        label = "page",
-    )
+    val scope = rememberCoroutineScope()
+    val pageIndex = PageNav.indexOf(page, swapPages, rtl)
+    val pager = remember { PagePager(pageIndex, scope) }
+    // Perpindahan lewat kode (Back, aksesibilitas, otomasi, gestur gambar) → pegas; seretan jari mengatur dirinya sendiri
+    LaunchedEffect(pageIndex, reduceMotion) { pager.goTo(pageIndex, animated = !reduceMotion) }
     val currentPage by rememberUpdatedState(page)
     val pageLayout by rememberUpdatedState(swapPages to rtl)
-    var screenWidthPx by remember { mutableIntStateOf(0) }
+    val animatedSwipe by rememberUpdatedState(!reduceMotion)
     // Keadaan perpustakaan kaset hidup di sini agar posisi rak bertahan saat halaman ditinggalkan
     val libraryState = rememberLibraryState()
-    val swipeFromSide: (Float) -> Unit = { dx ->
-        vm.showPage(PageNav.afterSwipe(currentPage, dx, pageLayout.first, pageLayout.second))
+    // Jari dilepas di halaman tujuan [index]: pasang ke ViewModel; bila ia menolak (mis. mode edit) pegas kembali ke halaman nyata
+    val commitPage: (Int) -> Unit = { index ->
+        vm.showPage(PageNav.pageAt(index, pageLayout.first, pageLayout.second))
+        val actual = PageNav.indexOf(vm.page.value, pageLayout.first, pageLayout.second)
+        if (actual != index) pager.settleTo(actual, 0f, animatedSwipe)
     }
     fun indexOf(p: RoomPage) = PageNav.indexOf(p, swapPages, rtl)
+    // Halaman samping baru disusun saat mulai terlihat; dibaca lewat derivedStateOf agar beranda tidak
+    // disusun ulang tiap frame geser (hanya saat nilainya berbalik)
+    val libraryVisible by remember(swapPages, rtl) {
+        derivedStateOf { pageVisible(PageNav.indexOf(RoomPage.LIBRARY, swapPages, rtl), pager.position) }
+    }
+    val consoleVisible by remember(swapPages, rtl) {
+        derivedStateOf { pageVisible(PageNav.indexOf(RoomPage.CONSOLE, swapPages, rtl), pager.position) }
+    }
 
     // Pemantau perangkat audio (indikator Output & VFD) hanya aktif saat beranda tampil
     var resumed by remember { mutableStateOf(false) }
@@ -304,11 +324,14 @@ fun HomeScreen(vm: HomeViewModel) {
         else -> ProjectionContent.Tint(accent)
     }
 
-    Box(Modifier.fillMaxSize().onSizeChanged { screenWidthPx = it.width }) {
+    // Tata letak ruang TV tidak ikut animasi bilah status (lihat RoomInsets): bilah itu naik-turun tiap pindah halaman
+    val stableInsets = stableRoomInsets(settings.retro.osd.hideStatusBar && settings.retro.osd.visible)
+    CompositionLocalProvider(LocalRoomInsets provides stableInsets) {
+    Box(Modifier.fillMaxSize().onSizeChanged { pager.widthPx = it.width }) {
     Box(
         Modifier
             .fillMaxSize()
-            .roomPage(indexOf(RoomPage.ROOM), pagePosition, screenWidthPx)
+            .roomPage(indexOf(RoomPage.ROOM), pager)
             // Hanya MENGAMATI sentuhan untuk riak distorsi kaca; tidak pernah mengonsumsi event
             .pointerInput(fxPlan.distortion) {
                 if (!fxPlan.distortion) return@pointerInput
@@ -357,8 +380,16 @@ fun HomeScreen(vm: HomeViewModel) {
                         // Ketukan pada widget tidak membatalkan swipe; yang membatalkan hanya elemen yang ikut
                         // memakai gerakan jari (mis. knob SEEK atau penghitung pita saat diseret)
                         val down = awaitFirstDown(requireUnconsumed = false)
+                        // Tanpa gestur gambar buatan sendiri, gerak horizontal langsung MENYERET halaman (mengikuti jari).
+                        // Dengan gestur gambar, goresan harus selesai dulu agar bisa dicocokkan → pindah halaman diputuskan
+                        // setelah jari diangkat
+                        val live = customGestures.isEmpty()
+                        val slop = viewConfiguration.touchSlop
                         val path = mutableListOf(down.position)
+                        val tracker = VelocityTracker()
+                        tracker.addPosition(down.uptimeMillis, down.position)
                         var moved = false
+                        var dragging = false
                         var takenByChild = false
                         while (true) {
                             val event = awaitPointerEvent()
@@ -366,8 +397,23 @@ fun HomeScreen(vm: HomeViewModel) {
                             if (ch.isConsumed) { takenByChild = true; break }
                             if (!ch.pressed) break
                             path.add(ch.position)
-                            if (!moved && (ch.position - down.position).getDistance() > viewConfiguration.touchSlop) moved = true
-                            if (moved) ch.consume()   // batalkan ketuk-lama (mode edit) selama menggambar
+                            tracker.addPosition(ch.uptimeMillis, ch.position)
+                            val total = ch.position - down.position
+                            if (!moved && total.getDistance() > slop) {
+                                moved = true
+                                if (live && abs(total.x) > abs(total.y)) {
+                                    dragging = true
+                                    pager.startDrag()
+                                    pager.dragByPx(total.x - sign(total.x) * slop)
+                                }
+                            } else if (dragging) {
+                                pager.dragByPx(ch.positionChange().x)
+                            }
+                            if (moved) ch.consume()   // batalkan ketuk-lama (mode edit) selama menggambar/menyeret
+                        }
+                        if (dragging) {
+                            commitPage(pager.finishDrag(tracker.calculateVelocity().x, animatedSwipe))
+                            return@awaitEachGesture
                         }
                         if (takenByChild || !moved) return@awaitEachGesture
                         val custom = GestureRecognizer.match(path, customGestures)
@@ -415,7 +461,7 @@ fun HomeScreen(vm: HomeViewModel) {
         }
 
         // Rekaman VHS (butir, tracking) lalu OSD di atasnya; ikut bergeser bersama halaman
-        if (settings.retro.osd.film) VhsFilm(animate = motionAllowed && resumed && page == RoomPage.ROOM, Modifier.fillMaxSize())
+        if (settings.retro.osd.film) RoomFilm(base = motionAllowed && resumed && page == RoomPage.ROOM, pager = pager, Modifier.fillMaxSize())
         if (settings.retro.osd.visible) {
             // Detak posisi hidup di dalam OsdLayer: hanya OSD yang dikomposisi ulang, bukan seluruh beranda
             OsdLayer(
@@ -430,13 +476,13 @@ fun HomeScreen(vm: HomeViewModel) {
         Box(
             Modifier
                 .fillMaxSize()
-                .roomPage(indexOf(RoomPage.LIBRARY), pagePosition, screenWidthPx)
-                .sidePageSwipe(swipeFromSide)
+                .roomPage(indexOf(RoomPage.LIBRARY), pager)
+                .sidePageDrag(pager, { animatedSwipe }, commitPage)
                 .semantics {
                     customActions = listOf(CustomAccessibilityAction("Kembali ke ruang TV") { vm.showPage(RoomPage.ROOM); true })
                 },
         ) {
-            if (pageVisible(indexOf(RoomPage.LIBRARY), pagePosition)) {
+            if (libraryVisible) {
                 CrateSheet(
                     np = np, queue = queue, history = history,
                     music = settings.music,
@@ -457,10 +503,10 @@ fun HomeScreen(vm: HomeViewModel) {
         Box(
             Modifier
                 .fillMaxSize()
-                .roomPage(indexOf(RoomPage.CONSOLE), pagePosition, screenWidthPx)
-                .sidePageSwipe(swipeFromSide),
+                .roomPage(indexOf(RoomPage.CONSOLE), pager)
+                .sidePageDrag(pager, { animatedSwipe }, commitPage),
         ) {
-            if (pageVisible(indexOf(RoomPage.CONSOLE), pagePosition)) {
+            if (consoleVisible) {
                 ConsoleRoute(
                     audio = settings.audio,
                     player = settings.player,
@@ -558,7 +604,7 @@ fun HomeScreen(vm: HomeViewModel) {
             HomeEditorPanel(vm = vm, landscape = landscape, apps = allApps)
         }
     }
-
+    }
 }
 
 /** Panggung TV & widget. Dipisah agar mudah dibaca. */
@@ -588,7 +634,7 @@ private fun HomeContent(
 ) {
     val density = LocalDensity.current
     val layoutDirection = LocalLayoutDirection.current
-    val safe = WindowInsets.safeDrawing
+    val safe = roomInsets()
     val dockPad = dockPadding(dock, editing)
     // Panggung digambar penuh (juga di bawah bilah sistem); ruang yang dipakai sistem & taskbar diteruskan sebagai inset
     val topInset = with(density) { safe.getTop(density).toDp() } + dockPad.calculateTopPadding()
@@ -810,4 +856,10 @@ private fun OsdLayer(
 ) {
     val position = rememberPositionMs(np)
     RoomOsd(np = np, positionMs = position.longValue, seek = seek, osd = osd, clock = clock, landscape = landscape, onSeek = onSeek, modifier = modifier)
+}
+
+/** Butir VHS berhenti menggambar ulang selama halaman bergerak (dibaca di sini agar hanya lapisan ini yang disusun ulang). */
+@Composable
+private fun RoomFilm(base: Boolean, pager: PagePager, modifier: Modifier) {
+    VhsFilm(animate = base && !pager.moving, modifier)
 }

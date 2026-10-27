@@ -74,4 +74,78 @@ class PageNavTest {
     fun everyPageHasASpokenName() {
         RoomPage.entries.forEach { assert(PageNav.label(it).isNotBlank()) }
     }
+
+    // ---- Seretan langsung (halaman mengikuti jari) ----
+    private val w = 1000f
+
+    @Test
+    fun aShortDragSnapsBackToTheStartPage() {
+        assertEquals(1, PageNav.settleIndex(1, 1f + 100f / w, 0f, w))
+        assertEquals(1, PageNav.settleIndex(1, 1f - 100f / w, 0f, w))
+        assertEquals(1, PageNav.settleIndex(1, 1f, 0f, w))
+    }
+
+    @Test
+    fun aDragPastTheOldSwipeThresholdMovesOnePage() {
+        // (2 px selisih agar tidak bergantung pada pembulatan Float tepat di ambang)
+        assertEquals(2, PageNav.settleIndex(1, 1f + (PageNav.SWIPE_PX + 2f) / w, 0f, w))
+        assertEquals(0, PageNav.settleIndex(1, 1f - (PageNav.SWIPE_PX + 2f) / w, 0f, w))
+        assertEquals(1, PageNav.settleIndex(1, 1f + (PageNav.SWIPE_PX - 2f) / w, 0f, w))
+    }
+
+    @Test
+    fun aQuickShortFlickStillMovesThePage() {
+        // 40 px saja, tetapi 2 halaman/detik → +200 px proyeksi
+        assertEquals(2, PageNav.settleIndex(1, 1f + 40f / w, 2f, w))
+        assertEquals(0, PageNav.settleIndex(1, 1f - 40f / w, -2f, w))
+    }
+
+    @Test
+    fun aFlickAgainstTheDragCanCancelIt() {
+        // Ditarik 200 px ke depan lalu dilempar kuat ke belakang
+        assertEquals(1, PageNav.settleIndex(1, 1f + 200f / w, -2f, w))
+    }
+
+    @Test
+    fun neverSkipsMoreThanOnePage() {
+        assertEquals(2, PageNav.settleIndex(1, 1.9f, 9f, w))
+        assertEquals(0, PageNav.settleIndex(1, 0.1f, -9f, w))
+    }
+
+    @Test
+    fun theEndsDoNotOvershoot() {
+        assertEquals(0, PageNav.settleIndex(0, -0.3f, -3f, w))
+        assertEquals(2, PageNav.settleIndex(2, 2.4f, 3f, w))
+        assertEquals(0, PageNav.settleIndex(0, 0f, 0f, w, count = 1))
+    }
+
+    @Test
+    fun grabbingAPageMidFlightSettlesOnTheNearerSide() {
+        // Sedang meluncur dari 0 ke 1, dipegang di 0,3 lalu dilepas diam → kembali ke 0
+        assertEquals(0, PageNav.settleIndex(1, 0.3f, 0f, w))
+        // Dipegang di 0,92 → lanjut ke 1
+        assertEquals(1, PageNav.settleIndex(1, 0.92f, 0f, w))
+    }
+
+    @Test
+    fun invalidInputKeepsTheStartPage() {
+        assertEquals(1, PageNav.settleIndex(1, Float.NaN, 0f, w))
+        assertEquals(1, PageNav.settleIndex(1, 1.5f, 0f, 0f))
+        assertEquals(1, PageNav.settleIndex(1, 1.5f, 0f, Float.NaN))
+        assertEquals(2, PageNav.settleIndex(1, 1.6f, Float.NaN, w))
+        assertEquals(2, PageNav.settleIndex(7, 7f, 0f, w)) // awal di luar jangkauan dijepit
+    }
+
+    @Test
+    fun pageAtMapsScreenIndexesAndFallsBackToTheRoom() {
+        assertEquals(LIBRARY, PageNav.pageAt(0, swap = false, rtl = false))
+        assertEquals(ROOM, PageNav.pageAt(1, swap = false, rtl = false))
+        assertEquals(CONSOLE, PageNav.pageAt(2, swap = false, rtl = false))
+        assertEquals(CONSOLE, PageNav.pageAt(0, swap = true, rtl = false))
+        assertEquals(ROOM, PageNav.pageAt(9, swap = false, rtl = false))
+        assertEquals(ROOM, PageNav.pageAt(-1, swap = false, rtl = false))
+        for (swap in listOf(false, true)) for (rtl in listOf(false, true)) for (p in RoomPage.entries) {
+            assertEquals(p, PageNav.pageAt(PageNav.indexOf(p, swap, rtl), swap, rtl))
+        }
+    }
 }

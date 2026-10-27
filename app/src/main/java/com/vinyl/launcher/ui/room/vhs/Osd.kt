@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Text
@@ -69,6 +68,7 @@ import com.vinyl.launcher.system.Ringer
 import com.vinyl.launcher.system.StatusText
 import com.vinyl.launcher.system.Wifi
 import com.vinyl.launcher.ui.theme.OsdFamily
+import com.vinyl.launcher.ui.room.roomInsets
 import com.vinyl.launcher.ui.theme.Tokens
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -144,8 +144,8 @@ fun VhsOsd(
                 )
             }
 
-            val top = Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
-            val bottom = Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal))
+            val top = Modifier.windowInsetsPadding(roomInsets().only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
+            val bottom = Modifier.windowInsetsPadding(roomInsets().only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal))
 
             // ----- Kiri atas: mode pita
             Column(

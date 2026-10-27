@@ -76,6 +76,17 @@ object SoundFx {
     private val crtPcm: ShortArray by lazy { synthCrtOn() }
     private val staticPcm: ShortArray by lazy { synthStatic() }
 
+    /**
+     * Membuat semua buffer suara sekali di thread latar. Tanpa ini buffer dibuat (malas) di thread yang pertama kali
+     * membunyikannya — sering thread utama, tepat saat halaman mulai bergeser.
+     */
+    fun warmUp() {
+        scope.launch {
+            val samples = dropPcm.size + liftPcm.size + tickPcm.size + flipPcm.size + crtPcm.size + staticPcm.size
+            check(samples > 0)
+        }
+    }
+
     /** TV menyala (keluar dari siaga): "thunk" tabung + dengung singkat. Mengikuti sakelar bunyi tombol kaset & TV. */
     fun crtOn(fx: EffectSettings) {
         if (fx.needleSound) play(crtPcm, gain(fx.volume) * 0.8f)
