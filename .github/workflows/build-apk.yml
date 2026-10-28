@@ -159,6 +159,69 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
           exit $bad
 
+      # Nama berkas akhir: TVLauncher.apk = release (R8), TVLauncher-debug.apk = debug (cadangan)
+      - name: Kemas APK
+        run: |
+          mkdir -p dist
+          cp "$(find app/build/outputs/apk/release -name '*.apk' | head -1)" dist/TVLauncher.apk
+          cp "$(find app/build/outputs/apk/debug -name '*.apk' | head -1)" dist/TVLauncher-debug.apk
+          ls -l dist
+
+      # Uji asap di emulator Android 15: pasang dan jalankan APK RELEASE (hasil R8), putar layar, geser halaman, laci,
+      # game, film, matikan proses lalu buka lagi, baca logcat. Lihat .github/scripts/smoke_test.sh. Emulator dirender
+      # perangkat lunak, jadi ini bukan pengganti uji di perangkat nyata. Gangguan emulator sendiri (gagal booting)
+      # tidak menggagalkan job; yang menentukan adalah langkah "Nilai uji asap" di bawahnya.
+      - name: Aktifkan KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Uji asap di emulator
+        id: smoke
+        continue-on-error: true
+        timeout-minutes: 40
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          cores: 3
+          ram-size: 4096M
+          disk-size: 4096M
+          emulator-options: -no-window -no-snapshot -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: false
+          script: bash .github/scripts/smoke_test.sh dist/TVLauncher.apk dist/TVLauncher-debug.apk smoke-out
+
+      # PASS = lanjut; FAIL (crash, ANR, tanda R8 rusak, pengaturan hilang setelah proses dimatikan) = job gagal dan rilis
+      # TIDAK diterbitkan; INCONCLUSIVE (emulator tidak sempat menjalankan skrip) = peringatan, rilis tetap boleh.
+      - name: Nilai uji asap
+        id: smoke_verdict
+        if: always()
+        run: |
+          first=$(head -1 smoke-out/result.txt 2>/dev/null || echo "TIDAK-ADA")
+          case "$first" in
+            PASS*) v=pass ;;
+            FAIL*) v=fail ;;
+            *) v=inconclusive ;;
+          esac
+          echo "verdict=$v" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Uji asap emulator: $v"
+            echo '```'
+            if [ -f smoke-out/result.txt ]; then cat smoke-out/result.txt; else echo "result.txt tidak ada (emulator tidak sempat menjalankan skrip)"; fi
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo; echo "===== UJI ASAP EMULATOR: $v ====="
+            cat smoke-out/result.txt 2>/dev/null || echo "result.txt tidak ada"
+            echo "--- log.txt ---"
+            cat smoke-out/log.txt 2>/dev/null || true
+          } >> build.log
+          if [ "$v" = "fail" ]; then echo "::error title=Uji asap gagal::$first"; exit 1; fi
+          if [ "$v" = "inconclusive" ]; then echo "::warning title=Uji asap tidak konklusif::$first"; fi
+
       - name: Ringkas peringatan kompiler
         if: always()
         run: |
@@ -194,6 +257,10 @@ jobs:
         run: |
           mkdir -p /tmp/log && cp build.log /tmp/log/build.log || echo "build.log tidak ada" > /tmp/log/build.log
           if [ -d app/build/outputs/roborazzi ]; then mkdir -p /tmp/log/shots && cp -r app/build/outputs/roborazzi/. /tmp/log/shots/; fi
+          if [ -d smoke-out ]; then
+            mkdir -p /tmp/log/smoke && cp -r smoke-out/. /tmp/log/smoke/
+            gzip -9 /tmp/log/smoke/logcat_*.txt 2>/dev/null || true
+          fi
           # main → branch "build-log"; branch lain → "build-log-<nama branch>"
           LOGBR=build-log; [ "${GITHUB_REF_NAME}" != "main" ] && LOGBR="build-log-${GITHUB_REF_NAME}"
           cd /tmp/log
@@ -202,21 +269,23 @@ jobs:
           git -c user.name=ci -c user.email=ci@users.noreply.github.com commit -q -m "log ${GITHUB_SHA}"
           git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" "$LOGBR"
 
-      # Nama berkas akhir: TVLauncher.apk = release (R8), TVLauncher-debug.apk = debug (cadangan)
-      - name: Kemas APK
-        run: |
-          mkdir -p dist
-          cp "$(find app/build/outputs/apk/release -name '*.apk' | head -1)" dist/TVLauncher.apk
-          cp "$(find app/build/outputs/apk/debug -name '*.apk' | head -1)" dist/TVLauncher-debug.apk
-          ls -l dist
-
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: TVLauncher-apk
+          if-no-files-found: ignore
           path: dist/*.apk
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: TVLauncher-smoke
+          if-no-files-found: ignore
+          path: smoke-out/
 
       # Pemetaan nama R8: tanpa ini jejak tumpukan dari APK release tidak bisa dibaca
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: TVLauncher-r8-mapping
           if-no-files-found: warn
@@ -227,6 +296,7 @@ jobs:
         if: github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
+          SMOKE: ${{ steps.smoke_verdict.outputs.verdict }}
         run: |
           # TVLauncher.apk = release; VinylLauncher.apk (berkas yang sama) agar tautan lama tetap berfungsi;
           # TVLauncher-debug.apk = cadangan bila build release bermasalah di perangkat (ditandatangani kunci yang sama)
@@ -236,4 +306,4 @@ jobs:
           gh release delete latest --yes --cleanup-tag || true
           gh release create latest TVLauncher.apk VinylLauncher.apk TVLauncher-debug.apk \
             --title "TV Launcher (build terbaru)" \
-            --notes "APK release (R8 + Baseline Profile) dari commit ${GITHUB_SHA::7}. TVLauncher-debug.apk = APK debug cadangan (lebih besar dan lebih lambat), ditandatangani kunci yang sama."
+            --notes "APK release (R8 + Baseline Profile) dari commit ${GITHUB_SHA::7}. Uji asap emulator Android 15: ${SMOKE}. TVLauncher-debug.apk = APK debug cadangan (lebih besar dan lebih lambat), ditandatangani kunci yang sama."

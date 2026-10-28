@@ -55,4 +55,15 @@ echo "--- isi APK ---"
 echo "berkas classes*.dex: $(unzip -l "$apk" | grep -cE ' classes[0-9]*\.dex$')"
 unzip -l "$apk" | grep -E "assets/dexopt/|META-INF/com/android/build/gradle/app-metadata" || echo "assets/dexopt/: TIDAK ADA"
 echo "pustaka native (.so): $(unzip -l "$apk" | grep -cE '\.so$')"
+
+# Berkas profil dasar teks hasil penggabungan (aturan pustaka + aturan wildcard kita yang sudah diperluas)
+echo "--- profil dasar (berkas teks antara di app/build/intermediates) ---"
+found=0
+while IFS= read -r f; do
+  found=1
+  total=$(wc -l < "$f" 2>/dev/null || echo "?")
+  ours=$(grep -c '^[HSP]*Lcom/vinyl/launcher' "$f" 2>/dev/null || true)
+  echo "$f: $total baris, di antaranya aturan com/vinyl/launcher: ${ours:-0}"
+done < <(find app/build/intermediates -path '*art_profile*' -type f -name '*.txt' 2>/dev/null | grep -i "$label" | sort)
+[ "$found" -eq 1 ] || echo "(tidak ada berkas teks profil untuk varian $label)"
 exit 0
