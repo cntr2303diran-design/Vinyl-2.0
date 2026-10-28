@@ -1,7 +1,8 @@
 # Build APK otomatis di server GitHub (tanpa laptop).
-# Urutan: tes unit → lint → build APK. Hasilnya:
-#  - APK: tab Actions → run terbaru → Artifacts, atau halaman Releases (tag "latest")
-#  - Laporan tes & lint: artifact "VinylLauncher-reports"
+# Urutan: build release (R8) → tes unit → tangkapan layar → lint → build debug → pembanding release/debug. Hasilnya:
+#  - APK release (R8 + penyusutan resource + Baseline Profile) = TVLauncher.apk; APK debug = TVLauncher-debug.apk (cadangan)
+#    → tab Actions → run terbaru → Artifacts, atau halaman Releases (tag "latest")
+#  - Laporan tes & lint: artifact "VinylLauncher-reports"; pemetaan nama R8: artifact "TVLauncher-r8-mapping"
 #  - Gagal? log lengkap disimpan di branch "build-log" (berkas build.log)
 #
 # Kunci tanda tangan: isi GitHub Secrets (Settings → Secrets and variables → Actions) agar setiap APK
@@ -63,11 +64,23 @@ jobs:
             echo "ℹ️ APK debug memakai kunci debug bawaan (tanpa kunci rahasia). Isi Secrets VINYL_KEYSTORE_* agar pembaruan antar-build bisa saling menimpa (lihat SECURITY.md)." >> "$GITHUB_STEP_SUMMARY"
           fi
 
+      # Build release (R8 + penyusutan resource + Baseline Profile) dikerjakan PERTAMA supaya kegagalan R8 muncul cepat.
+      # APK inilah yang diterbitkan; APK debug tetap dibuat di bawah sebagai cadangan. Fakta APK (izin, sertifikat,
+      # bisa-di-debug, profil dasar) dicetak sebagai bukti.
+      - name: Build release APK (R8)
+        run: |
+          chmod +x gradlew .github/scripts/*.sh
+          set -o pipefail
+          ./gradlew assembleRelease --stacktrace --no-daemon 2>&1 | tee build.log
+          REL=$(find app/build/outputs/apk/release -name '*.apk' | head -1)
+          .github/scripts/apk_facts.sh release "$REL" 2>&1 | tee -a build.log
+          # Pemetaan nama R8 dipakai membaca ulang jejak tumpukan; juga dicatat ukurannya
+          ls -l app/build/outputs/mapping/release/ 2>&1 | tee -a build.log || true
+
       - name: Tes unit
         run: |
-          chmod +x gradlew
           set -o pipefail
-          ./gradlew testDebugUnitTest --stacktrace --no-daemon 2>&1 | tee build.log
+          ./gradlew testDebugUnitTest --stacktrace --no-daemon 2>&1 | tee -a build.log
 
       # Tangkapan layar Compose tanpa HP (Roborazzi + Robolectric). PNG disalin ke branch log agar bisa diperiksa.
       # Belum memblokir: kegagalan infrastruktur render tidak boleh menahan build selama tahap awal.
@@ -117,15 +130,51 @@ jobs:
           { echo; echo "===== SERTIFIKAT APK (SHA-256) ====="; echo "${FP:-tidak terbaca}"; } | tee -a build.log
           echo "Sertifikat APK (SHA-256): \`${FP:-tidak terbaca}\`" >> "$GITHUB_STEP_SUMMARY"
 
+      # Release harus memakai tanda tangan DAN izin yang sama dengan debug: tanda tangan berbeda berarti tidak bisa
+      # menimpa pemasangan lama, izin berbeda berarti ada yang berubah diam-diam. Keduanya menggagalkan langkah ini.
+      - name: Bandingkan release dengan debug
+        run: |
+          DBG=$(find app/build/outputs/apk/debug -name '*.apk' | head -1)
+          .github/scripts/apk_facts.sh debug "$DBG" 2>&1 | tee -a build.log
+          log() { echo "$@" | tee -a build.log; }
+          bad=0
+          log; log "===== PERBANDINGAN RELEASE vs DEBUG ====="
+          if diff -u app/build/facts/debug.perm app/build/facts/release.perm > app/build/facts/perm.diff; then
+            log "izin: sama persis ($(wc -l < app/build/facts/release.perm) izin)"
+          else
+            tee -a build.log < app/build/facts/perm.diff
+            log "izin: BERBEDA (selisih di atas)"; bad=1
+          fi
+          RFP=$(cat app/build/facts/release.fp); DFP=$(cat app/build/facts/debug.fp)
+          if [ -n "$RFP" ] && [ "$RFP" = "$DFP" ]; then
+            log "sertifikat: sama ($RFP)"
+          else
+            log "sertifikat: BERBEDA atau tidak terbaca (release=$RFP debug=$DFP)"; bad=1
+          fi
+          log "ukuran: release $(cat app/build/facts/release.size) bita, debug $(cat app/build/facts/debug.size) bita"
+          {
+            echo "### APK release"
+            echo "- ukuran: $(cat app/build/facts/release.size) bita (debug: $(cat app/build/facts/debug.size) bita)"
+            echo "- sertifikat release: \`$(cat app/build/facts/release.fp)\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit $bad
+
       - name: Ringkas peringatan kompiler
         if: always()
         run: |
           n=$(grep -c '^w: ' build.log 2>/dev/null || true)
+          r8=$(grep -ciE 'warning: .*R8|^R8: |Missing class' build.log 2>/dev/null || true)
           {
             echo "### Peringatan kompiler Kotlin: ${n:-0}"
             if [ "${n:-0}" != "0" ]; then
               echo '```'
               grep '^w: ' build.log | sort -u | head -60
+              echo '```'
+            fi
+            echo "### Peringatan R8: ${r8:-0}"
+            if [ "${r8:-0}" != "0" ]; then
+              echo '```'
+              grep -iE 'warning: .*R8|^R8: |Missing class' build.log | sort -u | head -40
               echo '```'
             fi
           } >> "$GITHUB_STEP_SUMMARY"
@@ -153,10 +202,25 @@ jobs:
           git -c user.name=ci -c user.email=ci@users.noreply.github.com commit -q -m "log ${GITHUB_SHA}"
           git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" "$LOGBR"
 
+      # Nama berkas akhir: TVLauncher.apk = release (R8), TVLauncher-debug.apk = debug (cadangan)
+      - name: Kemas APK
+        run: |
+          mkdir -p dist
+          cp "$(find app/build/outputs/apk/release -name '*.apk' | head -1)" dist/TVLauncher.apk
+          cp "$(find app/build/outputs/apk/debug -name '*.apk' | head -1)" dist/TVLauncher-debug.apk
+          ls -l dist
+
       - uses: actions/upload-artifact@v4
         with:
           name: TVLauncher-apk
-          path: app/build/outputs/apk/debug/*.apk
+          path: dist/*.apk
+
+      # Pemetaan nama R8: tanpa ini jejak tumpukan dari APK release tidak bisa dibaca
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TVLauncher-r8-mapping
+          if-no-files-found: warn
+          path: app/build/outputs/mapping/release/
 
       # APK juga dipasang di halaman Releases supaya bisa diunduh langsung dari tablet tanpa login
       - name: Terbitkan rilis "latest"
@@ -164,8 +228,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # TVLauncher.apk = nama baru; VinylLauncher.apk (berkas yang sama) agar tautan lama tetap berfungsi
-          cp app/build/outputs/apk/debug/app-debug.apk TVLauncher.apk
-          cp TVLauncher.apk VinylLauncher.apk
+          # TVLauncher.apk = release; VinylLauncher.apk (berkas yang sama) agar tautan lama tetap berfungsi;
+          # TVLauncher-debug.apk = cadangan bila build release bermasalah di perangkat (ditandatangani kunci yang sama)
+          cp dist/TVLauncher.apk TVLauncher.apk
+          cp dist/TVLauncher.apk VinylLauncher.apk
+          cp dist/TVLauncher-debug.apk TVLauncher-debug.apk
           gh release delete latest --yes --cleanup-tag || true
-          gh release create latest TVLauncher.apk VinylLauncher.apk --title "TV Launcher (build terbaru)" --notes "APK debug otomatis dari commit ${GITHUB_SHA::7}."
+          gh release create latest TVLauncher.apk VinylLauncher.apk TVLauncher-debug.apk \
+            --title "TV Launcher (build terbaru)" \
+            --notes "APK release (R8 + Baseline Profile) dari commit ${GITHUB_SHA::7}. TVLauncher-debug.apk = APK debug cadangan (lebih besar dan lebih lambat), ditandatangani kunci yang sama."
