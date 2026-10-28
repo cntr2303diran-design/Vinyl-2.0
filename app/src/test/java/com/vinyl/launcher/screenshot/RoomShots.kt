@@ -114,7 +114,7 @@ internal fun StagePreview(
                     tvVfd = if (np.hasTrack) "PLAY" else "STANDBY",
                     deck = when (tape) {
                         DeckTape.FILM -> DeckDisplay("FILM ▶", "TEATER")
-                        DeckTape.GAME -> DeckDisplay("GAME " + (if (np.isPlaying) "▶" else "■"), gameLine)
+                        DeckTape.GAME, DeckTape.PADDLE -> DeckDisplay("GAME " + (if (np.isPlaying) "▶" else "■"), gameLine)
                         DeckTape.MUSIC -> DeckDisplay(StatusText.modeLine(transport) + if (np.hasTrack) " SP" else "", "48K BUDS PRO")
                     },
                     tapeTime = if (np.durationMs > 0) "4:18" else "",
@@ -132,8 +132,8 @@ internal fun StagePreview(
                 OsdState(
                     now = LocalDateTime.of(2026, 10, 18, 19, 21, 7), use24h = true, seconds = true, showClock = true,
                     status = fakeStatus(), notifications = List(2) { NotificationIcons.Entry("contoh.app$it", fakeNotificationIcon()) },
-                    showNotifications = true, transport = transport, tapeMode = if (tape != DeckTape.MUSIC) tape.name else if (np.hasTrack) "SP" else null, sleepLine = null,
-                    hasTrack = np.hasTrack && tape != DeckTape.GAME, positionMs = s.previewMs ?: np.positionMs, durationMs = np.durationMs, canSeek = np.canSeek,
+                    showNotifications = true, transport = transport, tapeMode = if (tape.isGame) "GAME" else if (tape != DeckTape.MUSIC) tape.name else if (np.hasTrack) "SP" else null, sleepLine = null,
+                    hasTrack = np.hasTrack && !tape.isGame, positionMs = s.previewMs ?: np.positionMs, durationMs = np.durationMs, canSeek = np.canSeek,
                 ),
                 landscape = landscape,
                 actions = OsdActions({}, {}, {}, {}),

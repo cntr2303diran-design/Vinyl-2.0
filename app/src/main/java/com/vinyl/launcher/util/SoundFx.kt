@@ -27,7 +27,9 @@ import kotlin.random.Random
  * - [flip]: desing pita digulung cepat saat ganti lagu, ditutup klik
  * - [startCrackle]/[stopCrackle]: desis pita pelan berulang selama lagu diputar (tanpa letupan)
  * - [drawer]: laci kaset di meja ditarik/didorong; [crtOff]: TV dimatikan (siulan jatuh + dentum)
- * - [gameEat]/[gameOver]/[gameWin]: bunyi dan getar game Ular di kaset game
+ * - [gameEat]/[gameOver]/[gameWin]: bunyi dan getar game Ular di kaset game; [gamePaddle]/[gameBrick]/[gameWall]/[gameMiss]:
+ *   bola Bata kena palet, bata pecah, bola memantul di dinding, bola lolos (kalah, tingkat naik, dan game over memakai
+ *   [gameOver]/[gameWin])
  *
  * Suara diputar TANPA meminta audio focus, sehingga musik tidak terhenti. Nama field pengaturan (needleSound, crackle)
  * dipertahankan dari tema vinyl agar pengaturan & cadangan lama tetap terbaca.
@@ -83,6 +85,10 @@ object SoundFx {
     private val eatPcm: ShortArray by lazy { synthTones(doubleArrayOf(988.0, 1319.0), noteSec = 0.05, decay = 22.0, level = 0.5) }
     private val overPcm: ShortArray by lazy { synthTones(doubleArrayOf(392.0, 330.0, 262.0, 196.0), noteSec = 0.13, decay = 8.0, level = 0.55) }
     private val winPcm: ShortArray by lazy { synthTones(doubleArrayOf(523.0, 659.0, 784.0, 1047.0), noteSec = 0.11, decay = 6.0, level = 0.5) }
+    private val paddlePcm: ShortArray by lazy { synthTones(doubleArrayOf(330.0), noteSec = 0.06, decay = 24.0, level = 0.55) }
+    private val brickPcm: ShortArray by lazy { synthTones(doubleArrayOf(1568.0), noteSec = 0.05, decay = 26.0, level = 0.45) }
+    private val missPcm: ShortArray by lazy { synthTones(doubleArrayOf(330.0, 220.0), noteSec = 0.10, decay = 9.0, level = 0.5) }
+    private var lastWallMs = 0L
 
     /**
      * Membuat semua buffer suara sekali di thread latar. Tanpa ini buffer dibuat (malas) di thread yang pertama kali
@@ -91,7 +97,8 @@ object SoundFx {
     fun warmUp() {
         scope.launch {
             val samples = dropPcm.size + liftPcm.size + tickPcm.size + flipPcm.size + crtPcm.size + staticPcm.size +
-                crtOffPcm.size + drawerOpenPcm.size + drawerClosePcm.size + eatPcm.size + overPcm.size + winPcm.size
+                crtOffPcm.size + drawerOpenPcm.size + drawerClosePcm.size + eatPcm.size + overPcm.size + winPcm.size +
+                paddlePcm.size + brickPcm.size + missPcm.size
             check(samples > 0)
         }
     }
@@ -137,6 +144,36 @@ object SoundFx {
         if (!fx.interactionFx) return
         if (fx.haptics) buzz(context, fx.hapticStrength, longArrayOf(30, 30, 30, 30, 70), intArrayOf(150, 0, 190, 0, 255))
         if (fx.needleSound) play(winPcm, gain(fx.volume) * 0.8f)
+    }
+
+    /** Bola Bata kena palet: "pok" rendah, getar tipis. */
+    fun gamePaddle(context: Context, fx: EffectSettings) {
+        if (!fx.interactionFx) return
+        if (fx.haptics) buzz(context, fx.hapticStrength, longArrayOf(10), intArrayOf(150))
+        if (fx.needleSound) play(paddlePcm, gain(fx.volume) * 0.7f)
+    }
+
+    /** Bata pecah: "tik" tinggi, getar sangat tipis. */
+    fun gameBrick(context: Context, fx: EffectSettings) {
+        if (!fx.interactionFx) return
+        if (fx.haptics) buzz(context, fx.hapticStrength, longArrayOf(8), intArrayOf(130))
+        if (fx.needleSound) play(brickPcm, gain(fx.volume) * 0.65f)
+    }
+
+    /** Bola memantul di dinding: klik pelan tanpa getar, dibatasi supaya tidak menumpuk. */
+    fun gameWall(fx: EffectSettings) {
+        if (!fx.interactionFx || !fx.needleSound) return
+        val now = System.currentTimeMillis()
+        if (now - lastWallMs < 90) return
+        lastWallMs = now
+        play(tickPcm, gain(fx.volume) * 0.4f)
+    }
+
+    /** Bola lolos di bawah palet: dua nada turun pendek, getar sekali. */
+    fun gameMiss(context: Context, fx: EffectSettings) {
+        if (!fx.interactionFx) return
+        if (fx.haptics) buzz(context, fx.hapticStrength, longArrayOf(45), intArrayOf(220))
+        if (fx.needleSound) play(missPcm, gain(fx.volume) * 0.75f)
     }
 
     /** Desis pita pelan yang diulang terus sampai [stopCrackle] dipanggil. */

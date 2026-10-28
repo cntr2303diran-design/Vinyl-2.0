@@ -153,9 +153,10 @@ object Tokens {
     }
 
     /**
-     * Game Ular di layar TV: papan hijau-hitam seperti tabung fosfor. Angka skor dan rekor ditulis di pita sendiri di atas
-     * papan; tulisan di tengah papan (SIAP / JEDA / GAME OVER) berdiri di atas panel gelap, jadi kontrasnya tidak bergantung
-     * pada posisi ular. Pasangan teks/latar dan kontras bentuk (ular, makanan) dijaga oleh GamePaletteTest.
+     * Game di layar TV (Ular, Bata): papan hijau-hitam seperti tabung fosfor yang sama untuk keduanya. Angka skor dan
+     * rekor ditulis di pita sendiri di atas papan; tulisan di tengah papan (SIAP / JEDA / GAME OVER) berdiri di atas panel
+     * gelap, jadi kontrasnya tidak bergantung pada posisi ular atau bata di belakangnya. Pasangan teks/latar dan kontras
+     * bentuk (ular, makanan, bata, palet, bola) dijaga oleh GamePaletteTest.
      */
     object Game {
         const val BOARD_TOP = 0xFF07140BL
@@ -168,6 +169,14 @@ object Tokens {
         const val SNAKE_DEAD = 0xFFE5533DL
         /** Panel di tengah papan: hitam dengan alpha ini. */
         const val PANEL_ALPHA = 0.86
+
+        /** Game Bata: warna bata per baris, atas ke bawah (baris yang lebih mahal di atas); tujuh baris paling banyak. */
+        val BRICK_ROWS: List<Long> = listOf(
+            0xFFE5533DL, 0xFFF08A3CL, 0xFFF2C14EL, 0xFFB8D95AL, 0xFF5CC98AL, 0xFF4FB5C9L, 0xFF7D8CF0L,
+        )
+        /** Palet Bata (krem seperti tombol deck) dan bolanya. */
+        const val PADDLE = 0xFFEDE6D3L
+        const val BALL = 0xFFFFFFFFL
     }
 
     /** Jarak dalam dp. Kelipatan 4 supaya ritme tata letak konsisten. */

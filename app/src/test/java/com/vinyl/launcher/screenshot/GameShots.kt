@@ -7,19 +7,24 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.vinyl.launcher.data.CassetteShell
 import com.vinyl.launcher.data.FilmRules
+import com.vinyl.launcher.data.FilmSettings
 import com.vinyl.launcher.data.RetroSettings
 import com.vinyl.launcher.data.TvBody
 import com.vinyl.launcher.media.NowPlaying
 import com.vinyl.launcher.ui.cassette.CassetteLabel
+import com.vinyl.launcher.ui.game.Breakout
+import com.vinyl.launcher.ui.game.BreakoutBoard
+import com.vinyl.launcher.ui.game.BreakoutState
 import com.vinyl.launcher.ui.game.Cell
 import com.vinyl.launcher.ui.game.Dir
+import com.vinyl.launcher.ui.game.GamePhase
 import com.vinyl.launcher.ui.game.Games
 import com.vinyl.launcher.ui.game.Snake
 import com.vinyl.launcher.ui.game.SnakeBoard
-import com.vinyl.launcher.ui.game.SnakePhase
 import com.vinyl.launcher.ui.game.SnakeState
 import com.vinyl.launcher.ui.room.stage.DeckTape
 import com.vinyl.launcher.ui.room.stage.StageDrawerInfo
+import androidx.compose.runtime.mutableStateOf
 import kotlin.random.Random
 import org.junit.Rule
 import org.junit.Test
@@ -27,24 +32,25 @@ import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
-private fun gameColor() = Games.color(Games.SNAKE)
+private fun gameColor(id: String = Games.SNAKE) = Games.color(id)
 
-private fun gameNow(phase: SnakePhase) = NowPlaying(
-    hasSession = true, title = Games.title(Games.SNAKE), artist = "Game", isPlaying = phase == SnakePhase.RUNNING,
-    dominantColor = gameColor(), accentColor = gameColor(), swatches = listOf(gameColor()), speed = 0f,
+private fun gameNow(phase: GamePhase, id: String = Games.SNAKE) = NowPlaying(
+    hasSession = true, title = Games.title(id), artist = "Game", isPlaying = phase == GamePhase.RUNNING,
+    dominantColor = gameColor(id), accentColor = gameColor(id), swatches = listOf(gameColor(id)), speed = 0f,
 )
 
-private fun gameLabel() = CassetteLabel(
-    "game\u0000${Games.SNAKE}", Games.title(Games.SNAKE).uppercase(), "Game", null, CassetteShell.COLORED, Color(gameColor()),
+/** Label kaset game seperti di deck, dengan teks kecil yang sama dengan baki ("Game · rekor N"). */
+private fun gameLabel(id: String = Games.SNAKE, film: FilmSettings = FilmSettings()) = CassetteLabel(
+    "game\u0000$id", Games.title(id).uppercase(), Games.subtitle(film, id), null, CassetteShell.COLORED, Color(gameColor(id)),
 )
 
 private fun drawerWithGame(open: Boolean): StageDrawerInfo {
-    val colors = FilmRules.defaults().map { Color(it.color) } + Color(gameColor())
+    val colors = FilmRules.defaults().map { Color(it.color) } + Games.all.map { Color(gameColor(it)) }
     return StageDrawerInfo(open, colors, colors.size)
 }
 
 /** Ular sepanjang 14 petak yang berkelok, kepala menghadap kanan; makanan di kanan atas. */
-private fun runningBoard(phase: SnakePhase = SnakePhase.RUNNING, score: Int = 11, best: Int = 20): SnakeState {
+private fun runningBoard(phase: GamePhase = GamePhase.RUNNING, score: Int = 11, best: Int = 20): SnakeState {
     val body = listOf(
         Cell(9, 6), Cell(8, 6), Cell(7, 6), Cell(6, 6), Cell(5, 6), Cell(5, 7), Cell(5, 8),
         Cell(4, 8), Cell(3, 8), Cell(3, 7), Cell(3, 6), Cell(3, 5), Cell(3, 4), Cell(4, 4),
@@ -61,6 +67,20 @@ private fun wrappedBoard(): SnakeState = runningBoard().copy(
     food = Cell(7, 9), score = 4, best = 20,
 )
 
+/**
+ * Bata di tingkat 2 yang sedang berjalan: dinding berlubang di beberapa tempat, bola melaju ke kanan atas dari tengah
+ * lapangan, dua nyawa tersisa.
+ */
+private fun runningBreakout(phase: GamePhase = GamePhase.RUNNING, score: Int = 46, best: Int = 120, lives: Int = 2): BreakoutState {
+    val start = Breakout.newGame(best).copy(level = 2, bricks = Breakout.wall(2))
+    var bricks = start.bricks
+    for ((r, c) in listOf(0 to 2, 0 to 5, 1 to 2, 1 to 5, 2 to 2, 3 to 5)) bricks = bricks and Breakout.bit(r, c).inv()
+    return start.copy(
+        bricks = bricks, paddleX = 6.4f, ballX = 9.6f, ballY = 8.7f, ballVx = 5f, ballVy = -7f,
+        lives = lives, score = score, phase = phase, hits = 9,
+    )
+}
+
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class GameShots {
@@ -73,7 +93,7 @@ class GameShots {
         { SnakeBoard(state, enabled = false, motionAllowed = false, onTurn = {}, onTap = {}) }
 
     private fun stage(state: SnakeState, retro: RetroSettings = RetroSettings(tvBody = TvBody.WALNUT), landscape: Boolean = false) {
-        val line = if (state.phase == SnakePhase.READY) "REKOR ${state.best}" else "SKOR ${state.score}"
+        val line = if (state.phase == GamePhase.READY) "REKOR ${state.best}" else "SKOR ${state.score}"
         compose.setContent {
             StagePreview(
                 gameNow(state.phase), retro, landscape = landscape,
@@ -99,14 +119,14 @@ class GameShots {
     @Test
     @Config(qualifiers = "w411dp-h891dp-xxhdpi")
     fun phonePaused() {
-        stage(runningBoard(phase = SnakePhase.PAUSED))
+        stage(runningBoard(phase = GamePhase.PAUSED))
         shot("tahap14_game_jeda_ponsel")
     }
 
     @Test
     @Config(qualifiers = "w1280dp-h800dp-land-mdpi")
     fun tabletGameOverWithNewRecord() {
-        stage(runningBoard(phase = SnakePhase.OVER, score = 21, best = 21).copy(newBest = true), retro = RetroSettings(), landscape = true)
+        stage(runningBoard(phase = GamePhase.OVER, score = 21, best = 21).copy(newBest = true), retro = RetroSettings(), landscape = true)
         shot("tahap14_game_over_tablet")
     }
 
@@ -138,5 +158,88 @@ class GameShots {
             StagePreview(playing(fakeCover()), RetroSettings(tvBody = TvBody.WALNUT), landscape = false, tvOff = true, drawer = drawerWithGame(false))
         }
         shot("tahap14_tv_mati_ponsel")
+    }
+
+    private fun breakoutBoard(state: BreakoutState): @androidx.compose.runtime.Composable () -> Unit {
+        val holder = mutableStateOf<BreakoutState?>(state)
+        return { BreakoutBoard(holder, enabled = false, motionAllowed = false, onMove = {}, onTap = {}) }
+    }
+
+    private fun breakoutStage(state: BreakoutState, retro: RetroSettings = RetroSettings(tvBody = TvBody.WALNUT), landscape: Boolean = false) {
+        val line = if (state.phase == GamePhase.READY) "REKOR ${state.best}" else "SKOR ${state.score}"
+        val film = FilmSettings(breakoutBest = state.best)
+        compose.setContent {
+            StagePreview(
+                gameNow(state.phase, Games.BREAKOUT), retro, landscape = landscape,
+                tape = DeckTape.PADDLE, tapeLabel = gameLabel(Games.BREAKOUT, film), tvScreen = breakoutBoard(state),
+                drawer = drawerWithGame(false), gameLine = line,
+            )
+        }
+    }
+
+    @Test
+    @Config(qualifiers = "w411dp-h891dp-xxhdpi")
+    fun breakoutReadyOnPhone() {
+        breakoutStage(Breakout.newGame(best = 180))
+        shot("putaran2_bata_siap_ponsel")
+    }
+
+    @Test
+    @Config(qualifiers = "w411dp-h891dp-xxhdpi")
+    fun breakoutRunningOnPhone() {
+        breakoutStage(runningBreakout())
+        shot("putaran2_bata_jalan_ponsel")
+    }
+
+    @Test
+    @Config(qualifiers = "w411dp-h891dp-xxhdpi")
+    fun breakoutPausedOnPhone() {
+        breakoutStage(runningBreakout(phase = GamePhase.PAUSED))
+        shot("putaran2_bata_jeda_ponsel")
+    }
+
+    @Test
+    @Config(qualifiers = "w1280dp-h800dp-land-mdpi")
+    fun breakoutGameOverWithNewRecordOnTablet() {
+        breakoutStage(
+            runningBreakout(phase = GamePhase.OVER, score = 214, best = 214, lives = 0).copy(newBest = true),
+            retro = RetroSettings(), landscape = true,
+        )
+        shot("putaran2_bata_over_tablet")
+    }
+
+    @Test
+    @Config(qualifiers = "w915dp-h412dp-land-xxhdpi")
+    fun breakoutOnPhoneLandscape() {
+        breakoutStage(runningBreakout(), retro = RetroSettings(tvBody = TvBody.SPACE_AGE), landscape = true)
+        shot("putaran2_bata_ponsel_mendatar")
+    }
+
+    @Test
+    @Config(qualifiers = "w360dp-h780dp-xxhdpi", fontScale = 2.0f)
+    fun breakoutOnSmallPhoneWithLargeFont() {
+        breakoutStage(Breakout.newGame(best = 180), retro = RetroSettings(tvBody = TvBody.CHARCOAL))
+        shot("putaran2_bata_ponsel_kecil_font200")
+    }
+
+    @Test
+    @Config(qualifiers = "ar-w411dp-h891dp-xxhdpi")
+    fun breakoutRtl() {
+        breakoutStage(runningBreakout())
+        shot("putaran2_bata_rtl")
+    }
+
+    @Test
+    @Config(qualifiers = "w411dp-h891dp-xxhdpi")
+    fun theDrawerShowsBothGameCassettesWithTheirRecords() {
+        val film = FilmSettings(snakeBest = 24, breakoutBest = 180)
+        compose.setContent {
+            StagePreview(
+                gameNow(GamePhase.READY, Games.BREAKOUT), RetroSettings(tvBody = TvBody.WALNUT), landscape = false,
+                tape = DeckTape.PADDLE, tapeLabel = gameLabel(Games.BREAKOUT, film), tvScreen = breakoutBoard(Breakout.newGame(180)),
+                drawer = drawerWithGame(true), gameLine = "REKOR 180",
+            )
+        }
+        shot("putaran2_laci_dua_game_ponsel")
     }
 }

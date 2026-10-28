@@ -168,6 +168,7 @@ class FilmRulesTest {
                 FilmCassette("z", "n".repeat(100), "example.com/panjang", 1),
             ),
             snakeBest = 10_000_000,
+            breakoutBest = 10_000_000,
         )
         val s = FilmRules.sanitize(messy)
         assertEquals(5, s.cassettes.size)
@@ -179,6 +180,7 @@ class FilmRulesTest {
         assertEquals("Blender", s.cassettes.first { it.url.contains("blender") }.name)
         assertTrue(s.cassettes.all { it.name.length <= FilmRules.MAX_NAME })
         assertEquals(FilmRules.MAX_SNAKE, s.snakeBest)
+        assertEquals(FilmRules.MAX_BREAKOUT, s.breakoutBest)
         // Idempoten: membersihkan hasil bersih tidak mengubah apa pun
         assertEquals(s, FilmRules.sanitize(s))
     }
@@ -188,10 +190,12 @@ class FilmRulesTest {
         val many = FilmSettings(
             cassettes = (0 until 60).map { FilmCassette("id$it", "k$it", "example.com/$it") },
             snakeBest = -5,
+            breakoutBest = -7,
         )
         val s = FilmRules.sanitize(many)
         assertEquals(FilmRules.MAX_CASSETTES, s.cassettes.size)
         assertEquals(0, s.snakeBest)
+        assertEquals(0, s.breakoutBest)
     }
 
     @Test
@@ -200,6 +204,29 @@ class FilmRulesTest {
         assertEquals(30, FilmRules.withSnakeScore(f, 12).snakeBest)
         assertEquals(41, FilmRules.withSnakeScore(f, 41).snakeBest)
         assertEquals(FilmRules.MAX_SNAKE, FilmRules.withSnakeScore(f, 10_000_000).snakeBest)
+    }
+
+    @Test
+    fun theBestBreakoutScoreOnlyGoesUpAndLeavesSnakeAlone() {
+        val f = FilmSettings(snakeBest = 7, breakoutBest = 300)
+        assertEquals(300, FilmRules.withBreakoutScore(f, 120).breakoutBest)
+        assertEquals(300, FilmRules.withBreakoutScore(f, 300).breakoutBest)
+        assertEquals(415, FilmRules.withBreakoutScore(f, 415).breakoutBest)
+        assertEquals(FilmRules.MAX_BREAKOUT, FilmRules.withBreakoutScore(f, 10_000_000).breakoutBest)
+        assertEquals(7, FilmRules.withBreakoutScore(f, 415).snakeBest)
+    }
+
+    @Test
+    fun anOldSettingsFileWithoutTheBreakoutRecordStillLoadsWithZero() {
+        val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+        val old = """{"snakeBest": 22, "theaterLandscape": false}"""
+        val f = json.decodeFromString(FilmSettings.serializer(), old)
+        assertEquals(22, f.snakeBest)
+        assertEquals(0, f.breakoutBest)
+        assertFalse(f.theaterLandscape)
+        // Dan sebaliknya: berkas baru yang dibaca dengan kunci yang tidak dikenal tidak gagal
+        val round = json.decodeFromString(FilmSettings.serializer(), json.encodeToString(FilmSettings.serializer(), FilmSettings(breakoutBest = 9)))
+        assertEquals(9, round.breakoutBest)
     }
 
     @Test

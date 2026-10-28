@@ -22,11 +22,12 @@ import com.vinyl.launcher.data.FilmResumeStore
 import com.vinyl.launcher.data.FilmRules
 import com.vinyl.launcher.data.FilmSettings
 import com.vinyl.launcher.ui.film.FilmSiteData
+import com.vinyl.launcher.ui.game.Games
 
 /**
  * Pengaturan laci kaset di meja ruang TV. Kaset sendiri ditambah, diubah, dan dihapus dari laci (tahan sebuah kaset);
  * halaman ini memuat pilihan umum, ingatan "lanjut tonton" (halaman + menit terakhir), memulihkan kaset bawaan, rekor
- * game Ular, dan menghapus data situs film (cookie, penyimpanan lokal, cache, posisi terakhir).
+ * game (Ular, Bata), dan menghapus data situs film (cookie, penyimpanan lokal, cache, posisi terakhir).
  */
 @Composable
 fun FilmControls(film: FilmSettings, onChange: (FilmSettings) -> Unit) {
@@ -67,13 +68,20 @@ fun FilmControls(film: FilmSettings, onChange: (FilmSettings) -> Unit) {
         )
         OutlinedButton(onClick = { confirm = FilmConfirm.RESTORE }, modifier = Modifier.fillMaxWidth()) { Text("Pulihkan kaset bawaan") }
         Text(
-            "Kaset Ular (game) selalu ada di laci. Rekor game tersimpan di perangkat ini saja: ${if (film.snakeBest > 0) "${film.snakeBest}" else "belum ada"}.",
+            "Kaset game (${Games.all.joinToString(" dan ") { Games.title(it) }}) selalu ada di laci. Rekor game tersimpan di perangkat ini saja: " +
+                Games.all.joinToString("; ") { id ->
+                    val best = Games.best(film, id)
+                    "${Games.title(id)} ${if (best > 0) "$best" else "belum ada"}"
+                } + ".",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 8.dp),
         )
-        if (film.snakeBest > 0) {
+        if (Games.best(film, Games.SNAKE) > 0) {
             OutlinedButton(onClick = { confirm = FilmConfirm.RESET_SNAKE }, modifier = Modifier.fillMaxWidth()) { Text("Setel ulang rekor Ular") }
+        }
+        if (Games.best(film, Games.BREAKOUT) > 0) {
+            OutlinedButton(onClick = { confirm = FilmConfirm.RESET_BREAKOUT }, modifier = Modifier.fillMaxWidth()) { Text("Setel ulang rekor Bata") }
         }
         Text(
             "Situs film menyimpan cookie dan data lokal di perangkat ini saja (misalnya agar tetap masuk akun). Anda bisa menghapusnya kapan saja.",
@@ -103,7 +111,8 @@ fun FilmControls(film: FilmSettings, onChange: (FilmSettings) -> Unit) {
                             onChange(film.copy(cassettes = FilmRules.defaults()))
                             FilmResumeStore.get(context).prune(FilmRules.defaults())
                         }
-                        FilmConfirm.RESET_SNAKE -> onChange(film.copy(snakeBest = 0))
+                        FilmConfirm.RESET_SNAKE -> onChange(Games.reset(film, Games.SNAKE))
+                        FilmConfirm.RESET_BREAKOUT -> onChange(Games.reset(film, Games.BREAKOUT))
                         FilmConfirm.FORGET -> {
                             FilmResumeStore.get(context).clear()
                             Toast.makeText(context, "Posisi terakhir semua kaset dilupakan.", Toast.LENGTH_SHORT).show()
@@ -130,6 +139,11 @@ private enum class FilmConfirm(val title: String, val message: String, val actio
     RESET_SNAKE(
         "Setel ulang rekor?",
         "Rekor game Ular kembali ke nol. Ini tidak bisa dibatalkan.",
+        "Setel ulang",
+    ),
+    RESET_BREAKOUT(
+        "Setel ulang rekor?",
+        "Rekor game Bata kembali ke nol. Ini tidak bisa dibatalkan.",
         "Setel ulang",
     ),
     FORGET(

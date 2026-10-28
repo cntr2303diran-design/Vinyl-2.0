@@ -42,12 +42,15 @@ import com.vinyl.launcher.ui.film.TapeFlow
 import com.vinyl.launcher.ui.film.TapeState
 import com.vinyl.launcher.ui.film.TapeStep
 import com.vinyl.launcher.ui.film.VideoStatus
+import com.vinyl.launcher.ui.game.Breakout
+import com.vinyl.launcher.ui.game.BreakoutEvent
+import com.vinyl.launcher.ui.game.BreakoutState
 import com.vinyl.launcher.ui.game.Dir
+import com.vinyl.launcher.ui.game.GameHud
+import com.vinyl.launcher.ui.game.GamePhase
 import com.vinyl.launcher.ui.game.Games
 import com.vinyl.launcher.ui.game.Snake
 import com.vinyl.launcher.ui.game.SnakeEvent
-import com.vinyl.launcher.ui.game.SnakeHud
-import com.vinyl.launcher.ui.game.SnakePhase
 import com.vinyl.launcher.ui.game.SnakeState
 import com.vinyl.launcher.ui.game.hud
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -272,8 +275,18 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     /** Papan Ular selama kaset game di deck; null selain itu. Berubah tiap langkah: hanya layar game yang membacanya. */
     val snake: StateFlow<SnakeState?> = _snake.asStateFlow()
 
-    /** Ringkasan papan (fase, skor, rekor) untuk deck, VFD, dan OSD; berubah jarang, aman dibaca beranda. */
-    val snakeHud: StateFlow<SnakeHud?> = _snake.map { it?.hud() }.distinctUntilChanged()
+    // ---------- Game Bata di kaset game ----------
+    private val _breakout = MutableStateFlow<BreakoutState?>(null)
+
+    /** Lapangan Bata selama kaset itu di deck; null selain itu. Berubah tiap bingkai: hanya layar game yang membacanya. */
+    val breakout: StateFlow<BreakoutState?> = _breakout.asStateFlow()
+
+    /**
+     * Ringkasan papan game yang sedang di deck (fase, skor, rekor, nyawa, tingkat) untuk deck, VFD, dan OSD; berubah
+     * jarang (tidak tiap langkah atau bingkai), jadi aman dibaca beranda.
+     */
+    val gameHud: StateFlow<GameHud?> = combine(_snake, _breakout) { snake, breakout -> snake?.hud() ?: breakout?.hud() }
+        .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     private val _tvPower = MutableStateFlow(true)
@@ -286,7 +299,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
      * deck; nama kaset + keadaan video saat kaset film di deck; nama game + keadaan permainan saat kaset game di deck.
      * Perpustakaan, lirik, dan drawer tetap memakai [nowPlaying].
      */
-    val roomNowPlaying: StateFlow<NowPlaying> = combine(MediaRepository.state, _tape, _film, settings, snakeHud) { music, t, sample, s, hud ->
+    val roomNowPlaying: StateFlow<NowPlaying> = combine(MediaRepository.state, _tape, _film, settings, gameHud) { music, t, sample, s, hud ->
         when (val tape = t.tape) {
             is Tape.Film -> filmNowPlaying(s.film.cassettes.firstOrNull { it.id == tape.id }, sample)
             is Tape.Game -> gameNowPlaying(tape.id, hud)
@@ -307,7 +320,10 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
             settings.collect { s ->
                 _tape.update { TapeFlow.reconcile(it, filmExists = { id -> s.film.cassettes.any { c -> c.id == id } }) }
                 if (_tape.value.tape !is Tape.Film) _theatre.value = false
-                if (_tape.value.tape !is Tape.Game) _snake.value = null
+                if (_tape.value.tape !is Tape.Game) {
+                    _snake.value = null
+                    _breakout.value = null
+                }
             }
         }
         // Rekor disetel ulang dari Pengaturan: papan yang sedang terbuka ikut memakai rekor yang lebih rendah itu
@@ -315,6 +331,11 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             settings.map { it.film.snakeBest }.distinctUntilChanged().collect { best ->
                 _snake.update { s -> if (s != null && best < s.best) s.copy(best = best) else s }
+            }
+        }
+        viewModelScope.launch {
+            settings.map { it.film.breakoutBest }.distinctUntilChanged().collect { best ->
+                _breakout.update { s -> if (s != null && best < s.best) s.copy(best = best) else s }
             }
         }
     }
@@ -340,7 +361,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         if (on) SoundFx.crtOn(settings.value.effects)
         else {
             SoundFx.crtOff(settings.value.effects)
-            snakePause()
+            gamePause()
         }
     }
 
@@ -372,8 +393,8 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         if (wakeTv()) return
         val next = Snake.tap(s, snakeRandom)
         _snake.value = next
-        if (next.phase == SnakePhase.RUNNING) SoundFx.playKey(getApplication(), settings.value.effects)
-        else if (next.phase == SnakePhase.PAUSED) {
+        if (next.phase == GamePhase.RUNNING) SoundFx.playKey(getApplication(), settings.value.effects)
+        else if (next.phase == GamePhase.PAUSED) {
             SoundFx.stopKey(getApplication(), settings.value.effects)
             persistSnakeBest(next)
         }
@@ -414,13 +435,89 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    private fun gameNowPlaying(id: String, hud: SnakeHud?): NowPlaying {
+    // ---------- Kendali game Bata ----------
+    /** Geser palet [dx] satuan lapangan (seretan jari). Tidak meluncurkan bola. */
+    fun breakoutMove(dx: Float) {
+        val s = _breakout.value ?: return
+        if (wakeTv()) return
+        val next = Breakout.movePaddle(s, dx)
+        if (next != s) _breakout.value = next
+    }
+
+    /** Satu ketukan tombol deck atau aksi aksesibilitas: palet bergeser ke kiri ([direction] < 0) atau kanan. */
+    fun breakoutNudge(direction: Int) {
+        val s = _breakout.value ?: return
+        if (wakeTv()) return
+        val next = Breakout.nudge(s, direction)
+        if (next == s) return
+        _breakout.value = next
+        SoundFx.tick(getApplication(), settings.value.effects)
+    }
+
+    /** Ketuk: luncurkan bola, jeda, lanjut, atau (setelah selesai) main lagi dengan rekor yang dibawa. */
+    fun breakoutTap() {
+        val s = _breakout.value ?: return
+        if (wakeTv()) return
+        val next = Breakout.tap(s)
+        _breakout.value = next
+        if (next.phase == GamePhase.RUNNING) SoundFx.playKey(getApplication(), settings.value.effects)
+        else if (next.phase == GamePhase.PAUSED) {
+            SoundFx.stopKey(getApplication(), settings.value.effects)
+            persistBreakoutBest(next)
+        }
+    }
+
+    /** Jeda bila sedang berjalan (ruang TV tidak tampil, TV dimatikan, laci dibuka, aplikasi ke latar); rekor ikut disimpan. */
+    fun breakoutPause() {
+        val s = _breakout.value ?: return
+        val next = Breakout.pause(s)
+        if (next == s) return
+        _breakout.value = next
+        persistBreakoutBest(next)
+    }
+
+    /** Majukan Bata [dtSec] detik (selisih waktu antar bingkai layar); bunyi dan getar menurut kejadiannya. */
+    fun breakoutAdvance(dtSec: Float) {
+        val s = _breakout.value ?: return
+        val step = Breakout.advance(s, dtSec)
+        if (step.state === s) return
+        _breakout.value = step.state
+        if (step.events.isEmpty()) return
+        val fx = settings.value.effects
+        val context = getApplication<Application>()
+        for (event in step.events) {
+            when (event) {
+                BreakoutEvent.WALL -> SoundFx.gameWall(fx)
+                BreakoutEvent.PADDLE -> SoundFx.gamePaddle(context, fx)
+                BreakoutEvent.BRICK -> SoundFx.gameBrick(context, fx)
+                BreakoutEvent.LOST_BALL -> SoundFx.gameMiss(context, fx)
+                BreakoutEvent.LEVEL_UP -> { SoundFx.gameWin(context, fx); persistBreakoutBest(step.state) }
+                BreakoutEvent.GAME_OVER -> { SoundFx.gameOver(context, fx); persistBreakoutBest(step.state) }
+            }
+        }
+    }
+
+    /** Rekor tersimpan lokal bersama pengaturan; hanya dinaikkan, tidak pernah diturunkan oleh permainan. */
+    private fun persistBreakoutBest(s: BreakoutState) {
+        val best = s.shownBest
+        if (best > settings.value.film.breakoutBest) {
+            updateSettings { cur -> cur.copy(film = FilmRules.withBreakoutScore(cur.film, best)) }
+        }
+    }
+
+    /** Jeda game apa pun yang sedang berjalan di deck. */
+    fun gamePause() {
+        snakePause()
+        breakoutPause()
+    }
+
+    private fun gameNowPlaying(id: String, hud: GameHud?): NowPlaying {
         val color = Games.color(id)
         return NowPlaying(
             hasSession = true,
             title = Games.title(id),
             artist = "Game",
-            isPlaying = hud?.phase == SnakePhase.RUNNING,
+            isPlaying = hud?.phase == GamePhase.RUNNING,
             dominantColor = color,
             accentColor = color,
             swatches = listOf(color),
@@ -439,8 +536,13 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         val before = _tape.value.tape
         val after = step.state.tape
         // Kaset game keluar dari deck: rekor disimpan; kaset game masuk: papan baru dengan rekor tersimpan
-        if (before is Tape.Game) _snake.value?.let { persistSnakeBest(it) }
-        _snake.value = if (after is Tape.Game) Snake.newGame(settings.value.film.snakeBest, snakeRandom) else null
+        if (before is Tape.Game) {
+            _snake.value?.let { persistSnakeBest(it) }
+            _breakout.value?.let { persistBreakoutBest(it) }
+        }
+        val film = settings.value.film
+        _snake.value = if (after is Tape.Game && after.id == Games.SNAKE) Snake.newGame(film.snakeBest, snakeRandom) else null
+        _breakout.value = if (after is Tape.Game && after.id == Games.BREAKOUT) Breakout.newGame(film.breakoutBest) else null
         wakeTv()
         _tape.value = step.state
         _film.value = null

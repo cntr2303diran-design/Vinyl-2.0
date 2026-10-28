@@ -61,8 +61,16 @@ import com.vinyl.launcher.ui.theme.MonoFamily
 import com.vinyl.launcher.ui.theme.RetroColors
 import com.vinyl.launcher.ui.theme.Tokens
 
-/** Apa yang sedang dikendalikan deck: lagu, film di layar TV, atau game; menentukan ikon & fungsi keempat tombol. */
-enum class DeckTape { MUSIC, FILM, GAME }
+/**
+ * Apa yang sedang dikendalikan deck: lagu, film di layar TV, atau game; menentukan ikon & fungsi tombolnya.
+ * [GAME] = game empat arah (Ular), [PADDLE] = game dengan palet (Bata).
+ */
+enum class DeckTape {
+    MUSIC, FILM, GAME, PADDLE;
+
+    /** Kaset game: layar TV dan tombol deck dikendalikan game, bukan pemutar. */
+    val isGame: Boolean get() = this == GAME || this == PADDLE
+}
 
 /** Isi VFD deck: baris status (mis. "▶ PLAY   HI-FI") dan baris keluaran audio (mis. "BUDS PRO · 48 kHz"). */
 data class DeckDisplay(val status: String, val output: String)
@@ -72,8 +80,9 @@ data class DeckDisplay(val status: String, val output: String)
  * mundur 10 detik, putar/jeda, berikutnya. Tombol turun saat ditekan; tombol putar "terkunci" setengah masuk selama
  * lagu berjalan. Setiap tombol ≥ 48 dp.
  *
- * Kaset film: kembali · mundur 10 dtk · putar/jeda · maju 10 dtk. Kaset game: kiri · atas · bawah · kanan (jendela VFD
- * menjadi tombol jeda/mulai ulang). Jendela VFD bisa dijadikan tombol lewat [onVfdClick] (mis. membuka mode Teater).
+ * Kaset film: kembali · mundur 10 dtk · putar/jeda · maju 10 dtk. Kaset game Ular: kiri · atas · bawah · kanan; game Bata:
+ * palet ke kiri · mulai/jeda · palet ke kanan (tiga tombol; jendela VFD menjadi tombol jeda/mulai ulang). Jendela VFD bisa
+ * dijadikan tombol lewat [onVfdClick] (mis. membuka mode Teater).
  */
 @Composable
 fun TapeDeck(
@@ -162,6 +171,15 @@ fun TapeDeck(
                         DeckKey(Icons.Rounded.KeyboardArrowUp, "Naik", enabled, keyW, keyH, onClick = onRewind)
                         DeckKey(Icons.Rounded.KeyboardArrowDown, "Turun", enabled, keyW * 1.25f, keyH, onClick = onPlayPause)
                         DeckKey(Icons.AutoMirrored.Rounded.KeyboardArrowRight, "Belok kanan", enabled, keyW, keyH, onClick = onNext)
+                    }
+                    DeckTape.PADDLE -> {
+                        DeckKey(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, "Palet ke kiri", enabled, keyW, keyH, onClick = onPrevious)
+                        DeckKey(
+                            if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                            if (playing) "Jeda game" else "Mulai game",
+                            enabled, keyW * 1.25f, keyH, latched = playing, onClick = onPlayPause,
+                        )
+                        DeckKey(Icons.AutoMirrored.Rounded.KeyboardArrowRight, "Palet ke kanan", enabled, keyW, keyH, onClick = onNext)
                     }
                 }
             }

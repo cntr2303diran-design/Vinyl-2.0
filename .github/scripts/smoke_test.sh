@@ -6,8 +6,9 @@
 #   - terpasang, tidak bisa di-debug, dijadikan launcher default (seperti pengguna sungguhan; tanpa itu Android
 #     menampilkan pemilih "Select a Home app" yang menutupi semua yang diuji), terbuka lewat HomeActivity, dan
 #     onboarding pertama-buka bisa diselesaikan
-#   - beranda benar-benar tampil (tangkapan layar + simpul aksesibilitas), rotasi layar, geser halaman, TV dimatikan/
-#     dinyalakan, laci kaset, game Ular (usap di layar TV), kaset film
+#   - beranda benar-benar tampil (tangkapan layar + simpul aksesibilitas), rotasi layar, geser halaman (Audio Console,
+#     Perpustakaan kaset, kembali ke Ruang TV), TV dimatikan/dinyalakan, laci kaset, game Ular (usap di layar TV), game Bata
+#     (geser palet; tombol deck berubah Mulai/Jeda; rekor tampil di label kaset), kaset film
 #   - layar Pengaturan terbuka dan teksnya terbaca (tangkapan layar)
 #   - proses dimatikan sistem saat di latar lalu launcher dibuka lagi lewat tombol Home: pengaturan HARUS bertahan
 #     (onboarding tidak muncul lagi); ini menguji pembacaan/penulisan JSON kotlinx.serialization + DataStore setelah R8
@@ -303,6 +304,51 @@ ensure_front() { # <label>
   top_is_home
 }
 
+# expect_node <nama> <regex> <pesan bila ada> <pesan bila tidak ada>: OK bila simpul ada, PERINGATAN bila tidak ada atau layar tak terbaca
+expect_node() {
+  find_node "$1" "$2"
+  case $? in
+    0) ok "$3"; return 0 ;;
+    1) warn "$4"; return 1 ;;
+    *) warn "layar tidak terbaca saat memeriksa: $3"; return 1 ;;
+  esac
+}
+
+# tap_tray <nama> <regex>: kaset di baki adalah daftar mendatar yang bisa melebihi lebar layar (kaset di luar layar tidak
+# ada di pohon aksesibilitas). Cari; bila belum tampak, geser baki ke kiri (pada tinggi kartu yang sedang tampak) dan cari lagi.
+tap_tray() {
+  local i
+  for i in 1 2 3 4 5 6 7; do
+    if tap_node "$1_$i" "$2"; then return 0; fi
+    if find_node "$1_baris" '^Kaset [^:]+, '; then
+      adb shell input swipe $((W * 85 / 100)) "$NY" $((W * 25 / 100)) "$NY" 300
+    fi
+    sleep 1.5
+  done
+  return 1
+}
+
+# Urutan halaman beranda: Perpustakaan kaset <- Ruang TV -> Audio Console. Langkah yang mengetuk benda di meja (tombol daya,
+# laci, kaset) harus mulai dari Ruang TV. Perpustakaan dan Audio Console sama-sama punya tombol "Kembali ke ruang TV";
+# bila layar yang tampil bukan salah satu halaman beranda (dialog, aplikasi lain), launcher dibawa ke depan lebih dulu.
+goto_room() { # <label>
+  local i
+  for i in 1 2 3 4; do
+    # Laci yang masih terbuka menutupi meja dan menahan sentuhan ke tombol di belakangnya: tutup dulu
+    if tap_node tutup_laci '^Tutup laci$'; then sleep 2; fi
+    if find_node ruang '^Tombol daya TV$'; then return 0; fi
+    if tap_node kembali '^Kembali ke ruang TV$'; then
+      sleep 2
+    else
+      ensure_front "ruang_$1" > /dev/null
+      sleep 2
+    fi
+  done
+  if find_node ruang '^Tombol daya TV$'; then return 0; fi
+  warn "Ruang TV tidak tampil ($1); layar depan: $(top_desc)"
+  return 1
+}
+
 # Onboarding pertama-buka: ketuk "Mulai" (menulis onboardingDone ke DataStore)
 first_run() { # <label>
   local i
@@ -418,20 +464,27 @@ shot "tegak_lagi"
 check_alive "setelah diputar tegak"
 
 # ---------- 4. geser halaman ----------
-step "Geser halaman"
+step "Geser halaman (Perpustakaan kaset <- Ruang TV -> Audio Console)"
 ensure_front geser > /dev/null
-swipe_left; sleep 1.5; shot "halaman_2"
-swipe_left; sleep 1.5; shot "halaman_3"
-swipe_right; sleep 1.2
-swipe_right; sleep 1.5; shot "halaman_1_lagi"
+goto_room geser_awal
+swipe_left; sleep 1.5; shot "halaman_konsol"
+expect_node halaman_konsol '^AUDIO CONSOLE$' "geser ke kiri membuka Audio Console" "geser ke kiri dari Ruang TV tidak menampilkan Audio Console"
+swipe_right; sleep 1.5
+expect_node halaman_ruang1 '^Tombol daya TV$' "geser ke kanan dari Audio Console kembali ke Ruang TV" "geser ke kanan dari Audio Console tidak kembali ke Ruang TV"
+swipe_right; sleep 1.5; shot "halaman_perpustakaan"
+expect_node halaman_perpus '^Perpustakaan kaset$' "geser ke kanan membuka Perpustakaan kaset" "geser ke kanan dari Ruang TV tidak menampilkan Perpustakaan kaset"
+swipe_left; sleep 1.5
+expect_node halaman_ruang2 '^Tombol daya TV$' "geser ke kiri dari Perpustakaan kembali ke Ruang TV" "geser ke kiri dari Perpustakaan tidak kembali ke Ruang TV"
+goto_room geser_akhir
 check_alive "setelah geser halaman"
 
 # ---------- 5. TV, laci, game ----------
 step "Tombol daya TV"
 ensure_front tv > /dev/null
+goto_room tv
 if tap_wait tv_daya '^Tombol daya TV$' 20; then
   sleep 1.5; shot "tv_mati"
-  if find_node tv_mati_cek '^TV mati$'; then ok "TV mati (semantik 'TV mati' ada)"; else warn "semantik 'TV mati' tidak ditemukan setelah tombol daya"; fi
+  expect_node tv_mati_cek '^TV mati$' "TV mati (semantik 'TV mati' ada)" "semantik 'TV mati' tidak ditemukan setelah tombol daya"
   tap_node tv_daya2 '^Tombol daya TV$' > /dev/null
   sleep 1.5; shot "tv_nyala_lagi"
   find_node tv_nyala_cek '^TV mati$'
@@ -445,15 +498,47 @@ else
 fi
 check_alive "setelah tombol daya"
 
-step "Laci kaset dan game Ular"
-if tap_wait laci '^Laci kaset' 20; then
-  sleep 1.5; shot "laci_terbuka"
-  if tap_wait kaset_ular '^Kaset Ular, ' 15; then
-    ok "kaset Ular ada di laci dan diketuk"
-    sleep 3.5; shot "game_siap"
-    if find_node tv_game '^TV menampilkan game'; then
-      ok "TV menampilkan game"
-      GX=$NX; GY=$NY; GW=$((NX2 - NX1)); GH=$((NY2 - NY1))
+# Satu kaset game: laci -> ketuk kaset -> TV menampilkan game -> main sebentar -> keluarkan kaset lagi.
+#   <kunci> penanda nama berkas, <judul> nama di label kaset (Ular / Bata), <gaya> usap = Ular, palet = Bata
+play_game() {
+  local key=$1 title=$2 style=$3 d
+  ensure_front "game_$key" > /dev/null
+  goto_room "game_$key" || return 1
+  if ! tap_wait "laci_$key" '^Laci kaset' 20; then
+    warn "kontrol laci kaset tidak ditemukan ($title); layar depan: $(top_desc)"
+    return 1
+  fi
+  sleep 1.5; shot "laci_${key}_terbuka"
+  if ! tap_tray "kaset_$key" "^Kaset $title, "; then
+    warn "kaset $title tidak ditemukan di laci"
+    return 1
+  fi
+  ok "kaset $title ada di laci dan diketuk"
+  sleep 3.5; shot "game_${key}_siap"
+  if find_node "tv_$key" '^TV menampilkan game'; then
+    ok "TV menampilkan game $title"
+    GX=$NX; GY=$NY; GW=$((NX2 - NX1)); GH=$((NY2 - NY1))
+    if [ "$style" = "palet" ]; then
+      expect_node "deck_${key}_siap" '^Mulai game$' "tombol deck $title menawarkan 'Mulai game' sebelum dimainkan" "tombol deck 'Mulai game' tidak ada pada papan $title yang baru"
+      adb shell input tap "$GX" "$GY"; sleep 1.5
+      expect_node "deck_${key}_jalan" '^Jeda game$' "$title berjalan: tombol deck berubah menjadi 'Jeda game'" "tombol deck tidak berubah menjadi 'Jeda game' setelah layar TV $title diketuk"
+      # Geser jari bolak-balik di layar TV: palet mengikuti, bola memantul dan memecahkan bata
+      for d in 1 2 3 4 5 6; do
+        adb shell input swipe $((GX - GW / 4)) "$GY" $((GX + GW / 4)) "$GY" 200; sleep 0.5
+        adb shell input swipe $((GX + GW / 4)) "$GY" $((GX - GW / 4)) "$GY" 200; sleep 0.5
+      done
+      shot "game_${key}_jalan"
+      # Jeda lewat tombol deck (menguji aksi deck sekaligus menyimpan rekor)
+      if tap_node "deck_${key}_jeda" '^Jeda game$'; then
+        sleep 2; shot "game_${key}_jeda"
+        expect_node "deck_${key}_jeda_cek" '^Mulai game$' "$title dijeda lewat tombol deck" "tombol deck tidak berubah menjadi 'Mulai game' setelah dijeda"
+        # Bola yang sempat memecahkan bata menaikkan rekor; rekor tampil di label kaset di deck ("Kaset: BATA, Game · rekor N")
+        if find_node "rekor_$key" "^Kaset: .*rekor [0-9]+"; then ok "rekor $title tersimpan dan tampil di label kaset"; else warn "rekor $title tidak tampil di label kaset (belum ada bata yang pecah, atau rekor tidak tersimpan)"; fi
+      else
+        warn "tombol 'Jeda game' tidak ditemukan; permainan mungkin sudah berakhir atau dijeda sistem"
+        shot "game_${key}_tanpa_jeda"
+      fi
+    else
       adb shell input tap "$GX" "$GY"; sleep 0.8
       for d in "right" "down" "left" "up" "right" "down"; do
         case $d in
@@ -464,42 +549,55 @@ if tap_wait laci '^Laci kaset' 20; then
         esac
         sleep 0.7
       done
-      shot "game_jalan"
-      adb shell input tap "$GX" "$GY"; sleep 0.8; shot "game_jeda"
-    else
-      warn "TV tidak menampilkan game setelah kaset Ular diketuk"
-    fi
-    check_alive "setelah main game"
-    # keluarkan kaset game: buka laci lagi, ketuk kaset yang sama
-    if tap_wait laci2 '^Laci kaset' 15; then
-      sleep 1.5
-      if tap_wait kaset_ular2 '^Kaset Ular, ' 15; then
-        sleep 3.5; shot "kaset_dikeluarkan"
-        if find_node tv_musik '^TV menampilkan game'; then warn "TV masih menampilkan game setelah kaset dikeluarkan"; else ok "kaset game keluar dari deck"; fi
-      else
-        warn "kaset Ular tidak ditemukan saat mengeluarkan"
-      fi
+      shot "game_${key}_jalan"
+      adb shell input tap "$GX" "$GY"; sleep 0.8; shot "game_${key}_jeda"
     fi
   else
-    warn "kaset Ular tidak ditemukan di laci"
+    warn "TV tidak menampilkan game setelah kaset $title diketuk"
   fi
-else
-  warn "kontrol laci kaset tidak ditemukan; layar depan: $(top_desc)"
-fi
-check_alive "setelah laci dan game"
+  check_alive "setelah main $title"
+  # keluarkan kaset game: buka laci lagi, ketuk kaset yang sama
+  ensure_front "keluar_$key" > /dev/null
+  if tap_wait "laci_${key}_2" '^Laci kaset' 15; then
+    sleep 1.5
+    if tap_tray "kaset_${key}_2" "^Kaset $title, "; then
+      sleep 3.5; shot "kaset_${key}_dikeluarkan"
+      find_node "tv_${key}_keluar" '^TV menampilkan game'
+      case $? in
+        0) warn "TV masih menampilkan game setelah kaset $title dikeluarkan" ;;
+        1) ok "kaset $title keluar dari deck" ;;
+        *) warn "layar tidak terbaca saat memeriksa kaset $title dikeluarkan" ;;
+      esac
+    else
+      warn "kaset $title tidak ditemukan saat mengeluarkan"
+    fi
+  else
+    warn "kontrol laci kaset tidak ditemukan saat mengeluarkan kaset $title"
+  fi
+  check_alive "setelah kaset $title dikeluarkan"
+  return 0
+}
+
+step "Laci kaset dan game Ular"
+play_game ular Ular usap
+
+step "Game Bata (palet digeser dengan jari, bola memecahkan bata, rekor tampil di label kaset)"
+play_game bata Bata palet
 
 step "Kaset film (WebView, jaringan emulator bisa saja tidak ada)"
 ensure_front film > /dev/null
+goto_room film
+FILM_RX='^Kaset (?!(Ular|Bata), )[^:]+, '
 if tap_wait laci3 '^Laci kaset' 15; then
   sleep 1.5
-  if tap_wait kaset_film '^Kaset (?!Ular, )[^:]+, ' 15; then
+  if tap_tray kaset_film "$FILM_RX"; then
     ok "kaset film diketuk"
     sleep 12; shot "film_dimuat"
     check_alive "setelah kaset film dimuat"
     rotate 1; sleep 2; shot "film_mendatar"
     check_alive "film saat diputar mendatar"
     rotate 0; sleep 2
-    if tap_wait laci4 '^Laci kaset' 15 && sleep 1.5 && tap_wait kaset_film2 '^Kaset (?!Ular, )[^:]+, ' 15; then
+    if tap_wait laci4 '^Laci kaset' 15 && sleep 1.5 && tap_tray kaset_film2 "$FILM_RX"; then
       sleep 3; shot "film_dikeluarkan"
     else
       warn "kaset film tidak ditemukan untuk dikeluarkan"
@@ -544,6 +642,7 @@ scan_log pengaturan
 # ---------- 6b. Edit beranda ----------
 step "Edit beranda (tekan lama di layar utama; teksnya harus terbaca)"
 ensure_front editor > /dev/null
+goto_room editor
 editor_open=0
 for pt in "$((W / 2)) $((H * 22 / 100))" "$((W * 8 / 100)) $((H / 2))" "$((W / 2)) $((H * 62 / 100))"; do
   read -r px py <<< "$pt"

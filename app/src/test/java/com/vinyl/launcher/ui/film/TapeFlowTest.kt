@@ -133,6 +133,21 @@ class TapeFlowTest {
     }
 
     @Test
+    fun switchingFromOneGameToTheOtherSwapsTheCassetteWithoutTouchingTheMusic() {
+        val other = Tape.Game(Games.BREAKOUT)
+        val inSnake = TapeFlow.press(music, game, musicPlaying = true, resumeMusic = true)
+        assertEquals(MusicEffect.PAUSE, inSnake.music)
+        val inBreakout = TapeFlow.press(inSnake.state, other, musicPlaying = false, resumeMusic = true)
+        assertEquals(other, inBreakout.state.tape)
+        assertTrue(inBreakout.state.musicWasPlaying)
+        assertEquals(MusicEffect.NONE, inBreakout.music)
+        // Kaset yang sama ditekan lagi: keluar, musik kembali; yang lain tetap dikenal sebagai game bawaan
+        assertEquals(MusicEffect.RESUME, TapeFlow.press(inBreakout.state, other, musicPlaying = false, resumeMusic = true).music)
+        assertEquals(inBreakout.state, TapeFlow.reconcile(inBreakout.state, filmExists = { false }))
+        for (id in Games.all) assertTrue(Games.exists(id))
+    }
+
+    @Test
     fun modeWordsAreShortEnoughForTheDeckDisplay() {
         for (t in listOf(Tape.Music, film, game)) assertTrue(TapeFlow.modeWord(t).length <= 5)
     }

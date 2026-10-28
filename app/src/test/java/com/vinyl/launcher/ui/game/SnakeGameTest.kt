@@ -21,7 +21,7 @@ class SnakeGameTest {
         rows: Int = 6,
         score: Int = 0,
         best: Int = 0,
-        phase: SnakePhase = SnakePhase.RUNNING,
+        phase: GamePhase = GamePhase.RUNNING,
     ) = SnakeState(
         cols = cols, rows = rows, body = cells.map { Cell(it.first, it.second) }, dir = dir, queue = emptyList(),
         food = food?.let { Cell(it.first, it.second) }, score = score, phase = phase, best = best, newBest = false,
@@ -33,7 +33,7 @@ class SnakeGameTest {
         assertEquals(Snake.START_LENGTH, s.body.size)
         assertEquals(Cell(Snake.COLS / 2, Snake.ROWS / 2), s.head)
         assertEquals(Dir.RIGHT, s.dir)
-        assertEquals(SnakePhase.READY, s.phase)
+        assertEquals(GamePhase.READY, s.phase)
         assertEquals(0, s.score)
         assertEquals(12, s.best)
         assertFalse(s.newBest)
@@ -92,7 +92,7 @@ class SnakeGameTest {
         assertEquals(Cell(4, 2), r.state.head)
         assertNotNull(r.state.food)
         assertFalse(r.state.food in r.state.body)
-        assertEquals(SnakePhase.RUNNING, r.state.phase)
+        assertEquals(GamePhase.RUNNING, r.state.phase)
     }
 
     @Test
@@ -120,7 +120,7 @@ class SnakeGameTest {
         val s = board(2 to 2, 3 to 2, 3 to 3, 2 to 3, 1 to 3, 1 to 2, dir = Dir.DOWN, score = 4, best = 9)
         val r = Snake.step(s, rnd)
         assertEquals(SnakeEvent.DIED, r.event)
-        assertEquals(SnakePhase.OVER, r.state.phase)
+        assertEquals(GamePhase.OVER, r.state.phase)
         assertEquals(s.body, r.state.body)
         assertEquals(4, r.state.score)
         assertEquals(9, r.state.best)
@@ -137,7 +137,7 @@ class SnakeGameTest {
         val s = board(1 to 1, 1 to 2, 0 to 2, 0 to 1, dir = Dir.LEFT)
         val r = Snake.step(s, rnd)
         assertEquals(SnakeEvent.NONE, r.event)
-        assertEquals(SnakePhase.RUNNING, r.state.phase)
+        assertEquals(GamePhase.RUNNING, r.state.phase)
         assertEquals(Cell(0, 1), r.state.head)
     }
 
@@ -153,7 +153,7 @@ class SnakeGameTest {
     fun breakingTheRecordIsFlaggedWhenTheGameEnds() {
         val s = board(2 to 2, 3 to 2, 3 to 3, 2 to 3, 1 to 3, 1 to 2, dir = Dir.DOWN, score = 10, best = 7)
         val r = Snake.step(s, rnd)
-        assertEquals(SnakePhase.OVER, r.state.phase)
+        assertEquals(GamePhase.OVER, r.state.phase)
         assertEquals(10, r.state.best)
         assertTrue(r.state.newBest)
         assertEquals(10, r.state.shownBest)
@@ -171,7 +171,7 @@ class SnakeGameTest {
         val s = board(1 to 0, 0 to 0, 0 to 1, 1 to 1, 2 to 1, 3 to 1, 3 to 0, cols = 4, rows = 2, dir = Dir.RIGHT, food = 2 to 0, score = 4, best = 2)
         val r = Snake.step(s, rnd)
         assertEquals(SnakeEvent.WON, r.event)
-        assertEquals(SnakePhase.WON, r.state.phase)
+        assertEquals(GamePhase.WON, r.state.phase)
         assertNull(r.state.food)
         assertEquals(8, r.state.body.size)
         assertEquals(5, r.state.score)
@@ -218,25 +218,25 @@ class SnakeGameTest {
     fun theFirstMoveStartsTheGameAndAReversalAtTheStartOnlyStartsIt() {
         val ready = Snake.newGame(0, rnd)
         val up = Snake.turn(ready, Dir.UP)
-        assertEquals(SnakePhase.RUNNING, up.phase)
+        assertEquals(GamePhase.RUNNING, up.phase)
         assertEquals(listOf(Dir.UP), up.queue)
         val left = Snake.turn(ready, Dir.LEFT)
-        assertEquals(SnakePhase.RUNNING, left.phase)
+        assertEquals(GamePhase.RUNNING, left.phase)
         assertTrue(left.queue.isEmpty())
     }
 
     @Test
     fun aTurnWhilePausedResumes() {
-        val s = Snake.turn(board(3 to 2, 2 to 2, 1 to 2, phase = SnakePhase.PAUSED), Dir.DOWN)
-        assertEquals(SnakePhase.RUNNING, s.phase)
+        val s = Snake.turn(board(3 to 2, 2 to 2, 1 to 2, phase = GamePhase.PAUSED), Dir.DOWN)
+        assertEquals(GamePhase.RUNNING, s.phase)
         assertEquals(listOf(Dir.DOWN), s.queue)
     }
 
     @Test
     fun swipesAfterTheGameEndedDoNotRestartIt() {
-        val over = board(3 to 2, 2 to 2, 1 to 2, phase = SnakePhase.OVER)
+        val over = board(3 to 2, 2 to 2, 1 to 2, phase = GamePhase.OVER)
         assertSame(over, Snake.turn(over, Dir.UP))
-        val won = board(3 to 2, 2 to 2, 1 to 2, phase = SnakePhase.WON)
+        val won = board(3 to 2, 2 to 2, 1 to 2, phase = GamePhase.WON)
         assertSame(won, Snake.turn(won, Dir.UP))
     }
 
@@ -244,14 +244,14 @@ class SnakeGameTest {
     fun tapStartsPausesResumesAndRestartsKeepingTheRecord() {
         var s = Snake.newGame(5, rnd)
         s = Snake.tap(s, rnd)
-        assertEquals(SnakePhase.RUNNING, s.phase)
+        assertEquals(GamePhase.RUNNING, s.phase)
         s = Snake.tap(s, rnd)
-        assertEquals(SnakePhase.PAUSED, s.phase)
+        assertEquals(GamePhase.PAUSED, s.phase)
         s = Snake.tap(s, rnd)
-        assertEquals(SnakePhase.RUNNING, s.phase)
-        val over = s.copy(phase = SnakePhase.OVER, score = 8, best = 8, newBest = true)
+        assertEquals(GamePhase.RUNNING, s.phase)
+        val over = s.copy(phase = GamePhase.OVER, score = 8, best = 8, newBest = true)
         val fresh = Snake.tap(over, rnd)
-        assertEquals(SnakePhase.READY, fresh.phase)
+        assertEquals(GamePhase.READY, fresh.phase)
         assertEquals(0, fresh.score)
         assertEquals(8, fresh.best)
         assertFalse(fresh.newBest)
@@ -261,16 +261,16 @@ class SnakeGameTest {
 
     @Test
     fun pauseOnlyAffectsAGameInProgress() {
-        assertEquals(SnakePhase.PAUSED, Snake.pause(board(3 to 2, 2 to 2, 1 to 2)).phase)
+        assertEquals(GamePhase.PAUSED, Snake.pause(board(3 to 2, 2 to 2, 1 to 2)).phase)
         val ready = Snake.newGame(0, rnd)
         assertSame(ready, Snake.pause(ready))
-        val over = board(3 to 2, 2 to 2, 1 to 2, phase = SnakePhase.OVER)
+        val over = board(3 to 2, 2 to 2, 1 to 2, phase = GamePhase.OVER)
         assertSame(over, Snake.pause(over))
     }
 
     @Test
     fun nothingMovesUnlessTheGameIsRunning() {
-        for (p in listOf(SnakePhase.READY, SnakePhase.PAUSED, SnakePhase.OVER, SnakePhase.WON)) {
+        for (p in listOf(GamePhase.READY, GamePhase.PAUSED, GamePhase.OVER, GamePhase.WON)) {
             val s = board(3 to 2, 2 to 2, 1 to 2, phase = p)
             val r = Snake.step(s, rnd)
             assertSame(s, r.state)
@@ -283,7 +283,7 @@ class SnakeGameTest {
         val r = Random(11)
         var s = Snake.turn(Snake.newGame(0, r), Dir.UP)
         var steps = 0
-        while (s.phase == SnakePhase.RUNNING && steps < 5_000) {
+        while (s.phase == GamePhase.RUNNING && steps < 5_000) {
             if (r.nextInt(3) == 0) s = Snake.turn(s, Dir.entries[r.nextInt(4)])
             val before = s.body.size
             s = Snake.step(s, r).state

@@ -11,16 +11,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
@@ -41,11 +33,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.vinyl.launcher.ui.theme.OsdFamily
 import com.vinyl.launcher.ui.theme.RetroColors
 import com.vinyl.launcher.ui.theme.Tokens
 import kotlinx.coroutines.flow.StateFlow
@@ -74,14 +63,12 @@ internal fun SnakeTvScreen(
     state?.let { SnakeBoard(it, enabled, motionAllowed, onTurn, onTap) }
 }
 
-private class Panel(val title: String, val lines: List<String>, val badge: String?)
-
-private fun panelFor(s: SnakeState): Panel? = when (s.phase) {
-    SnakePhase.RUNNING -> null
-    SnakePhase.READY -> Panel("ULAR", listOf("USAP UNTUK BELOK", "KETUK UNTUK MULAI"), null)
-    SnakePhase.PAUSED -> Panel("JEDA", listOf("KETUK UNTUK LANJUT"), null)
-    SnakePhase.OVER -> Panel("GAME OVER", listOf("SKOR ${s.score}", "KETUK: MAIN LAGI"), if (s.newBest && s.score > 0) "REKOR BARU!" else null)
-    SnakePhase.WON -> Panel("MENANG!", listOf("PAPAN PENUH", "SKOR ${s.score}", "KETUK: MAIN LAGI"), if (s.newBest) "REKOR BARU!" else null)
+private fun panelFor(s: SnakeState): GamePanelText? = when (s.phase) {
+    GamePhase.RUNNING -> null
+    GamePhase.READY -> GamePanelText("ULAR", listOf("USAP UNTUK BELOK", "KETUK UNTUK MULAI"))
+    GamePhase.PAUSED -> GamePanelText("JEDA", listOf("KETUK UNTUK LANJUT"))
+    GamePhase.OVER -> GamePanelText("GAME OVER", listOf("SKOR ${s.score}", "KETUK: MAIN LAGI"), if (s.newBest && s.score > 0) "REKOR BARU!" else null)
+    GamePhase.WON -> GamePanelText("MENANG!", listOf("PAPAN PENUH", "SKOR ${s.score}", "KETUK: MAIN LAGI"), if (s.newBest) "REKOR BARU!" else null)
 }
 
 /**
@@ -109,7 +96,7 @@ internal fun SnakeBoard(
             pop.animateTo(0f, tween(260, easing = LinearEasing))
         }
     }
-    val over = state.phase == SnakePhase.OVER
+    val over = state.phase == GamePhase.OVER
     LaunchedEffect(over) {
         if (motionAllowed && over) {
             shake.snapTo(1f)
@@ -117,7 +104,7 @@ internal fun SnakeBoard(
         }
     }
     // Makanan berdenyut hanya selama permainan berjalan
-    val pulse: State<Float>? = if (motionAllowed && state.phase == SnakePhase.RUNNING) {
+    val pulse: State<Float>? = if (motionAllowed && state.phase == GamePhase.RUNNING) {
         rememberInfiniteTransition(label = "food")
             .animateFloat(0f, 1f, infiniteRepeatable(tween(900, easing = LinearEasing), RepeatMode.Restart), label = "pulse")
     } else null
@@ -159,51 +146,24 @@ internal fun SnakeBoard(
     ) {
         val fontScale = LocalDensity.current.fontScale
         val w = maxWidth.value
-        val hud = maxHeight.value * SnakeLayout.HUD_FRACTION
+        val hud = maxHeight.value * GameLayout.HUD_FRACTION
 
         Canvas(Modifier.fillMaxSize().clearAndSetSemantics { }) {
             drawBoard(state, pulse?.value ?: 0f, pop.value, shake.value)
         }
 
-        // Pita skor. Huruf bagian dari gambar TV: ukurannya mengikuti TV, bukan skala huruf sistem.
-        val hudSp = (max(hud * 0.62f, 8f) / fontScale).sp
-        Row(
-            Modifier.fillMaxWidth().height(hud.dp).padding(horizontal = (w * 0.04f).dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Text("SKOR ${state.score}", color = Color.White, fontFamily = OsdFamily, fontSize = hudSp, lineHeight = hudSp, maxLines = 1)
-            Text("REKOR ${state.shownBest}", color = RetroColors.Amber, fontFamily = OsdFamily, fontSize = hudSp, lineHeight = hudSp, maxLines = 1)
-        }
-
-        panelFor(state)?.let { panel ->
-            val titleSp = ((w * 0.085f).coerceIn(14f, 40f) / fontScale).sp
-            val lineSp = ((w * 0.046f).coerceIn(9f, 22f) / fontScale).sp
-            Column(
-                Modifier
-                    .align(Alignment.Center)
-                    .background(Color.Black.copy(alpha = Tokens.Game.PANEL_ALPHA.toFloat()), RoundedCornerShape(4.dp))
-                    .padding(horizontal = (w * 0.05f).dp, vertical = (w * 0.03f).dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Text(panel.title, color = Color.White, fontFamily = OsdFamily, fontSize = titleSp, lineHeight = titleSp, maxLines = 1, textAlign = TextAlign.Center)
-                if (panel.badge != null) {
-                    Text(panel.badge, color = RetroColors.Amber, fontFamily = OsdFamily, fontSize = lineSp, lineHeight = lineSp, maxLines = 1, textAlign = TextAlign.Center, modifier = Modifier.padding(top = (w * 0.012f).dp))
-                }
-                for (line in panel.lines) {
-                    Text(line, color = RetroColors.CreamText, fontFamily = OsdFamily, fontSize = lineSp, lineHeight = lineSp, maxLines = 1, textAlign = TextAlign.Center, modifier = Modifier.padding(top = (w * 0.012f).dp))
-                }
-            }
-        }
+        // Pita skor dan panel pesan: huruf bagian dari gambar TV, ukurannya mengikuti TV (lihat GameChrome)
+        GameHudBar(w, hud, fontScale, "SKOR ${state.score}", "REKOR ${state.shownBest}")
+        panelFor(state)?.let { panel -> GamePanel(panel, w, fontScale, Modifier.align(Alignment.Center)) }
     }
 }
 
 /** Menggambar papan: bingkai tipis, titik petak, makanan, ular (ekor dulu, kepala di atas), mata, dan cincin makan. */
 private fun DrawScope.drawBoard(s: SnakeState, pulse: Float, pop: Float, shake: Float) {
-    val lay = SnakeLayout.compute(size.width, size.height, s.cols, s.rows)
+    val lay = GameLayout.compute(size.width, size.height, s.cols, s.rows)
     val c = lay.cell
     if (c <= 0f) return
-    val dead = s.phase == SnakePhase.OVER
+    val dead = s.phase == GamePhase.OVER
     val ox = lay.left + sin(shake * 28f) * shake * c * 0.45f
     val oy = lay.top
     fun center(cell: Cell) = Offset(ox + (cell.x + 0.5f) * c, oy + (cell.y + 0.5f) * c)

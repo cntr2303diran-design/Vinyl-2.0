@@ -24,8 +24,10 @@ data class FilmSettings(
     val theaterLandscape: Boolean = true,
     /** Musik yang tadinya sedang main dilanjutkan saat kaset musik dikembalikan ke TV. */
     val resumeMusic: Boolean = true,
-    /** Skor tertinggi game Snake; tersimpan lokal bersama pengaturan. */
+    /** Skor tertinggi game Ular; tersimpan lokal bersama pengaturan. */
     val snakeBest: Int = 0,
+    /** Skor tertinggi game Bata; tersimpan lokal bersama pengaturan. */
+    val breakoutBest: Int = 0,
     /** Kaset film mengingat halaman dan menit terakhir (disimpan di perangkat ini saja, lihat [FilmResume]). */
     val rememberPlace: Boolean = true,
 )
@@ -66,6 +68,7 @@ object FilmRules {
     const val MAX_NAV_URL = 8_192
     const val MAX_ID = 40
     const val MAX_SNAKE = 99_999
+    const val MAX_BREAKOUT = 99_999
 
     /** Warna cangkang pilihan: bata, jingga, mustard, lumut, toska, biru tinta, anggur, abu hangat. */
     val COLORS: List<Int> = listOf(
@@ -213,6 +216,10 @@ object FilmRules {
     fun withSnakeScore(f: FilmSettings, score: Int): FilmSettings =
         if (score > f.snakeBest) f.copy(snakeBest = score.coerceAtMost(MAX_SNAKE)) else f
 
+    /** Skor tertinggi Bata yang baru bila [score] lebih baik. */
+    fun withBreakoutScore(f: FilmSettings, score: Int): FilmSettings =
+        if (score > f.breakoutBest) f.copy(breakoutBest = score.coerceAtMost(MAX_BREAKOUT)) else f
+
     fun sanitize(f: FilmSettings): FilmSettings {
         val seen = mutableSetOf<String>()
         val cleaned = ArrayList<FilmCassette>()
@@ -223,6 +230,10 @@ object FilmRules {
             seen += id
             cleaned += FilmCassette(id, cleanName(c.name).ifEmpty { suggestName(url) }, url, cleanColor(c.color))
         }
-        return f.copy(cassettes = cleaned, snakeBest = f.snakeBest.coerceIn(0, MAX_SNAKE))
+        return f.copy(
+            cassettes = cleaned,
+            snakeBest = f.snakeBest.coerceIn(0, MAX_SNAKE),
+            breakoutBest = f.breakoutBest.coerceIn(0, MAX_BREAKOUT),
+        )
     }
 }

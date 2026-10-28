@@ -193,7 +193,7 @@ fun RoomStage(
                     contentDescription = when {
                         tvOff -> "TV mati"
                         tape == DeckTape.FILM -> "TV menampilkan film ${np.title}"
-                        tape == DeckTape.GAME -> "TV menampilkan game ${np.title}"
+                        tape.isGame -> "TV menampilkan game ${np.title}"
                         mode == TvScreenMode.STANDBY -> "TV, siaga. Tidak ada lagu"
                         else -> "TV menampilkan ${np.title}" + if (np.artist.isNotBlank()) " oleh ${np.artist}" else ""
                     }
@@ -230,7 +230,7 @@ fun RoomStage(
             seek, np,
             center = Offset(tv.left + tv.width * TvGeometry.KNOB_CX, tv.top + tv.height * TvGeometry.KNOB_CY),
             radius = tv.width * TvGeometry.KNOB_R,
-            enabled = !editing && np.hasTrack && tape != DeckTape.GAME,
+            enabled = !editing && np.hasTrack && !tape.isGame,
             onSeek = actions.onSeek, onTick = actions.onTick,
         )
         // Tombol daya TV: area sentuh >= 48 dp di atas gambar tombol; digeser ke bawah bila akan menimpa area knob SEEK

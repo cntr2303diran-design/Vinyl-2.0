@@ -44,6 +44,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -169,10 +170,11 @@ import com.vinyl.launcher.ui.film.FilmWebHolder
 import com.vinyl.launcher.ui.film.Tape
 import com.vinyl.launcher.ui.film.TapeFlow
 import com.vinyl.launcher.ui.film.TrayItem
+import com.vinyl.launcher.ui.game.BreakoutTvScreen
 import com.vinyl.launcher.ui.game.Dir
+import com.vinyl.launcher.ui.game.GameHud
+import com.vinyl.launcher.ui.game.GamePhase
 import com.vinyl.launcher.ui.game.Games
-import com.vinyl.launcher.ui.game.SnakeHud
-import com.vinyl.launcher.ui.game.SnakePhase
 import com.vinyl.launcher.ui.game.SnakeTvScreen
 import com.vinyl.launcher.ui.room.stage.DeckDisplay
 import com.vinyl.launcher.ui.room.stage.DeckTape
@@ -199,7 +201,7 @@ fun HomeScreen(vm: HomeViewModel) {
     val trayOpen by vm.trayOpen.collectAsStateWithLifecycle()
     val theatre by vm.theatre.collectAsStateWithLifecycle()
     val tvPower by vm.tvPower.collectAsStateWithLifecycle()
-    val snakeHud by vm.snakeHud.collectAsStateWithLifecycle()
+    val gameHud by vm.gameHud.collectAsStateWithLifecycle()
     val filmResume by vm.filmResume.collectAsStateWithLifecycle()
     // Yang tampil di ruang TV: lagu (kaset musik) atau film dari laci. np tetap lagu aplikasi musik (perpustakaan, lirik, drawer).
     val shown by vm.roomNowPlaying.collectAsStateWithLifecycle()
@@ -366,18 +368,30 @@ fun HomeScreen(vm: HomeViewModel) {
         if (filmWasVisible && !filmVisible) saveResume()
         filmWasVisible = filmVisible
     }
-    // ----- Game Ular: berjalan hanya selama ruang TV tampil, TV menyala, laci tertutup, dan bukan mode edit -----
+    // ----- Game di kaset game: berjalan hanya selama ruang TV tampil, TV menyala, laci tertutup, dan bukan mode edit -----
+    val gameId = (tape as? Tape.Game)?.id
     val gameActive = roomVisible && !tvOff && !trayOpen && !editing
-    val gameRunning = tape is Tape.Game && snakeHud?.phase == SnakePhase.RUNNING
-    LaunchedEffect(gameRunning, gameActive) {
+    val gameRunning = gameId != null && gameHud?.phase == GamePhase.RUNNING
+    LaunchedEffect(gameRunning, gameActive, gameId) {
         if (!gameRunning) return@LaunchedEffect
         if (!gameActive) {
-            vm.snakePause()
+            vm.gamePause()
             return@LaunchedEffect
         }
-        while (true) {
-            delay(vm.snakeTickMs())
-            vm.snakeStep()
+        if (gameId == Games.BREAKOUT) {
+            // Bola bergerak mengikuti bingkai layar (selisih waktu nyata, bukan hitungan bingkai)
+            var last = withFrameNanos { it }
+            while (true) {
+                val now = withFrameNanos { it }
+                vm.breakoutAdvance((now - last) / 1_000_000_000f)
+                last = now
+            }
+        } else {
+            // Ular melangkah per petak dengan jeda yang makin pendek
+            while (true) {
+                delay(vm.snakeTickMs())
+                vm.snakeStep()
+            }
         }
     }
     // Layar tetap menyala selama film atau game berjalan dan terlihat
@@ -434,22 +448,22 @@ fun HomeScreen(vm: HomeViewModel) {
     }
 
     // Kaset film di meja (label dan warnanya milik kaset itu) dan isi laci
-    val gameId = (tape as? Tape.Game)?.id
-    val tapeLabel = remember(filmCassette, gameId) {
+    // Label kaset game memuat rekornya ("Game · rekor 42") dan ikut berubah saat rekor naik, tanpa animasi ganti kaset
+    val gameSubtitle = gameId?.let { Games.subtitle(settings.film, it) }
+    val tapeLabel = remember(filmCassette, gameId, gameSubtitle) {
         when {
             filmCassette != null -> CassetteLabel("film\u0000${filmCassette.id}", filmCassette.name, FilmRules.hostOf(filmCassette.url), null, CassetteShell.COLORED, Color(filmCassette.color))
-            gameId != null -> CassetteLabel("game\u0000$gameId", Games.title(gameId).uppercase(), "Game", null, CassetteShell.COLORED, Color(Games.color(gameId)))
+            gameId != null -> CassetteLabel("game\u0000$gameId", Games.title(gameId).uppercase(), gameSubtitle.orEmpty(), null, CassetteShell.COLORED, Color(Games.color(gameId)))
             else -> null
         }
     }
-    val trayItems = remember(settings.film.cassettes, settings.film.snakeBest, filmResume) {
+    val trayItems = remember(settings.film, filmResume) {
         val now = System.currentTimeMillis()
         settings.film.cassettes.map { c ->
             TrayItem(Tape.Film(c.id), c.name, FilmRules.hostOf(c.url), Color(c.color), c, resumeMs = FilmResume.seekTarget(FilmResume.point(filmResume, c, now)))
         } +
             Games.all.map { id ->
-                val best = settings.film.snakeBest
-                TrayItem(Tape.Game(id), Games.title(id), if (best > 0) "Game · rekor $best" else "Game", Color(Games.color(id)), null)
+                TrayItem(Tape.Game(id), Games.title(id), Games.subtitle(settings.film, id), Color(Games.color(id)), null)
             }
     }
     val drawerInfo = remember(trayOpen, trayItems) {
@@ -594,7 +608,7 @@ fun HomeScreen(vm: HomeViewModel) {
                 theatre = theatre,
                 drawerInfo = drawerInfo,
                 effects = settings.effects,
-                snakeHud = snakeHud,
+                gameHud = gameHud,
                 gameActive = gameActive,
                 vm = vm,
             )
@@ -847,7 +861,7 @@ private fun HomeContent(
     theatre: Boolean,
     drawerInfo: StageDrawerInfo,
     effects: EffectSettings,
-    snakeHud: SnakeHud?,
+    gameHud: GameHud?,
     gameActive: Boolean,
     vm: HomeViewModel,
 ) {
@@ -875,19 +889,20 @@ private fun HomeContent(
     val lyrics = rememberLyrics(np, lyricsVisible, lyricsOnline)
     val transport = StatusText.transport(np.hasTrack, np.isPlaying, seek.deltaMs?.takeIf { seek.touching })
     val isFilm = tape is Tape.Film
-    val isGame = tape is Tape.Game
+    val gameId = (tape as? Tape.Game)?.id
+    val isGame = gameId != null
     val info = StageInfo(
-        tvVfd = if (isGame) gameVfd(snakeHud) else VfdTicker.playback(np.hasTrack, np.isPlaying),
+        tvVfd = if (isGame) gameVfd(gameHud) else VfdTicker.playback(np.hasTrack, np.isPlaying),
         deck = when {
             isFilm -> filmDeck(transport)
-            isGame -> gameDeck(snakeHud)
+            isGame -> gameDeck(gameHud)
             else -> deckDisplay(transport, tapeMode(np, context.packageName, hifi), audio, hifi.takeIf { np.packageName == context.packageName && it.active })
         },
         tapeTime = tapeTime(np),
-        tvState = if (isGame) gameSpoken(snakeHud) else null,
+        tvState = if (isGame) gameSpoken(gameHud) else null,
     )
-    val gamePhase = snakeHud?.phase
-    val actions = remember(vm, isFilm, isGame, gamePhase, filmHolder, effects) {
+    val gamePhase = gameHud?.phase
+    val actions = remember(vm, isFilm, gameId, gamePhase, filmHolder, effects) {
         when {
             isFilm -> StageActions(
                 onPrevious = { if (!vm.wakeTv()) filmHolder.backOrHome() },
@@ -906,6 +921,26 @@ private fun HomeContent(
                 onVfdClick = { if (!vm.wakeTv()) vm.openTheatre() },
                 vfdClickLabel = "Buka mode Teater, film layar penuh",
                 onPower = vm::toggleTvPower,
+            )
+            gameId == Games.BREAKOUT -> StageActions(
+                // Tiga tombol deck: palet ke kiri · mulai/jeda · palet ke kanan (tombol "mundur" tidak dipakai Bata)
+                onPrevious = { vm.breakoutNudge(-1) },
+                onRewind = {},
+                onPlayPause = vm::breakoutTap,
+                onNext = { vm.breakoutNudge(1) },
+                onSeek = {},
+                onTick = vm::tick,
+                onOpenLyrics = {},
+                onToggleDrawer = vm::toggleTray,
+                onVfdClick = vm::breakoutTap,
+                vfdClickLabel = gameTapLabel(gamePhase),
+                onCassette = vm::breakoutTap,
+                onPower = vm::toggleTvPower,
+                tvActions = listOf<Pair<String, () -> Unit>>(
+                    gameTapLabel(gamePhase) to vm::breakoutTap,
+                    "Palet ke kiri" to { vm.breakoutNudge(-1) },
+                    "Palet ke kanan" to { vm.breakoutNudge(1) },
+                ),
             )
             isGame -> StageActions(
                 onPrevious = { vm.snakeTurn(Dir.LEFT) },
@@ -946,6 +981,12 @@ private fun HomeContent(
             val content: @Composable () -> Unit = { FilmTvScreen(filmHolder, theatre, motionAllowed) }
             content
         }
+        gameId == Games.BREAKOUT -> {
+            val content: @Composable () -> Unit = {
+                BreakoutTvScreen(vm.breakout, enabled = !editing && gameActive, motionAllowed = motionAllowed, onMove = vm::breakoutMove, onTap = vm::breakoutTap)
+            }
+            content
+        }
         isGame -> {
             val content: @Composable () -> Unit = {
                 SnakeTvScreen(vm.snake, enabled = !editing && gameActive, motionAllowed = motionAllowed, onTurn = vm::snakeTurn, onTap = vm::snakeTap)
@@ -972,6 +1013,7 @@ private fun HomeContent(
             screenVideo = screenVideo,
             tape = when {
                 isFilm -> DeckTape.FILM
+                gameId == Games.BREAKOUT -> DeckTape.PADDLE
                 isGame -> DeckTape.GAME
                 else -> DeckTape.MUSIC
             },
@@ -1019,48 +1061,50 @@ private fun filmDeck(t: Transport): DeckDisplay {
 }
 
 /** VFD deck untuk kaset game: kata mode + tanda transport, dan skor (atau rekor bila belum mulai). */
-private fun gameDeck(h: SnakeHud?): DeckDisplay {
+private fun gameDeck(h: GameHud?): DeckDisplay {
     val symbol = when (h?.phase) {
-        SnakePhase.RUNNING -> "▶"
-        SnakePhase.PAUSED -> "❚❚"
+        GamePhase.RUNNING -> "▶"
+        GamePhase.PAUSED -> "❚❚"
         else -> "■"
     }
     val line = when {
         h == null -> ""
-        h.phase == SnakePhase.READY -> if (h.best > 0) "REKOR ${h.best}" else "SIAP MAIN"
+        h.phase == GamePhase.READY -> if (h.best > 0) "REKOR ${h.best}" else "SIAP MAIN"
         else -> "SKOR ${h.score}"
     }
     return DeckDisplay("GAME $symbol", line)
 }
 
 /** Baris VFD kecil di panel TV (± tujuh huruf): keadaan permainan. */
-private fun gameVfd(h: SnakeHud?): String = when (h?.phase) {
-    SnakePhase.RUNNING -> "PLAY"
-    SnakePhase.PAUSED -> "PAUSE"
-    SnakePhase.OVER -> "OVER"
-    SnakePhase.WON -> "WIN"
+private fun gameVfd(h: GameHud?): String = when (h?.phase) {
+    GamePhase.RUNNING -> "PLAY"
+    GamePhase.PAUSED -> "PAUSE"
+    GamePhase.OVER -> "OVER"
+    GamePhase.WON -> "WIN"
     else -> "READY"
 }
 
 /** Nama aksi ketuk pada layar/kaset/VFD game menurut keadaannya (juga untuk pembaca layar). */
-private fun gameTapLabel(phase: SnakePhase?): String = when (phase) {
-    SnakePhase.RUNNING -> "Jeda game"
-    SnakePhase.PAUSED -> "Lanjutkan game"
-    SnakePhase.OVER, SnakePhase.WON -> "Main lagi"
+private fun gameTapLabel(phase: GamePhase?): String = when (phase) {
+    GamePhase.RUNNING -> "Jeda game"
+    GamePhase.PAUSED -> "Lanjutkan game"
+    GamePhase.OVER, GamePhase.WON -> "Main lagi"
     else -> "Mulai game"
 }
 
 /** Keadaan game untuk pembaca layar. */
-private fun gameSpoken(h: SnakeHud?): String? {
+private fun gameSpoken(h: GameHud?): String? {
     h ?: return null
     val state = when (h.phase) {
-        SnakePhase.READY -> "Siap main"
-        SnakePhase.RUNNING -> "Berjalan"
-        SnakePhase.PAUSED -> "Dijeda"
-        SnakePhase.OVER -> "Game over"
-        SnakePhase.WON -> "Menang, papan penuh"
+        GamePhase.READY -> "Siap main"
+        GamePhase.RUNNING -> "Berjalan"
+        GamePhase.PAUSED -> "Dijeda"
+        GamePhase.OVER -> "Game over"
+        GamePhase.WON -> "Menang, papan penuh"
     }
-    return "$state. Skor ${h.score}, rekor ${h.best}"
+    // Bata punya tingkat dan nyawa (level > 0); Ular tidak
+    val extra = if (h.level > 0) ". Tingkat ${h.level}, nyawa ${h.lives}" else ""
+    return "$state. Skor ${h.score}, rekor ${h.best}$extra"
 }
 
 /** Ruang yang dipakai Taskbar TV di sisi tempat ia menempel (tidak ada saat mengedit). */

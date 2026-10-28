@@ -12,7 +12,7 @@ data class BoardLayout(
     val hudHeight: Float,
 )
 
-object SnakeLayout {
+object GameLayout {
     /** Tinggi pita skor sebagai pecahan tinggi layar. */
     const val HUD_FRACTION = 0.12f
 

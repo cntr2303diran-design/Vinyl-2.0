@@ -24,19 +24,6 @@ enum class Dir(val dx: Int, val dy: Int) {
 
 data class Cell(val x: Int, val y: Int)
 
-enum class SnakePhase {
-    /** Papan siap; gerakan pertama (usap, tombol, ketuk) memulai. */
-    READY,
-    RUNNING,
-    PAUSED,
-
-    /** Ular menabrak tubuhnya sendiri. */
-    OVER,
-
-    /** Papan penuh. */
-    WON,
-}
-
 /** Kejadian pada satu langkah, untuk bunyi dan getar. */
 enum class SnakeEvent { NONE, ATE, DIED, WON }
 
@@ -55,7 +42,7 @@ data class SnakeState(
     val queue: List<Dir>,
     val food: Cell?,
     val score: Int,
-    val phase: SnakePhase,
+    val phase: GamePhase,
     val best: Int,
     val newBest: Boolean,
 ) {
@@ -67,13 +54,7 @@ data class SnakeState(
 
 data class SnakeStep(val state: SnakeState, val event: SnakeEvent)
 
-/**
- * Ringkasan papan untuk deck, VFD, dan OSD: hanya berubah saat fase, skor, atau rekor berubah (tidak tiap langkah), jadi
- * membacanya tidak menyusun ulang beranda sepanjang permainan.
- */
-data class SnakeHud(val phase: SnakePhase, val score: Int, val best: Int)
-
-fun SnakeState.hud(): SnakeHud = SnakeHud(phase, score, shownBest)
+fun SnakeState.hud(): GameHud = GameHud(phase, score, shownBest)
 
 object Snake {
     const val COLS = 16
@@ -95,7 +76,7 @@ object Snake {
         val body = List(START_LENGTH) { Cell(wrap(headX - it, cols), y) }
         return SnakeState(
             cols = cols, rows = rows, body = body, dir = Dir.RIGHT, queue = emptyList(),
-            food = spawnFood(body, cols, rows, random), score = 0, phase = SnakePhase.READY,
+            food = spawnFood(body, cols, rows, random), score = 0, phase = GamePhase.READY,
             best = best.coerceAtLeast(0), newBest = false,
         )
     }
@@ -106,27 +87,27 @@ object Snake {
      * Belokan sama dengan arah terakhir atau berbalik 180° diabaikan.
      */
     fun turn(s: SnakeState, d: Dir): SnakeState {
-        if (s.phase == SnakePhase.OVER || s.phase == SnakePhase.WON) return s
+        if (s.phase == GamePhase.OVER || s.phase == GamePhase.WON) return s
         val last = s.queue.lastOrNull() ?: s.dir
         val accepted = d != last && d != last.opposite && s.queue.size < MAX_QUEUE
         val queue = if (accepted) s.queue + d else s.queue
-        val phase = if (s.phase == SnakePhase.READY || s.phase == SnakePhase.PAUSED) SnakePhase.RUNNING else s.phase
+        val phase = if (s.phase == GamePhase.READY || s.phase == GamePhase.PAUSED) GamePhase.RUNNING else s.phase
         return s.copy(queue = queue, phase = phase)
     }
 
     /** Ketuk: mulai, jeda, lanjut; setelah selesai, mulai permainan baru dengan rekor yang dibawa. */
     fun tap(s: SnakeState, random: Random = Random.Default): SnakeState = when (s.phase) {
-        SnakePhase.READY, SnakePhase.PAUSED -> s.copy(phase = SnakePhase.RUNNING)
-        SnakePhase.RUNNING -> s.copy(phase = SnakePhase.PAUSED)
-        SnakePhase.OVER, SnakePhase.WON -> newGame(s.best, random, s.cols, s.rows)
+        GamePhase.READY, GamePhase.PAUSED -> s.copy(phase = GamePhase.RUNNING)
+        GamePhase.RUNNING -> s.copy(phase = GamePhase.PAUSED)
+        GamePhase.OVER, GamePhase.WON -> newGame(s.best, random, s.cols, s.rows)
     }
 
     /** Jeda bila sedang berjalan (ruang TV ditinggalkan, aplikasi ke latar). */
-    fun pause(s: SnakeState): SnakeState = if (s.phase == SnakePhase.RUNNING) s.copy(phase = SnakePhase.PAUSED) else s
+    fun pause(s: SnakeState): SnakeState = if (s.phase == GamePhase.RUNNING) s.copy(phase = GamePhase.PAUSED) else s
 
-    /** Satu langkah. Tidak berbuat apa-apa kecuali [SnakePhase.RUNNING]. */
+    /** Satu langkah. Tidak berbuat apa-apa kecuali [GamePhase.RUNNING]. */
     fun step(s: SnakeState, random: Random = Random.Default): SnakeStep {
-        if (s.phase != SnakePhase.RUNNING) return SnakeStep(s, SnakeEvent.NONE)
+        if (s.phase != GamePhase.RUNNING) return SnakeStep(s, SnakeEvent.NONE)
         val d = s.queue.firstOrNull() ?: s.dir
         val queue = s.queue.drop(1)
         val head = s.body.first()
@@ -137,7 +118,7 @@ object Snake {
         if (next in grown) {
             val score = s.score
             return SnakeStep(
-                s.copy(dir = d, queue = queue, phase = SnakePhase.OVER, best = maxOf(s.best, score), newBest = s.newBest || score > s.best),
+                s.copy(dir = d, queue = queue, phase = GamePhase.OVER, best = maxOf(s.best, score), newBest = s.newBest || score > s.best),
                 SnakeEvent.DIED,
             )
         }
@@ -147,7 +128,7 @@ object Snake {
         val food = spawnFood(body, s.cols, s.rows, random)
         if (food == null) {
             return SnakeStep(
-                s.copy(body = body, dir = d, queue = queue, food = null, score = score, phase = SnakePhase.WON, best = maxOf(s.best, score), newBest = s.newBest || score > s.best),
+                s.copy(body = body, dir = d, queue = queue, food = null, score = score, phase = GamePhase.WON, best = maxOf(s.best, score), newBest = s.newBest || score > s.best),
                 SnakeEvent.WON,
             )
         }
