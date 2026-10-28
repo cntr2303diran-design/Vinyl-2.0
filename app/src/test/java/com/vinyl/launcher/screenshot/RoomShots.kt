@@ -102,6 +102,8 @@ internal fun StagePreview(
     tvOff: Boolean = false,
     /** Baris kedua VFD deck untuk kaset game (mis. "SKOR 7"). */
     gameLine: String = "",
+    /** Pasang lampu dinding (seperti di beranda sungguhan bila dindingnya mengikuti nada ruang). */
+    lamp: Boolean = true,
 ) {
     val s = seek ?: remember { SeekState() }
     VinylTheme {
@@ -126,6 +128,7 @@ internal fun StagePreview(
                 ),
                 projection = np.art?.let { ProjectionContent.Picture(it) },
                 tape = tape, tapeLabel = tapeLabel, tvScreen = tvScreen, drawer = drawer, tvOff = tvOff,
+                onToggleLamp = if (lamp) ({}) else null,
             )
             VhsFilm(animate = false, modifier = Modifier.fillMaxSize())
             VhsOsd(
@@ -205,5 +208,28 @@ class RoomShots {
     fun tabletRtl() {
         compose.setContent { StagePreview(playing(fakeCover()), RetroSettings()) }
         shot("tahap10_vhs_rtl")
+    }
+
+    /** Lampu menyala = ruang terang: ponsel tegak (lampu di kiri atas, di bawah teks OSD). */
+    @Test
+    @Config(qualifiers = "w411dp-h891dp-xxhdpi")
+    fun phonePortraitLampOnLightRoom() {
+        compose.setContent { StagePreview(playing(fakeCover()), RetroSettings(room = RoomTone.LIGHT), landscape = false) }
+        shot("putaran2_lampu_terang_ponsel")
+    }
+
+    /** Ponsel kecil dengan huruf 200%: teks OSD (dibatasi 1,5×) tidak boleh menimpa lampu. */
+    @Test
+    @Config(qualifiers = "w360dp-h780dp-xxhdpi", fontScale = 2.0f)
+    fun smallPhoneLargeFontLampOff() {
+        compose.setContent { StagePreview(playing(fakeCover()), RetroSettings(), landscape = false) }
+        shot("putaran2_lampu_mati_font200")
+    }
+
+    @Test
+    @Config(qualifiers = "w915dp-h412dp-land-xxhdpi")
+    fun phoneLandscapeLampOnLightRoom() {
+        compose.setContent { StagePreview(playing(fakeCover()), RetroSettings(room = RoomTone.LIGHT)) }
+        shot("putaran2_lampu_terang_mendatar")
     }
 }

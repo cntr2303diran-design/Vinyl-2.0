@@ -370,7 +370,7 @@ private fun SettingsScreen(vm: SettingsViewModel, onBack: () -> Unit) {
             s.presets.forEach { p ->
                 Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(p.name, Modifier.weight(1f))
-                    TextButton(onClick = { vm.update { it.copy(home = p.home, cover = p.cover, retro = SettingsMigration.retroFor(p)) } }) { Text("Terapkan") }
+                    TextButton(onClick = { vm.update { it.copy(home = p.home, cover = p.cover, retro = SettingsMigration.retroToApply(p, it.retro)) } }) { Text("Terapkan") }
                     TextButton(onClick = { vm.update { st -> st.copy(presets = st.presets.filterNot { it.id == p.id }) } }) { Text("Hapus") }
                 }
             }

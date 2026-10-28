@@ -42,6 +42,9 @@ object PrivacyInfo {
             "ini hanya di perangkat ini, tidak ikut berkas cadangan, dan bisa dimatikan atau dilupakan di Pengaturan → Laci kaset. " +
             "Alamat kaset ikut berkas cadangan. Game Ular dan Bata di laci tidak memakai internet; rekor masing-masing (satu angka) " +
             "tersimpan lokal dan bisa disetel ulang di Pengaturan → Laci kaset.",
+        "Ingat tombol daya TV (opsional, mati secara bawaan): bila Anda menyalakannya, aplikasi menyimpan satu nilai ya/tidak, yaitu " +
+            "apakah TV terakhir dimatikan dengan tombol dayanya, di penyimpanan internal perangkat ini. Nilai itu tidak ikut berkas " +
+            "cadangan atau preset, tidak dikirim ke mana pun, dan dihapus bersama data aplikasi.",
         "Pemutar musik bawaan (opsional) juga hanya membaca folder musik yang Anda pilih sendiri, tanpa izin penyimpanan. Daftar lagu " +
             "(judul, artis, album, format) disimpan di memori internal aplikasi agar pemindaian berikutnya cepat; berkas musik tidak " +
             "disalin, tidak diubah, dan tidak diunggah. Folder musik tidak ikut berkas cadangan.",

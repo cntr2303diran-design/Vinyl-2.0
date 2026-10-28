@@ -381,3 +381,71 @@ Ular mati tidak hanya berbeda warna: matanya menjadi silang dan papan bergetar. 
 - Teks papan adalah bagian dari gambar TV: ukurannya mengikuti TV, tidak ikut skala huruf sistem (sama seperti OSD dan VFD). Papan sendiri tidak berisi teks selain SKOR/REKOR dan panel.
 - Panggung tetap kiri→kanan pada RTL (benda fisik), jadi arah usapan selalu arah fisik layar. Tangkapan layar otomatis: siap, jalan, jeda (ponsel), game over + rekor baru (tablet),
   ular melintasi tepi (ponsel mendatar), ponsel kecil + huruf 200%, RTL, dan TV mati.
+
+---
+
+## Putaran 2: game Bata, lampu dinding, daya TV yang diingat, film lanjut (Tahap 15)
+
+Aturan Tahap 14 tetap: **tidak ada menu atau layar baru.** Game kedua adalah kaset lagi di laci yang sama, lampu adalah benda di dinding,
+dan "ingat daya TV" adalah satu sakelar di editor yang sudah ada.
+
+### Prinsip yang dipakai
+
+| Prinsip | Sumber | Dipakai untuk |
+|---|---|---|
+| Informasi menjadi bagian dari dunia | Game horor *found footage* (prinsip, bukan aset) | Rekor Bata tertulis di label kaset di meja (*Game · rekor N*) dan skor/nyawa di layar TV serta VFD deck; tidak ada papan skor terpisah |
+| Manipulasi langsung, umpan balik seketika | Apple HIG | Palet Bata mengikuti jari di layar TV (bukan tombol arah); cahaya lampu memudar masuk 260 ms dan lampu sedikit turun saat ditekan (pegas); semuanya hilang bila gerak dimatikan |
+| Aksi utama dalam jangkauan jempol | Samsung One UI | Palet bisa digeser di bagian layar mana pun; tombol deck (palet kiri · mulai/jeda · palet kanan) sebagai cadangan; lampu 56 × 64 dp (≥ 48 dp), 28 dp dari tepi layar sehingga di luar zona gestur kembali sistem |
+| Lapisan dengan kedalaman, material tembus pandang subtil | Microsoft Fluent | Cahaya lampu dan kerucutnya adalah lapisan tembus pandang di atas dinding; panel "SIAP / JEDA / GAME OVER" Bata memakai panel hitam yang sama dengan Ular |
+| Bentuk bulat, warna dari konten, tipografi jelas | Material 3 | Kap, bohlam, bola, dan palet berbentuk bulat/membulat; bata berwarna per baris; teks papan memakai huruf VFD yang sama dengan OSD |
+
+### Perilaku
+
+- **Kaset Bata** (jingga bata) berdampingan dengan kaset Ular di ujung baki; keduanya selalu ada dan tidak bisa diubah/dihapus. Memilih salah satu menukar
+  kaset di deck (musik dijeda); kaset yang sama ditekan lagi kembali ke kaset musik. Label kaset di meja menulis *Game · rekor N* bila rekornya > 0.
+- **Papan Bata** memakai lapangan 16 × 13 yang sama dengan Ular (tata letak `GameLayout` dipakai bersama). Dinding bata maks. 8 × 7 dalam warna per baris,
+  palet krem seperti tombol deck, bola putih. **Geser jari** = palet, **ketuk** = luncurkan / jeda / lanjut / main lagi. Tiga nyawa; bola yang lolos di bawah palet
+  menghabiskan satu. Dinding yang habis membuka tingkat berikutnya (susunan lain, bola lebih cepat); permainan tidak pernah "menang", hanya berakhir saat nyawa habis.
+  Fisika berjalan dengan langkah tetap maks. 1/120 detik (hasil tidak bergantung laju bingkai, bola tidak menembus bata) dan tanpa bilangan acak.
+- **Tombol deck** pada kaset Bata: palet ke kiri · *Mulai/Jeda game* · palet ke kanan. Jeda lewat tombol, layar, atau kaset menyimpan rekor.
+- **Rekor** satu bilangan per game per perangkat (Pengaturan → *Laci kaset* → *Setel ulang rekor Bata*, dengan konfirmasi); field baru berbawaan 0 sehingga cadangan lama tetap terbaca.
+- **Bunyi dan getar Bata** (disintesis di perangkat): bola kena palet, bata pecah, bola kena dinding, bola lolos; tingkat naik memakai bunyi menang dan game over memakai bunyi kalah milik Ular.
+  Aturan sakelarnya sama dengan Ular (*Bunyi tombol kaset & TV*, *Getar*, *Efek saat knob & tombol disentuh*).
+- **Lampu dinding** di kiri atas dinding (lengan kuningan, kap krem, bohlam): ketuk = ruang terang ↔ gelap, yaitu pilihan *Ruang* yang sama dengan di editor beranda → *Dinding* (dan di Pengaturan)
+  — satu pengaturan, dua tempat mengubahnya. Menyala = kap dan bohlam bercahaya, lingkaran cahaya di sekeliling bohlam, dan kerucut cahaya jatuh ke dinding — jadi menyala/mati
+  dibedakan oleh **bentuk**, tidak hanya warna. Pergantian palet yang seketika ditutup kilatan singkat (380 ms, alpha ≤ 0,5). Berbunyi klik sakelar (±0,09 dtk) dan bergetar halus.
+  Lampu **hanya dipasang** bila nada ruang yang menentukan dinding (album/foto; tidak pada warna atau gradasi pilihan sendiri, yang ketukannya tidak akan terlihat) dan bila
+  `StageLayout.lampRect` menemukan tempat: di bawah teks OSD kiri atas pada huruf 1,5×, di dalam layar, dan ≥ 8 dp dari TV, kaset, meja, laci, dan deck; selain itu tidak ada lampu.
+- **Tombol daya TV** kini bergetar halus saat ditekan (dua ketukan: tegas lalu lembut; mengikuti *Getar*), baik mematikan maupun menyalakan.
+- **Ingat tombol daya TV** (editor beranda → *TV & kaset*, bawaan **mati**): bila menyala, TV yang terakhir dimatikan dengan tombolnya tetap mati setelah proses dimatikan sistem atau
+  ponsel dinyalakan ulang. Hanya satu nilai ya/tidak yang disimpan (SharedPreferences privat `tv_power`, berkasnya baru ada bila pilihan itu dipakai); nilai itu bukan pengaturan,
+  jadi tidak ikut cadangan maupun preset — dan menerapkan preset tidak menyalakan/mematikan pilihannya. Bila pilihan dimatikan, yang tersimpan kembali "menyala"
+  (tidak ada keadaan lama yang hidup lagi saat pilihan dinyalakan kembali).
+- **Film lanjut:** posisi terakhir tiap kaset film (halaman dan detik video) diingat dan dilanjutkan (kaset bertanda *LANJUT* di baki); baki menulis *geser untuk kaset lain*
+  selama masih bisa digeser; video yang tidak bisa dibaca (DRM, tanpa elemen video, gagal dimuat) mendapat pesan OSD yang jelas.
+
+### Token (`Tokens.Game`, `Tokens.Lamp`) dan kontras
+
+| Token | Nilai | Pemakaian |
+|---|---|---|
+| `Game.BRICK_ROWS` | merah `#E5533D`, jingga `#F08A3C`, kuning `#F2C14E`, hijau muda `#B8D95A`, hijau `#5CC98A`, toska `#4FB5C9`, biru `#7D8CF0` | Warna bata per baris, atas ke bawah |
+| `Game.PADDLE` / `Game.BALL` | `#EDE6D3` / `#FFFFFF` | Palet (krem seperti tombol deck) dan bola |
+| `Lamp.SHADE_OFF` / `Lamp.SHADE_ON` | `#C9BFA6` / `#FFE9B8` | Kap mati / menyala |
+| `Lamp.OUTLINE` | `#1B1410` | Garis tepi kap, lengan, pelat, dan bohlam (tepi ganda: isi terang + garis gelap) |
+| `Lamp.BRASS_LIGHT` / `Lamp.BRASS_DARK` | `#EBD28A` / `#6E5420` | Lengan dan pelat kuningan (gradien) |
+| `Lamp.BULB_ON` / `Lamp.BULB_OFF` | `#FFF3C4` / `#9C9889` | Bohlam |
+| `Lamp.GLOW` | `#FFC870` | Cahaya hangat di dinding saat menyala |
+
+`LampPaletteTest` menguji bahwa bentuk lampu terbaca ≥ 3 : 1 terhadap dinding apa pun, memakai tepi ganda (nilai tertinggi antara isi dan garis tepi). Angka yang dihitung:
+kap mati 8,9–14,5 : 1 dan kap menyala 9,1–16,8 : 1 di atas empat dinding nyata (malam VHS terang, malam VHS gelap, dua putih hangat); kuningan 9,1–14,5 : 1; bohlam menyala 16,4 : 1 dan
+mati 6,3 : 1 terhadap garis tepinya. Bahkan abu-abu mana pun (kasus terburuk, level 102) memberi 3,2 : 1. Menyala vs mati juga berbeda ≥ 0,1 pada luminans kap dan ≥ 0,2 pada bohlam,
+selain kerucut cahaya yang hanya ada saat menyala. `GamePaletteTest` kini juga menjaga kontras bata, palet, dan bola terhadap papan.
+
+### Aksesibilitas, RTL, huruf 200%
+
+- Lampu adalah **sakelar** bagi TalkBack: *Lampu ruangan*, status *Menyala/Mati*, peran Switch; gambarnya disembunyikan dari semantik agar tidak terbaca dua kali.
+- Bata: keterangan "TV menampilkan game Bata", keadaan (skor, rekor, nyawa, tingkat), aksi *Mulai/Jeda/Lanjutkan/Main lagi game* dan *Palet ke kiri/kanan* di tingkat TV, sehingga
+  permainannya bisa diselesaikan lewat TalkBack tanpa menggeser jari.
+- Lampu dihitung ulang tiap ukuran layar; pada layar kecil atau huruf OSD sangat besar yang tidak menyisakan tempat bersih, lampu **tidak dipasang** daripada menimpa teks atau benda lain
+  (nada ruang tetap bisa diubah di Pengaturan). Panggung tetap kiri→kanan pada RTL, jadi lampu selalu di kiri atas dinding secara fisik.
+- Tangkapan layar otomatis: Bata siap/jalan/jeda (ponsel), game over (tablet), mendatar, ponsel kecil + huruf 200%, RTL, laci dengan dua game, serta lampu terang (ponsel), lampu mati + huruf 200%, dan lampu terang mendatar.

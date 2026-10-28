@@ -115,7 +115,7 @@ class SettingsMigrationTest {
 
     @Test
     fun aNewBackupRoundTripsRetroSettings() {
-        val s = AppSettings(retro = RetroSettings(albumMotion = AlbumMotion.ZOOM, vfdColor = VfdColor.GREEN, swapPages = true))
+        val s = AppSettings(retro = RetroSettings(albumMotion = AlbumMotion.ZOOM, vfdColor = VfdColor.GREEN, swapPages = true, rememberTvPower = true))
         val r = SettingsBackup.parse(SettingsBackup.export(s), AppSettings()) as SettingsBackup.ImportResult.Ok
         assertEquals(s.retro, r.settings.retro)
     }

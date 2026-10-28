@@ -26,7 +26,8 @@ import kotlin.random.Random
  * - [tick]: klik kecil saat knob seek diputar (tiap "gigi")
  * - [flip]: desing pita digulung cepat saat ganti lagu, ditutup klik
  * - [startCrackle]/[stopCrackle]: desis pita pelan berulang selama lagu diputar (tanpa letupan)
- * - [drawer]: laci kaset di meja ditarik/didorong; [crtOff]: TV dimatikan (siulan jatuh + dentum)
+ * - [drawer]: laci kaset di meja ditarik/didorong; [crtOff]: TV dimatikan (siulan jatuh + dentum); [powerKey]: getar
+ *   tombol daya TV; [lamp]: klik sakelar lampu dinding (ruang terang/gelap)
  * - [gameEat]/[gameOver]/[gameWin]: bunyi dan getar game Ular di kaset game; [gamePaddle]/[gameBrick]/[gameWall]/[gameMiss]:
  *   bola Bata kena palet, bata pecah, bola memantul di dinding, bola lolos (kalah, tingkat naik, dan game over memakai
  *   [gameOver]/[gameWin])
@@ -88,6 +89,7 @@ object SoundFx {
     private val paddlePcm: ShortArray by lazy { synthTones(doubleArrayOf(330.0), noteSec = 0.06, decay = 24.0, level = 0.55) }
     private val brickPcm: ShortArray by lazy { synthTones(doubleArrayOf(1568.0), noteSec = 0.05, decay = 26.0, level = 0.45) }
     private val missPcm: ShortArray by lazy { synthTones(doubleArrayOf(330.0, 220.0), noteSec = 0.10, decay = 9.0, level = 0.5) }
+    private val switchPcm: ShortArray by lazy { synthSwitch() }
     private var lastWallMs = 0L
 
     /**
@@ -98,7 +100,7 @@ object SoundFx {
         scope.launch {
             val samples = dropPcm.size + liftPcm.size + tickPcm.size + flipPcm.size + crtPcm.size + staticPcm.size +
                 crtOffPcm.size + drawerOpenPcm.size + drawerClosePcm.size + eatPcm.size + overPcm.size + winPcm.size +
-                paddlePcm.size + brickPcm.size + missPcm.size
+                paddlePcm.size + brickPcm.size + missPcm.size + switchPcm.size
             check(samples > 0)
         }
     }
@@ -111,6 +113,21 @@ object SoundFx {
     /** TV dimatikan dengan tombol dayanya: siulan tabung yang jatuh, lalu dentum kecil. Mengikuti sakelar bunyi tombol & TV. */
     fun crtOff(fx: EffectSettings) {
         if (fx.needleSound) play(crtOffPcm, gain(fx.volume) * 0.7f)
+    }
+
+    /**
+     * Tombol daya TV ditekan (menyala maupun mati): ketukan getar tegas lalu satu lebih lembut, seperti sakelar yang masuk
+     * ke dudukannya. Hanya getar (bunyinya dari [crtOn]/[crtOff]); mengikuti sakelar getar seperti tombol PLAY.
+     */
+    fun powerKey(context: Context, fx: EffectSettings) {
+        if (fx.haptics) buzz(context, fx.hapticStrength, longArrayOf(20, 26, 14), intArrayOf(230, 0, 120))
+    }
+
+    /** Lampu dinding diketuk: klik sakelar tarik, sedikit lebih tegas saat [on] (menyala). Mengikuti sakelar efek sentuh. */
+    fun lamp(context: Context, fx: EffectSettings, on: Boolean) {
+        if (!fx.interactionFx) return
+        if (fx.haptics) buzz(context, fx.hapticStrength, longArrayOf(14, 20, 10), intArrayOf(if (on) 220 else 170, 0, 90))
+        if (fx.needleSound) play(switchPcm, gain(fx.volume) * if (on) 0.8f else 0.65f)
     }
 
     /** Pindah halaman (ganti "channel"): desis statis sangat singkat. Mengikuti sakelar efek sentuh. */
@@ -224,6 +241,21 @@ object SoundFx {
     }
 
     private fun toShort(v: Double): Short = (tanh(v * 1.5).coerceIn(-1.0, 1.0) * Short.MAX_VALUE).toInt().toShort()
+
+    /** Sakelar tarik lampu: klik logam tajam + denting tipis, lalu "tok" rendah yang cepat meredam (±0,09 detik). */
+    private fun synthSwitch(): ShortArray {
+        val n = (RATE * 0.09).toInt()
+        val rnd = Random(137)
+        return ShortArray(n) { i ->
+            val t = i.toDouble() / RATE
+            val click = (rnd.nextDouble() * 2 - 1) * exp(-t * 260) * 0.7
+            val ping = sin(2 * PI * 2100 * t) * exp(-t * 150) * 0.35
+            val tok = sin(2 * PI * 160 * t) * exp(-t * 55) * 0.6
+            // ujung buffer menuju nol: tidak ada klik di akhir
+            val edge = ((n - 1 - i) / (RATE * 0.004)).coerceAtMost(1.0)
+            toShort((click + ping + tok) * edge)
+        }
+    }
 
     /** Tombol PLAY: klik tajam + "klak" bernada rendah, lalu dengung motor yang naik dan memudar (±0,6 detik). */
     private fun synthDrop(): ShortArray {

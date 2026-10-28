@@ -84,7 +84,7 @@ class StageDrawerInfo(val open: Boolean, val peek: List<Color>, val count: Int)
  * yang DIAM (tidak membesar, tidak bisa dipindah), dan kaset 3D di sampingnya. Susunan dari [StageLayout].
  *
  * Interaksi: ketuk layar TV = lirik layar penuh; putar knob SEEK = geser posisi (waktu tampil di layar TV); ketuk kaset =
- * putar/jeda; tombol deck = sebelumnya / mundur 10 detik / putar-jeda / berikutnya.
+ * putar/jeda; tombol deck = sebelumnya / mundur 10 detik / putar-jeda / berikutnya; ketuk lampu dinding = ruang terang/gelap.
  *
  * @param topInset ruang di atas yang dipakai sistem/taskbar (dp); [bottomInset] di bawah
  */
@@ -125,6 +125,11 @@ fun RoomStage(
     tvScreen: (@Composable () -> Unit)? = null,
     /** Laci kaset di meja; null = tanpa laci. */
     drawer: StageDrawerInfo? = null,
+    /**
+     * Lampu dinding: ketuk = ruang terang/gelap. Null = tanpa lampu (mis. dinding berwarna pilihan sendiri, yang tidak
+     * mengikuti nada ruang, sehingga ketukannya tidak akan terlihat).
+     */
+    onToggleLamp: (() -> Unit)? = null,
     /** Isi tambahan di layar TV (subtitel lirik). Lambda terakhir. */
     screenExtra: @Composable () -> Unit = {},
 ) {
@@ -281,6 +286,14 @@ fun RoomStage(
                 f, pal, open = drawer.open, peek = drawer.peek, tapeOut = tape != DeckTape.MUSIC,
                 motionAllowed = motionAllowed && !editing, enabled = !editing, count = drawer.count, onToggle = actions.onToggleDrawer,
             )
+        }
+
+        // ---------- Lampu dinding: ketuk = ruang terang/gelap (hanya bila ada tempat bersih dan aksinya dipasang)
+        val lampRect = f.lamp
+        if (onToggleLamp != null && lampRect != null) {
+            StageLamp(lampRect, on = tone == RoomTone.LIGHT, motionAllowed = motionAllowed && !editing, enabled = !editing, onToggle = onToggleLamp)
+            // Pergantian terang/gelap yang seketika ditutup kilatan singkat; paling atas di panggung, tidak menangkap sentuhan
+            ToneFlash(tone, motionAllowed = motionAllowed && !editing)
         }
     }
     }

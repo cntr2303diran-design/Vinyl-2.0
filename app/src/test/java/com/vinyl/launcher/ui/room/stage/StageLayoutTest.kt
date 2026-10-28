@@ -227,4 +227,51 @@ class StageLayoutTest {
             assertTrue("w=$w h=$h", f.drawer.left > f.shelf.right)
         }
     }
+
+    @Test
+    fun theWallLampIsATouchTargetBelowTheOsdTextAndClearOfEverythingElse() {
+        for ((w, h) in screens) for (s in sizes) for (inset in listOf(0f, 30f)) {
+            val f = StageLayout.compute(w, h, s, topInset = inset)
+            val lamp = f.lamp ?: continue
+            val tag = "w=$w h=$h s=$s inset=$inset lamp=$lamp"
+            assertTrue(tag, lamp.width >= 48f && lamp.height >= 48f)
+            assertTrue(tag, lamp.inside(w, h))
+            // Di bawah teks OSD kiri atas (dua baris pada huruf 1,5×) dan di luar zona gestur kembali di tepi kiri
+            assertTrue(tag, lamp.top >= StageLayout.OSD_TOP_LEFT_BOTTOM + inset - 0.01f)
+            assertTrue(tag, lamp.left >= 28f - 0.01f)
+            // Di atas pita OSD bawah dan tidak menyentuh benda interaktif atau benda besar lain
+            assertTrue(tag, lamp.bottom <= f.osdBottom)
+            for ((name, other) in listOf("tv" to f.tvFront, "kaset" to f.cassetteBounds, "meja" to f.standFront, "laci" to f.drawerHit, "deck" to f.deck)) {
+                assertFalse("$tag menimpa $name", lamp.overlaps(other))
+                // Jaraknya juga tidak kurang dari celah yang dijanjikan
+                val padded = SRect(lamp.left - StageLayout.LAMP_GAP, lamp.top - StageLayout.LAMP_GAP, lamp.right + StageLayout.LAMP_GAP, lamp.bottom + StageLayout.LAMP_GAP)
+                assertFalse("$tag terlalu dekat dengan $name", padded.overlaps(other))
+            }
+        }
+    }
+
+    @Test
+    fun theWallLampExistsOnEveryCommonScreenAtTheDefaultTvSize() {
+        for ((w, h) in screens) {
+            val f = StageLayout.compute(w, h)
+            assertTrue("w=$w h=$h tidak ada tempat lampu: tv=${f.tvFront} proj=${f.projection}", f.lamp != null)
+        }
+    }
+
+    @Test
+    fun theWallLampMovesDownWithTheSystemBarInsetSoItNeverClimbsIntoTheOsd() {
+        val plain = StageLayout.compute(411f, 891f)
+        val inset = StageLayout.compute(411f, 891f, topInset = 30f)
+        assertEquals(plain.lamp!!.top + 30f, inset.lamp!!.top, 0.01f)
+    }
+
+    @Test
+    fun aScreenTooSmallForTheLampSimplyHasNone() {
+        val tiny = StageLayout.compute(200f, 300f)
+        // Tidak ada tempat bersih (TV dan meja memenuhi layar): tidak digambar daripada menimpa benda lain
+        tiny.lamp?.let { lamp ->
+            assertFalse(lamp.overlaps(tiny.tvFront))
+            assertFalse(lamp.overlaps(tiny.deck))
+        }
+    }
 }

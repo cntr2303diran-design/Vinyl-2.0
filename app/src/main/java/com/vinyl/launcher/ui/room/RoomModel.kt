@@ -1,6 +1,7 @@
 package com.vinyl.launcher.ui.room
 
 import com.vinyl.launcher.data.AlbumMotion
+import com.vinyl.launcher.data.BackgroundType
 import com.vinyl.launcher.data.RoomTone
 import com.vinyl.launcher.ui.theme.BackdropDim
 import com.vinyl.launcher.ui.theme.BackdropLift
@@ -110,6 +111,13 @@ object RoomInk {
         ColorMath.darkTextIsBetter(wallArgb or (0xFFL shl 24), Tokens.Retro.INK, Tokens.Retro.CREAM_TEXT) -> RoomTone.LIGHT
         else -> RoomTone.DIM
     }
+
+    /**
+     * Apakah nada ruang (Terang/Gelap) yang menentukan tampilan dinding? Tidak bila pengguna memilih dinding berwarna atau
+     * bergradasi sendiri: nada efektifnya ([textTone]) lalu mengikuti warna itu. Lampu dinding hanya dipasang bila ya,
+     * supaya ketukannya selalu terlihat hasilnya.
+     */
+    fun toneDecidesWall(type: BackgroundType): Boolean = type != BackgroundType.SOLID && type != BackgroundType.GRADIENT
 
     /**
      * Warna jam/widget pilihan pengguna dipakai bila terbaca (>= 4,5:1) di atas dinding; kalau tidak — misalnya krem

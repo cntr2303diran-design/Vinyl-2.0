@@ -141,6 +141,38 @@ scroll_tap() {
   return 1
 }
 
+# node_checked <nama> <regex>: atribut "checked" simpul pertama yang cocok di ui_<nama>.xml, yang baru dibuat oleh find_node
+# ("true" / "false"; kosong bila tak terbaca). Tidak membaca layar sendiri, jadi aman dipanggil di dalam $( ).
+node_checked() { python3 -I "$HERE/ui_attr.py" "$OUT/ui_$1.xml" "$2" checked 2>/dev/null; }
+
+# open_editor <nama>: tekan lama di titik kosong layar utama sampai editor "Edit beranda" terbuka (status 0; 1 bila tidak)
+open_editor() {
+  local pt px py
+  for pt in "$((W / 2)) $((H * 22 / 100))" "$((W * 8 / 100)) $((H / 2))" "$((W / 2)) $((H * 62 / 100))"; do
+    read -r px py <<< "$pt"
+    adb shell input swipe "$px" "$py" "$px" "$py" 1100
+    if wait_node "$1" '^Edit beranda$' 8; then return 0; fi
+  done
+  return 1
+}
+# close_editor <nama>: tutup editor lewat "Batal" (tombol BACK bila "Batal" tidak ditemukan). Pengaturan gaya TV di editor
+# langsung tersimpan, jadi menutup lewat "Batal" tidak membatalkannya.
+close_editor() {
+  if ! tap_node "$1" '^Batal$'; then adb shell input keyevent KEYCODE_BACK; fi
+  sleep 2
+}
+# sheet_scroll_tap <nama> <regex>: cari di lembar editor; bila belum tampak, gulir lembar sedikit demi sedikit lalu cari lagi.
+# Usapannya pendek dan pelan (lembar hanya setinggi separuh layar dan lontaran dari usapan cepat bisa melompati baris yang dicari).
+sheet_scroll_tap() {
+  local i
+  for i in 1 2 3 4 5 6 7 8; do
+    if tap_node "$1_$i" "$2"; then return 0; fi
+    adb shell input swipe $((W * 92 / 100)) $((H * 90 / 100)) $((W * 92 / 100)) $((H * 74 / 100)) 700
+    sleep 1.2
+  done
+  return 1
+}
+
 # ---------- menunggu emulator tenang ----------
 # Persentase CPU yang terpakai selama ~4 detik (selisih /proc/stat); 100 bila tak terbaca
 cpu_busy_pct() {
@@ -498,6 +530,47 @@ else
 fi
 check_alive "setelah tombol daya"
 
+# Lampu dinding: sakelar "Lampu ruangan" (ketuk = ruang terang/gelap). Status dibaca dari atribut checked simpulnya;
+# yang diperiksa hanya bahwa ketukan MENGGANTI status dan ketukan kedua mengembalikannya (rupa lampu dinilai dari tangkapan layar).
+step "Lampu ruangan (ketuk berganti terang/gelap, ketuk lagi mengembalikan)"
+ensure_front lampu > /dev/null
+goto_room lampu
+if find_node lampu_0 '^Lampu ruangan$'; then
+  lamp0=$(node_checked lampu_0 '^Lampu ruangan$')
+  say "lampu ruangan: checked=${lamp0:-tak terbaca}"
+  shot "lampu_awal"
+  adb shell input tap "$NX" "$NY"
+  sleep 2.5; shot "lampu_diketuk"
+  if find_node lampu_1 '^Lampu ruangan$'; then
+    lamp1=$(node_checked lampu_1 '^Lampu ruangan$')
+    say "lampu ruangan sesudah diketuk: checked=${lamp1:-tak terbaca}"
+    if [ -z "$lamp0" ] || [ -z "$lamp1" ]; then
+      warn "status sakelar 'Lampu ruangan' tidak terbaca dari pohon aksesibilitas"
+    elif [ "$lamp0" != "$lamp1" ]; then
+      ok "lampu ruangan berganti setelah diketuk (checked $lamp0 -> $lamp1)"
+    else
+      warn "lampu ruangan tidak berganti setelah diketuk (checked tetap $lamp1)"
+    fi
+    adb shell input tap "$NX" "$NY"
+    sleep 2.5; shot "lampu_kembali"
+    if find_node lampu_2 '^Lampu ruangan$'; then
+      lamp2=$(node_checked lampu_2 '^Lampu ruangan$')
+      if [ -n "$lamp0" ] && [ "$lamp2" = "$lamp0" ]; then
+        ok "ketukan kedua mengembalikan lampu ruangan (checked $lamp1 -> $lamp2)"
+      else
+        warn "lampu ruangan tidak kembali ke keadaan awal (awal=${lamp0:-tak terbaca}, sekarang=${lamp2:-tak terbaca})"
+      fi
+    else
+      warn "lampu ruangan tidak ditemukan sesudah ketukan kedua"
+    fi
+  else
+    warn "lampu ruangan hilang dari layar setelah diketuk"
+  fi
+else
+  warn "lampu ruangan tidak ditemukan di beranda (lampu hanya ada di dinding album/foto dan bila ruangnya cukup); layar depan: $(top_desc)"
+fi
+check_alive "setelah lampu ruangan"
+
 # Satu kaset game: laci -> ketuk kaset -> TV menampilkan game -> main sebentar -> keluarkan kaset lagi.
 #   <kunci> penanda nama berkas, <judul> nama di label kaset (Ular / Bata), <gaya> usap = Ular, palet = Bata
 play_game() {
@@ -643,21 +716,61 @@ scan_log pengaturan
 step "Edit beranda (tekan lama di layar utama; teksnya harus terbaca)"
 ensure_front editor > /dev/null
 goto_room editor
-editor_open=0
-for pt in "$((W / 2)) $((H * 22 / 100))" "$((W * 8 / 100)) $((H / 2))" "$((W / 2)) $((H * 62 / 100))"; do
-  read -r px py <<< "$pt"
-  adb shell input swipe "$px" "$py" "$px" "$py" 1100
-  if wait_node editor_judul '^Edit beranda$' 8; then editor_open=1; break; fi
-done
-if [ "$editor_open" -eq 1 ]; then
+if open_editor editor_judul; then
   ok "editor beranda terbuka lewat tekan lama"
   sleep 1; shot "editor_beranda"
-  if ! tap_node editor_batal '^Batal$'; then adb shell input keyevent KEYCODE_BACK; fi
-  sleep 2
+  close_editor editor_batal
 else
   warn "editor beranda tidak terbuka lewat tekan lama (titik yang dicoba tidak kosong?)"
 fi
 check_alive "setelah editor beranda"
+
+# ---------- 6c. Ingat tombol daya TV (disiapkan di sini, diperiksa sesudah proses dimatikan di langkah 7) ----------
+# Pilihan opsional (bawaan mati): TV yang dimatikan dengan tombol dayanya tetap mati setelah restart. Pilihannya ada di
+# editor, tab "TV & kaset" (tab pertama), di ujung kartu TV, jadi lembar editor perlu digulir.
+RP_READY=0     # 1 bila pilihan menyala dan TV sudah dimatikan: langkah 7 memeriksa bahwa TV tetap mati sesudah kill
+RP_CHANGED=0   # 1 bila skrip menyalakan pilihannya (harus dimatikan lagi sesudahnya)
+step "Ingat tombol daya TV: nyalakan pilihannya di editor, lalu matikan TV"
+ensure_front ingat > /dev/null
+goto_room ingat
+if open_editor ingat_editor; then
+  if sheet_scroll_tap ingat_baris '^Ingat tombol daya TV'; then
+    RP_CHANGED=1
+    sleep 1.5
+    if find_node ingat_cek '^Ingat tombol daya TV'; then
+      rp_state=$(node_checked ingat_cek '^Ingat tombol daya TV')
+      case "$rp_state" in
+        true)  ok "pilihan 'Ingat tombol daya TV' menyala setelah diketuk (checked=true)" ;;
+        false) warn "pilihan 'Ingat tombol daya TV' masih mati setelah diketuk (checked=false)" ;;
+        *)     warn "status pilihan 'Ingat tombol daya TV' tidak terbaca dari pohon aksesibilitas" ;;
+      esac
+    else
+      warn "baris 'Ingat tombol daya TV' hilang dari layar setelah diketuk"
+    fi
+    shot "ingat_pilihan"
+  else
+    warn "baris 'Ingat tombol daya TV' tidak ditemukan di editor (tab TV & kaset)"
+    shot "ingat_tak_ditemukan"
+  fi
+  close_editor ingat_batal
+  sleep 1
+  if tap_wait ingat_daya '^Tombol daya TV$' 15; then
+    sleep 2.5
+    find_node ingat_mati '^TV mati$'
+    case $? in
+      0) RP_READY=1; ok "TV dimatikan dengan tombol daya sementara 'Ingat tombol daya TV' dinyalakan" ;;
+      1) warn "TV tidak mati setelah tombol daya diketuk (uji 'Ingat tombol daya TV' dilewati)" ;;
+      *) warn "layar tidak terbaca saat memeriksa TV mati (uji 'Ingat tombol daya TV' dilewati)" ;;
+    esac
+    shot "ingat_tv_mati"
+    sleep 1.5   # beri waktu penulisan keadaan ke berkas kecil di latar sebelum proses dimatikan
+  else
+    warn "tombol daya TV tidak ditemukan (uji 'Ingat tombol daya TV' dilewati)"
+  fi
+else
+  warn "editor beranda tidak terbuka untuk pilihan 'Ingat tombol daya TV'"
+fi
+check_alive "setelah menyiapkan 'Ingat tombol daya TV'"
 
 # ---------- 7. proses dimatikan lalu dibuka lagi ----------
 step "Proses dimatikan sistem saat di latar, lalu launcher dibuka lagi (pengaturan harus bertahan)"
@@ -697,6 +810,46 @@ if alive; then warn "proses tidak bisa dimatikan; uji kematian proses dilewati";
     warn "layar depan tidak dikenali setelah kill: $(top_desc)"
   fi
   check_alive "setelah dibuka kembali"
+  # "Ingat tombol daya TV": TV yang dimatikan di langkah 6c harus tetap mati di proses yang baru (tanpa pilihan itu TV selalu
+  # menyala lagi). Sesudahnya keadaan dikembalikan: TV dinyalakan dan pilihannya dimatikan.
+  if [ "$RP_READY" -eq 1 ]; then
+    if top_is_home; then
+      sleep 2
+      goto_room ingat_sesudah > /dev/null
+      shot "ingat_sesudah_kill"
+      find_node ingat_hasil '^TV mati$'
+      case $? in
+        0) ok "TV tetap mati setelah proses dimatikan (pilihan 'Ingat tombol daya TV')" ;;
+        1) warn "TV menyala lagi setelah proses dimatikan padahal 'Ingat tombol daya TV' menyala" ;;
+        *) warn "layar tidak terbaca saat memeriksa TV sesudah proses dimatikan" ;;
+      esac
+    else
+      warn "beranda tidak di depan setelah proses dimatikan; 'Ingat tombol daya TV' tidak diperiksa: $(top_desc)"
+    fi
+  fi
+  if top_is_home && { [ "$RP_READY" -eq 1 ] || [ "$RP_CHANGED" -eq 1 ]; }; then
+    goto_room ingat_pulih > /dev/null
+    if find_node ingat_pulih_mati '^TV mati$'; then
+      tap_node ingat_pulih_daya '^Tombol daya TV$' > /dev/null
+      sleep 2
+    fi
+    if [ "$RP_CHANGED" -eq 1 ]; then
+      if open_editor ingat_pulih_editor && sheet_scroll_tap ingat_pulih_baris '^Ingat tombol daya TV'; then
+        sleep 1.5
+        find_node ingat_pulih_cek '^Ingat tombol daya TV'
+        if [ "$(node_checked ingat_pulih_cek '^Ingat tombol daya TV')" = "true" ]; then
+          # sheet_scroll_tap sudah mengetuk barisnya sekali; bila pilihannya masih menyala, ketuk sekali lagi supaya langkah
+          # berikutnya mulai dari keadaan bawaan (mati)
+          tap_node ingat_pulih_baris_lagi '^Ingat tombol daya TV' > /dev/null
+          sleep 1.5
+        fi
+        close_editor ingat_pulih_batal
+      else
+        warn "pilihan 'Ingat tombol daya TV' tidak bisa dikembalikan ke mati (editor/barisnya tidak ditemukan)"
+        if top_is Home; then adb shell input keyevent KEYCODE_BACK; sleep 1; fi
+      fi
+    fi
+  fi
 fi
 scan_log kill
 

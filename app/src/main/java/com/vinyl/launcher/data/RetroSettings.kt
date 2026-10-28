@@ -96,6 +96,13 @@ data class RetroSettings(
      * true = ditukar. Pada bahasa RTL arah dicerminkan otomatis.
      */
     val swapPages: Boolean = false,
+    /**
+     * Ingat tombol daya TV: TV yang terakhir dimatikan dengan tombol dayanya tetap mati saat beranda dimulai lagi
+     * (setelah proses dimatikan sistem atau ponsel dinyalakan ulang). Mati (bawaan) = beranda selalu mulai dengan TV
+     * menyala. Pilihan ini adalah kebiasaan perangkat, bukan gaya: menerapkan preset tidak mengubahnya
+     * ([SettingsMigration.retroToApply]). Keadaan mati-nyalanya sendiri ada di [TvPowerStore], bukan di sini.
+     */
+    val rememberTvPower: Boolean = false,
     val projector: ProjectorSettings = ProjectorSettings(),
     val osd: OsdSettings = OsdSettings(),
 )

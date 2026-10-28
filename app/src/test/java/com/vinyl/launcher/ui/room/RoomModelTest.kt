@@ -1,6 +1,7 @@
 package com.vinyl.launcher.ui.room
 
 import com.vinyl.launcher.data.AlbumMotion
+import com.vinyl.launcher.data.BackgroundType
 import com.vinyl.launcher.data.RoomTone
 import com.vinyl.launcher.ui.theme.BackdropDim
 import com.vinyl.launcher.ui.theme.BackdropLift
@@ -114,5 +115,17 @@ class RoomModelTest {
         assertEquals(0xFF808080L, RoomInk.over(0xFFFFFFFFL, 0xFF000000L, 0.5))
         assertEquals(0xFF000000L, RoomInk.over(0xFF000000L, 0xFFFFFFFFL, 1.0))
         assertEquals(0xFFFFFFFFL, RoomInk.over(0xFF000000L, 0xFFFFFFFFL, 0.0))
+    }
+
+    @Test
+    fun theWallLampOnlyAppearsWhenTheRoomToneDecidesTheWall() {
+        // Album dan gambar: dinding mengikuti nada ruang, jadi ketukan lampu terlihat
+        assertTrue(RoomInk.toneDecidesWall(BackgroundType.ALBUM))
+        assertTrue(RoomInk.toneDecidesWall(BackgroundType.IMAGE))
+        // Warna atau gradasi pilihan sendiri: nada efektif mengikuti warna itu, lampu tidak dipasang
+        assertEquals(false, RoomInk.toneDecidesWall(BackgroundType.SOLID))
+        assertEquals(false, RoomInk.toneDecidesWall(BackgroundType.GRADIENT))
+        // Dan benar: untuk dinding tanpa warna sendiri nada efektif = pilihan "Ruang", jadi mengubahnya mengubah ruangan
+        for (room in RoomTone.entries) assertEquals(room, RoomInk.textTone(room, null))
     }
 }

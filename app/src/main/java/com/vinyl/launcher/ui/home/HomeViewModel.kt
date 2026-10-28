@@ -20,12 +20,15 @@ import com.vinyl.launcher.data.FilmStart
 import com.vinyl.launcher.data.HistoryRepository
 import com.vinyl.launcher.data.HomeSettings
 import com.vinyl.launcher.data.PlayRecord
+import com.vinyl.launcher.data.RoomTone
 import com.vinyl.launcher.data.SettingsMigration
 import com.vinyl.launcher.util.SoundFx
 import com.vinyl.launcher.data.MAX_DOCK_APPS
 import com.vinyl.launcher.data.SettingsRepository
 import com.vinyl.launcher.data.SystemSettingsLauncher
 import com.vinyl.launcher.data.ThemePreset
+import com.vinyl.launcher.data.TvPowerRules
+import com.vinyl.launcher.data.TvPowerStore
 import com.vinyl.launcher.data.UsageStore
 import com.vinyl.launcher.drawer.AppCategory
 import com.vinyl.launcher.drawer.SystemSetting
@@ -53,6 +56,7 @@ import com.vinyl.launcher.ui.game.Snake
 import com.vinyl.launcher.ui.game.SnakeEvent
 import com.vinyl.launcher.ui.game.SnakeState
 import com.vinyl.launcher.ui.game.hud
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -64,6 +68,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
 /**
@@ -184,7 +189,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     }
     fun applyPreset(preset: ThemePreset) {
         if (_draft.value != null) _draft.value = preset.home
-        else viewModelScope.launch { settingsRepo.update { it.copy(home = preset.home, cover = preset.cover, retro = SettingsMigration.retroFor(preset)) } }
+        else viewModelScope.launch { settingsRepo.update { it.copy(home = preset.home, cover = preset.cover, retro = SettingsMigration.retroToApply(preset, it.retro)) } }
     }
     fun deletePreset(id: Long) = viewModelScope.launch {
         settingsRepo.update { s -> s.copy(presets = s.presets.filterNot { it.id == id }) }
@@ -289,10 +294,35 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
-    private val _tvPower = MutableStateFlow(true)
+    // Keadaan tersimpan dibaca langsung (satu nilai kecil; berkasnya baru ada bila pilihan "Ingat tombol daya TV" pernah
+    // dipakai) agar TV tidak sempat menyala sebentar lalu mati saat beranda dimulai. Pilihan yang sebenarnya baru
+    // diketahui setelah DataStore terbaca; bila ternyata mati, keadaan itu dikoreksi di blok init di bawah.
+    private val storedTvOff = TvPowerStore.isOff(app)
+    private val _tvPower = MutableStateFlow(!storedTvOff)
+    private var tvPowerTouched = false
 
-    /** Tombol daya TV: false = TV dimatikan dengan tombolnya. Tidak disimpan; beranda yang baru dimulai selalu menyala. */
+    /**
+     * Tombol daya TV: false = TV dimatikan dengan tombolnya. Beranda yang baru dimulai selalu menyala, kecuali pilihan
+     * "Ingat tombol daya TV" menyala dan TV terakhir dimatikan dengan tombolnya ([TvPowerRules], [TvPowerStore]).
+     */
     val tvPower: StateFlow<Boolean> = _tvPower.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            // Pilihan yang benar-benar tersimpan (bukan nilai awal sebelum DataStore terbaca, yang tidak boleh menentukan apa pun)
+            val remember = settingsRepo.current().retro.rememberTvPower
+            // Keadaan "mati" tersimpan tetapi pilihannya mati (dimatikan di Pengaturan selagi beranda tidak hidup, setel ulang,
+            // atau cadangan): TV menyala lagi, kecuali pengguna sudah menyentuhnya sendiri
+            if (!tvPowerTouched && !TvPowerRules.effectiveOff(remember, storedTvOff)) _tvPower.value = true
+            // Sejak sini setiap perubahan daya TV atau pilihannya disimpan; nilai yang sama tidak menulis ulang. Alirannya
+            // aliran mentah DataStore (tanpa nilai awal palsu), jadi pilihan bawaan tidak menimpa keadaan tersimpan.
+            combine(_tvPower, settingsRepo.flow.map { it.retro.rememberTvPower }.distinctUntilChanged()) { on, rem ->
+                TvPowerRules.effectiveOff(rem, off = !on)
+            }
+                .distinctUntilChanged()
+                .collect { off -> withContext(Dispatchers.IO) { TvPowerStore.setOff(app, off) } }
+        }
+    }
 
     /**
      * Apa yang sedang "diputar" di ruang TV (layar, deck, OSD, proyeksi): lagu dari aplikasi musik saat kaset musik di
@@ -353,11 +383,29 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         SoundFx.drawer(getApplication(), settings.value.effects, open)
     }
 
+    // ---------- Lampu dinding ----------
+    /**
+     * Lampu dinding diketuk: ruang terang ↔ gelap, yaitu pilihan "Ruang" di Pengaturan → Dinding ruang (satu pengaturan,
+     * dua tempat mengubahnya). Klik sakelar berbunyi dan bergetar mengikuti pengaturan efek sentuh.
+     */
+    fun toggleRoomLamp() {
+        val toLight = settings.value.retro.room != RoomTone.LIGHT
+        viewModelScope.launch {
+            settingsRepo.update { it.copy(retro = it.retro.copy(room = if (it.retro.room == RoomTone.LIGHT) RoomTone.DIM else RoomTone.LIGHT)) }
+        }
+        SoundFx.lamp(getApplication(), settings.value.effects, on = toLight)
+    }
+
     // ---------- Tombol daya TV ----------
-    /** Tombol daya TV ditekan: layar menyusut jadi titik (atau menyala lagi). Game yang berjalan dijeda saat TV dimatikan. */
+    /**
+     * Tombol daya TV ditekan: layar menyusut jadi titik (atau menyala lagi), tombolnya bergetar halus. Game yang berjalan
+     * dijeda saat TV dimatikan.
+     */
     fun toggleTvPower() {
         val on = !_tvPower.value
+        tvPowerTouched = true
         _tvPower.value = on
+        SoundFx.powerKey(getApplication(), settings.value.effects)
         if (on) SoundFx.crtOn(settings.value.effects)
         else {
             SoundFx.crtOff(settings.value.effects)
@@ -371,6 +419,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun wakeTv(): Boolean {
         if (_tvPower.value) return false
+        tvPowerTouched = true
         _tvPower.value = true
         SoundFx.crtOn(settings.value.effects)
         return true

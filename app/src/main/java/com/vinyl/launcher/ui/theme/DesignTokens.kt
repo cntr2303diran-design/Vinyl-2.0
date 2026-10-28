@@ -179,6 +179,24 @@ object Tokens {
         const val BALL = 0xFFFFFFFFL
     }
 
+    /**
+     * Lampu dinding di ruang TV (ketuk = ruang terang/gelap). Kap dan bohlamnya bertepi ganda: isi krem terang di dalam garis
+     * tepi gelap, jadi bentuknya terbaca >= 3:1 di atas dinding gelap (oleh isinya) maupun terang (oleh garis tepinya);
+     * dibuktikan LampPaletteTest. Menyala/mati juga dibedakan oleh bentuk (kerucut cahaya di bawah kap), bukan warna saja.
+     */
+    object Lamp {
+        const val SHADE_OFF = 0xFFC9BFA6L
+        const val SHADE_ON = 0xFFFFE9B8L
+        /** Garis tepi kap, lengan, dan bohlam. */
+        const val OUTLINE = 0xFF1B1410L
+        const val BRASS_LIGHT = 0xFFEBD28AL
+        const val BRASS_DARK = 0xFF6E5420L
+        const val BULB_ON = 0xFFFFF3C4L
+        const val BULB_OFF = 0xFF9C9889L
+        /** Cahaya hangat yang jatuh di dinding saat menyala. */
+        const val GLOW = 0xFFFFC870L
+    }
+
     /** Jarak dalam dp. Kelipatan 4 supaya ritme tata letak konsisten. */
     object Space {
         const val XS = 4

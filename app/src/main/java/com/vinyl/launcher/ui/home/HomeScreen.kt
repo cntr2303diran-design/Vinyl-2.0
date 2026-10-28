@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.CompositionLocalProvider
 import com.vinyl.launcher.ui.room.LocalRoomInsets
+import com.vinyl.launcher.ui.room.RoomInk
 import com.vinyl.launcher.ui.room.roomInsets
 import com.vinyl.launcher.ui.room.stableRoomInsets
 import androidx.compose.foundation.layout.size
@@ -1020,6 +1021,8 @@ private fun HomeContent(
             tapeLabel = tapeLabel,
             tvScreen = tvScreen,
             drawer = drawerInfo,
+            // Lampu dinding hanya bila nada ruang yang menentukan dinding (bukan warna/gradasi pilihan sendiri): ketukannya terlihat
+            onToggleLamp = if (RoomInk.toneDecidesWall(home.background.type)) vm::toggleRoomLamp else null,
             atmosphere = {
                 // Debu halus melayang di cahaya proyeksi (di depan dinding, di belakang TV)
                 if (fxPlan.particles) {

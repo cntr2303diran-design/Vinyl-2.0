@@ -72,6 +72,17 @@ object StageLayout {
     private const val SHORT_LANDSCAPE_TOP = 18f
     const val OSD_CORNER_W = 210f
 
+    /**
+     * Lampu dinding: seukuran area sentuh (≥ 48 dp), di kiri atas dinding. Tepi kirinya 28 dp dari layar (di luar zona
+     * gestur kembali sistem) dan atasnya di bawah teks OSD kiri atas pada huruf 1,5× (dua baris: 12 + 54 + 36 dp);
+     * jaraknya ke benda lain minimal [LAMP_GAP].
+     */
+    const val LAMP_W = 56f
+    const val LAMP_H = 64f
+    const val LAMP_LEFT = 28f
+    const val OSD_TOP_LEFT_BOTTOM = 108f
+    const val LAMP_GAP = 8f
+
     data class Frame(
         val width: Float,
         val height: Float,
@@ -100,6 +111,11 @@ object StageLayout {
         val drawerInBay: Boolean,
         /** Gambar proyeksi di dinding belakang. */
         val projection: SRect,
+        /**
+         * Lampu dinding (gambar dan area sentuh ≥ 48 dp); null bila tidak ada tempat yang bersih dari OSD, TV, kaset, meja,
+         * dan laci. Boleh menimpa gambar proyeksi, yang hanya cahaya di dinding.
+         */
+        val lamp: SRect?,
         /** Garis temu dinding–lantai dan tepi atas lis dinding (y layar). */
         val floorLine: Float,
         val baseboardTop: Float,
@@ -135,17 +151,19 @@ object StageLayout {
         // Ponsel mendatar: coba biarkan TV naik ke pita atas (di antara kolom sudut OSD); bila kelompok TV & kaset
         // menyentuh kolom sudut, kembali ke batas pita penuh
         if (landscape && h < SHORT_LANDSCAPE_H) {
-            val relaxed = layout(w, h, landscape, k, SHORT_LANDSCAPE_TOP + inset, osdBottom, projectorSize)
+            val relaxed = layout(w, h, landscape, k, SHORT_LANDSCAPE_TOP + inset, osdBottom, projectorSize, inset)
             val group = SRect(
                 minOf(relaxed.tvFront.left, SRect.around(relaxed.tv.corners().map(relaxed.camera::project)).left),
                 0f, relaxed.cassetteBounds.right, 0f,
             )
             if (group.left >= OSD_CORNER_W && group.right <= w - OSD_CORNER_W) return relaxed
         }
-        return layout(w, h, landscape, k, OSD_TOP + inset, osdBottom, projectorSize)
+        return layout(w, h, landscape, k, OSD_TOP + inset, osdBottom, projectorSize, inset)
     }
 
-    private fun layout(w: Float, h: Float, landscape: Boolean, k: Float, top: Float, osdBottom: Float, projectorSize: Float): Frame {
+    private fun layout(
+        w: Float, h: Float, landscape: Boolean, k: Float, top: Float, osdBottom: Float, projectorSize: Float, topInset: Float,
+    ): Frame {
         val tvX = if (landscape) 0f else -9f
 
         val tv = Solid.axisAligned(tvX - TV_W / 2f, tvX + TV_W / 2f, STAND_H, STAND_H + TV_H, TV_FRONT_Z, TV_FRONT_Z + TV_D)
@@ -224,14 +242,27 @@ object StageLayout {
         val projection = projectionRect(w, top, tvFront, projectorSize)
         val floorLine = cam.project(V3(0f, 0f, WALL_Z)).y
         val baseboardTop = cam.project(V3(0f, BASEBOARD_H, WALL_Z)).y
+        val lamp = lampRect(w, OSD_TOP_LEFT_BOTTOM + topInset, osdY, tvFront, cassetteBounds, standFront, drawerHit, deck)
 
         return Frame(
             width = w, height = h, landscape = landscape, camera = cam, tv = tv, stand = stand, cassette = cassette,
             tvFront = tvFront, standFront = standFront, shelf = shelf, deck = deck, slabEdge = slabEdge, plinth = plinth,
             grilleLeft = grilleLeft, grilleRight = if (drawerIsBay) null else grilleRight, cassetteBounds = cassetteBounds,
             drawer = drawer, drawerHit = drawerHit, drawerInBay = drawerIsBay,
-            projection = projection, floorLine = floorLine, baseboardTop = baseboardTop, osdTop = top, osdBottom = h - osdBottom,
+            projection = projection, lamp = lamp, floorLine = floorLine, baseboardTop = baseboardTop, osdTop = top, osdBottom = h - osdBottom,
         )
+    }
+
+    /**
+     * Tempat lampu dinding: [LAMP_W] × [LAMP_H] di kiri atas dinding, tepat di bawah teks OSD kiri atas ([top]). Null bila
+     * tidak muat di layar (di atas pita OSD bawah [bottomLimit], di dalam tepi kanan) atau mendekati [avoid] (TV, kaset,
+     * meja, laci, deck) lebih dekat dari [LAMP_GAP].
+     */
+    private fun lampRect(w: Float, top: Float, bottomLimit: Float, vararg avoid: SRect): SRect? {
+        val r = SRect(LAMP_LEFT, top, LAMP_LEFT + LAMP_W, top + LAMP_H)
+        if (r.right > w - SIDE || r.bottom > bottomLimit) return null
+        val padded = SRect(r.left - LAMP_GAP, r.top - LAMP_GAP, r.right + LAMP_GAP, r.bottom + LAMP_GAP)
+        return r.takeIf { avoid.none { padded.overlaps(it) } }
     }
 
     /**

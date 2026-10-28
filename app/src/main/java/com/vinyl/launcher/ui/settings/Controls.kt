@@ -478,6 +478,10 @@ private fun TvSectionControls(home: HomeSettings, retro: RetroSettings, onChange
         SliderRow("Ukuran (TV tetap di tempatnya)", home.turntableSize, 0.5f..1f, { onChange(home.copy(turntableSize = it)) })
         ChipRow("Knob", KnobStyle.entries, retro.knobStyle, { it.label() }) { onRetro(retro.copy(knobStyle = it)) }
         ChipRow("Warna VFD", VfdColor.entries, retro.vfdColor, { it.label() }) { onRetro(retro.copy(vfdColor = it)) }
+        SwitchRow(
+            "Ingat tombol daya TV", retro.rememberTvPower, { onRetro(retro.copy(rememberTvPower = it)) },
+            subtitle = if (retro.rememberTvPower) "TV yang Anda matikan dengan tombol dayanya tetap mati setelah restart" else "Beranda selalu mulai dengan TV menyala",
+        )
     }
     SectionTitle("Layar CRT")
     ControlCard {

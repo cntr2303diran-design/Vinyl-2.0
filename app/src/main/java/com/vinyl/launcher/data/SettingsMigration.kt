@@ -44,6 +44,14 @@ object SettingsMigration {
     fun retroFor(preset: ThemePreset): RetroSettings = preset.retro ?: fromLegacy(preset.home)
 
     /**
+     * Pengaturan TV tabung sesudah [preset] diterapkan di atas [current]: gaya preset, tetapi kebiasaan perangkat
+     * ([RetroSettings.rememberTvPower]) tetap milik [current]. Preset yang dibuat saat pilihan itu menyala (atau sebelum
+     * pilihannya ada) tidak boleh menyalakan atau mematikannya diam-diam.
+     */
+    fun retroToApply(preset: ThemePreset, current: RetroSettings): RetroSettings =
+        retroFor(preset).copy(rememberTvPower = current.rememberTvPower)
+
+    /**
      * Terjemahkan [raw] menjadi [AppSettings] dengan [json]. Melempar exception yang sama dengan decodeFromString bila
      * [raw] rusak; pemanggil yang menentukan cadangannya.
      */
