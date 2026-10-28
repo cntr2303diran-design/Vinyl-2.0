@@ -1,4 +1,5 @@
 import java.net.URI
+import java.security.MessageDigest
 
 plugins {
     alias(libs.plugins.android.application)
@@ -139,7 +140,7 @@ val fetchFonts by tasks.registering {
     outputs.dir(fontDir)
     doLast {
         fun sha256(file: File): String {
-            val digest = java.security.MessageDigest.getInstance("SHA-256")
+            val digest = MessageDigest.getInstance("SHA-256")
             file.inputStream().use { input ->
                 val buffer = ByteArray(64 * 1024)
                 while (true) {
