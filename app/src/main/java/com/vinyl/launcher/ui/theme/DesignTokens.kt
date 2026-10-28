@@ -144,7 +144,7 @@ object Tokens {
     object Film {
         const val FELT_TOP = 0xFF2B1719L
         const val FELT_BOTTOM = 0xFF190D0FL
-        /** Peredam hitam di belakang tulisan "MEMUAT" yang melayang di atas halaman. */
+        /** Peredam hitam di belakang tulisan "MEMUAT" dan pesan OSD (LANJUT, TIDAK ADA VIDEO) yang melayang di atas halaman. */
         const val LOADING_SCRIM_ALPHA = 0.78
         /** Selimut "sinyal hilang" yang menutup halaman. */
         const val LOST_SCRIM_ALPHA = 0.94

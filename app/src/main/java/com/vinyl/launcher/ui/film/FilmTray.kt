@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
@@ -91,7 +92,10 @@ import com.vinyl.launcher.ui.theme.Tokens
  * ketuk kaset yang sudah di TV (bertanda DI TV) = keluarkan dan kaset musik kembali; tahan = ubah kaset film.
  */
 
-/** Satu kaset di baki. [film] terisi untuk kaset film (yang bisa diubah & dihapus); kaset bawaan aplikasi (game) null. */
+/**
+ * Satu kaset di baki. [film] terisi untuk kaset film (yang bisa diubah & dihapus); kaset bawaan aplikasi (game) null.
+ * [resumeMs] = menit terakhir kaset film ini (null = mulai dari awal), ditandai di kartunya.
+ */
 @Immutable
 internal class TrayItem(
     val tape: Tape,
@@ -99,6 +103,7 @@ internal class TrayItem(
     val subtitle: String,
     val color: Color,
     val film: FilmCassette?,
+    val resumeMs: Long? = null,
 )
 
 private val FeltTop = Color(Tokens.Film.FELT_TOP)
@@ -196,9 +201,11 @@ internal fun FilmTray(
                         Icon(Icons.Rounded.Close, contentDescription = "Tutup laci", tint = RetroColors.CreamText)
                     }
                 }
+                // Petunjuk "geser" hanya muncul bila memang ada kaset di luar layar
+                val listState = rememberLazyListState()
+                val scrollable = listState.canScrollForward || listState.canScrollBackward
                 Text(
-                    if (current == Tape.Music) "Ketuk kaset untuk memasukkannya ke TV · tahan untuk mengubah"
-                    else "Ketuk kaset yang bertanda DI TV untuk mengembalikan kaset musik",
+                    TrayText.hint(current, scrollable),
                     style = MaterialTheme.typography.bodySmall,
                     color = RetroColors.CreamTextSecondary,
                     modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 2.dp),
@@ -210,6 +217,7 @@ internal fun FilmTray(
                     }
                 } else {
                     LazyRow(
+                        state = listState,
                         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 16.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
@@ -266,7 +274,7 @@ private fun TrayCard(item: TrayItem, active: Boolean, onPress: () -> Unit, onEdi
                 onLongClick = onEdit,
             )
             .semantics(mergeDescendants = true) {
-                contentDescription = "Kaset ${item.title}, ${item.subtitle}"
+                contentDescription = TrayText.cardDescription(item.title, item.subtitle, item.resumeMs)
                 if (active) stateDescription = "Ada di TV"
                 // Jalur langsung untuk pembaca layar, tanpa harus menemukan tekan-lama
                 if (onEdit != null) customActions = listOf(CustomAccessibilityAction("Ubah kaset") { onEdit(); true })
@@ -283,6 +291,26 @@ private fun TrayCard(item: TrayItem, active: Boolean, onPress: () -> Unit, onEdi
                     lineHeight = 16.sp,
                     modifier = Modifier
                         .align(Alignment.TopEnd)
+                        .padding(4.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(RetroColors.Amber)
+                        .padding(horizontal = 6.dp, vertical = 2.dp),
+                )
+            }
+            TrayText.resumeBadge(item.resumeMs)?.let { badge ->
+                // Skala huruf sistem hanya memperbesar tanda ini sampai 1,3× (kartunya sempit, 148 dp)
+                val fontScale = LocalDensity.current.fontScale
+                val size = (14f * fontScale.coerceAtMost(1.3f) / fontScale).sp
+                Text(
+                    badge,
+                    color = Color(Tokens.Retro.INK),
+                    fontFamily = OsdFamily,
+                    fontSize = size,
+                    lineHeight = size,
+                    maxLines = 1,
+                    softWrap = false,
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
                         .padding(4.dp)
                         .clip(RoundedCornerShape(4.dp))
                         .background(RetroColors.Amber)

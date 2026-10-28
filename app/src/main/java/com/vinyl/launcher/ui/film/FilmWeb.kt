@@ -6,6 +6,9 @@ import android.graphics.Bitmap
 import android.graphics.Color as AndroidColor
 import android.net.Uri
 import android.net.http.SslError
+import android.os.Handler
+import android.os.Looper
+import android.os.SystemClock
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.CookieManager
@@ -33,6 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
 import com.vinyl.launcher.data.FilmRules
+import com.vinyl.launcher.data.FilmStart
 import com.vinyl.launcher.data.NavDecision
 import kotlin.math.roundToInt
 
@@ -44,6 +48,8 @@ import kotlin.math.roundToInt
  *  - tanpa akses berkas & content://, tanpa lokasi, tanpa kamera/mikrofon, tanpa unduhan, tanpa pemilih berkas,
  *    tanpa jendela baru, tanpa dialog JavaScript, tanpa cookie pihak ketiga, konten campuran dilarang, Safe Browsing menyala
  *  - proses render yang mati ditangani (tidak ikut mematikan aplikasi)
+ *  - halaman terakhir yang dibuka lagi (lanjut tonton) hanyalah alamat https di situs kaset yang sama, diperiksa ulang oleh
+ *    aturan navigasi yang sama dengan tautan di dalam halaman; loncatan ke menit terakhir hanya mengirim satu bilangan bulat
  * Cookie & penyimpanan situs hanya ada di perangkat ini (tanpa pelacakan); bisa dihapus dari pengaturan.
  */
 
@@ -77,8 +83,21 @@ class FilmWebHolder(private val context: Context) {
     /** Dipanggil dengan hasil pembacaan video tiap [poll]; diatur oleh pemilik. */
     var onVideo: (VideoStatus?) -> Unit = {}
 
+    /** Pesan singkat bergaya OSD di layar TV (mis. "LANJUT 12:34"); null = tidak ada. Hilang sendiri setelah [FilmNotice.SHOW_MS]. */
+    var notice by mutableStateOf<FilmNotice?>(null)
+        private set
+
     private var web: WebView? = null
     private var homeUrl = ""
+    private var openId: String? = null
+    private var start: FilmStart? = null
+    private var resumeSeek: ResumeSeek? = null
+    /** Halaman yang tampil sekarang menurut WebView (null = halaman kaset ini belum terpasang). */
+    private var shownUrl: String? = null
+    private var lastSample: FilmSample? = null
+    private var lastSamplePage: String? = null
+    private val handler = Handler(Looper.getMainLooper())
+    private val hideNotice = Runnable { notice = null }
     private var clearHistoryNext = false
     private var failed = false
     private var customCallback: WebChromeClient.CustomViewCallback? = null
@@ -90,22 +109,40 @@ class FilmWebHolder(private val context: Context) {
     /** WebView yang ada sekarang, tanpa membuat yang baru. */
     fun current(): WebView? = web
 
-    /** Kaset film masuk: buka [url] (alamat HTTPS yang sudah dinormalkan). Riwayat kaset sebelumnya dibuang. */
-    fun open(url: String) {
-        homeUrl = url
+    /**
+     * Kaset film [cassetteId] masuk. [home] = alamat awal kaset (HTTPS, sudah dinormalkan; tujuan tombol Kembali terakhir),
+     * [from] = tempat mulai: halaman terakhir yang tersimpan beserta posisinya, atau [home] sendiri. Riwayat kaset
+     * sebelumnya dibuang. Halaman tersimpan dibuka hanya bila lolos aturan navigasi (selain itu kaset mulai dari [home]).
+     */
+    fun open(cassetteId: String, home: String, from: FilmStart = FilmStart(home)) {
+        val usable = FilmRules.checkNavigation(from.url) == NavDecision.Allow
+        val first = if (usable) from else FilmStart(home)
+        openId = cassetteId
+        homeUrl = home
+        start = first
+        resumeSeek = ResumeSeekRules.plan(first, SystemClock.elapsedRealtime())
+        shownUrl = null
+        lastSample = null
+        lastSamplePage = null
+        clearNotice()
         failed = false
         error = ""
         load = FilmLoad.LOADING
         progress = 0
         clearHistoryNext = true
-        view().loadUrl(url)
+        view().loadUrl(first.url)
     }
 
-    /** Sinyal hilang / proses render mati: coba lagi dari alamat awal kaset. */
+    /** Sinyal hilang / proses render mati: coba lagi dari halaman dan menit terakhir yang diketahui. */
     fun retry() {
+        val id = openId ?: return
         if (homeUrl.isEmpty()) return
-        open(homeUrl)
+        open(id, homeUrl, FilmRetry.from(start, homeUrl, resumeSnapshot()))
     }
+
+    /** Halaman yang tampil, dan bacaan video terakhir di halaman itu, untuk dicatat sebagai titik lanjut; null bila belum ada. */
+    fun resumeSnapshot(): FilmResumeSnapshot? =
+        FilmSnapshots.make(openId, shownUrl, lastSample, lastSamplePage, SystemClock.elapsedRealtime())
 
     /** Kaset film keluar dari deck: hentikan, buang riwayat, lepaskan WebView. */
     fun close() {
@@ -113,6 +150,13 @@ class FilmWebHolder(private val context: Context) {
         exitCustomView()
         discard()
         homeUrl = ""
+        openId = null
+        start = null
+        resumeSeek = null
+        shownUrl = null
+        lastSample = null
+        lastSamplePage = null
+        clearNotice()
         load = FilmLoad.IDLE
         progress = 0
         canGoBack = false
@@ -155,20 +199,67 @@ class FilmWebHolder(private val context: Context) {
     fun poll() {
         val v = web ?: return
         if (load == FilmLoad.IDLE || load == FilmLoad.CRASHED || !active) return
-        v.evaluateJavascript(FilmProbe.STATUS_JS) { raw -> onVideo(FilmProbe.parse(raw)) }
+        v.evaluateJavascript(FilmProbe.STATUS_JS) { raw ->
+            // Jawaban untuk kaset yang sudah diganti/ditutup selama menunggu tidak dipakai
+            if (web !== v) return@evaluateJavascript
+            val status = FilmProbe.parse(raw)
+            val now = SystemClock.elapsedRealtime()
+            lastSample = status?.let { FilmSample(it, now) }
+            lastSamplePage = shownUrl
+            resumeStep(status, now)
+            onVideo(status)
+        }
     }
 
-    fun toggle() = command(FilmProbe.TOGGLE_JS)
+    /** Putar/jeda dari deck. */
+    fun toggle() = command(FilmProbe.TOGGLE_JS, fromUser = true)
 
-    fun seekBy(deltaMs: Long) = command(FilmProbe.seekByJs(deltaMs))
+    fun seekBy(deltaMs: Long) = command(FilmProbe.seekByJs(deltaMs), fromUser = true)
 
-    fun seekTo(positionMs: Long) = command(FilmProbe.seekToJs(positionMs))
+    fun seekTo(positionMs: Long) = command(FilmProbe.seekToJs(positionMs), fromUser = true)
 
-    private fun command(js: String) {
+    // [fromUser]: perintah dari pengguna; bila halaman tidak punya video yang bisa dikendalikan, pengguna diberi tahu.
+    // Lompatan otomatis ke menit terakhir tidak pernah memunculkan pesan itu.
+    private fun command(js: String, fromUser: Boolean) {
         val v = web ?: return
-        v.evaluateJavascript(js, null)
+        v.evaluateJavascript(js) { raw ->
+            // Jawaban 0 = tidak ada <video> yang bisa dikendalikan (belum dibuka, di dalam bingkai lain, atau pemutar terlindungi)
+            if (fromUser && web === v && raw?.trim() == "0") showNotice(FilmNotice.NO_VIDEO)
+        }
         // Tampilan (VFD, penghitung) menyusul pembacaan berikutnya, tidak menunggu satu detik penuh
         v.postDelayed({ poll() }, 300L)
+    }
+
+    // Lompat ke menit terakhir begitu videonya terbaca (satu kali per kaset dibuka); aturan keputusannya di ResumeSeekRules
+    private fun resumeStep(status: VideoStatus?, nowMs: Long) {
+        val seek = resumeSeek ?: return
+        when (val step = ResumeSeekRules.step(seek, shownUrl, status, nowMs)) {
+            SeekStep.Wait -> Unit
+            SeekStep.Drop -> resumeSeek = null
+            is SeekStep.Go -> {
+                resumeSeek = null
+                command(FilmProbe.seekToJs(step.ms), fromUser = false)
+                showNotice(FilmNotice.resumed(step.ms))
+            }
+        }
+    }
+
+    private fun showNotice(n: FilmNotice) {
+        notice = n
+        handler.removeCallbacks(hideNotice)
+        handler.postDelayed(hideNotice, FilmNotice.SHOW_MS)
+    }
+
+    private fun clearNotice() {
+        handler.removeCallbacks(hideNotice)
+        notice = null
+    }
+
+    // Alamat halaman yang tampil, diterima dari WebView; alamat yang tidak lolos aturan navigasi (mis. halaman galat internal) diabaikan
+    private fun shown(url: String?) {
+        if (url == null || url == shownUrl) return
+        if (FilmRules.checkNavigation(url) == NavDecision.Block) return
+        shownUrl = url
     }
 
     /** Halaman sebelumnya; bila tidak ada, kembali ke alamat awal kaset. */
@@ -243,10 +334,12 @@ class FilmWebHolder(private val context: Context) {
 
             // Dipanggil juga untuk perpindahan halaman tanpa muat ulang (aplikasi satu halaman): tombol Kembali ikut benar
             override fun doUpdateVisitedHistory(view: WebView?, url: String?, isReload: Boolean) {
+                shown(url)
                 canGoBack = view?.canGoBack() == true
             }
 
             override fun onPageFinished(view: WebView?, url: String?) {
+                shown(url)
                 if (clearHistoryNext) {
                     clearHistoryNext = false
                     view?.clearHistory()

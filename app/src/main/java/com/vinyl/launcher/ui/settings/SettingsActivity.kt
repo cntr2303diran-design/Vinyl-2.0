@@ -3,6 +3,7 @@ package com.vinyl.launcher.ui.settings
 import android.Manifest
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -65,6 +66,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -99,7 +101,11 @@ class SettingsActivity : ComponentActivity() {
     private val vm: SettingsViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        enableEdgeToEdge()
+        // Tampilan selalu gelap: ikon status bar harus terang walau sistem bermode terang (gaya otomatis mengikuti mode sistem)
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+        )
         super.onCreate(savedInstanceState)
         setContent { VinylTheme { SettingsScreen(vm, onBack = ::finish) } }
     }
@@ -407,7 +413,9 @@ private fun SettingsScreen(vm: SettingsViewModel, onBack: () -> Unit) {
         }
     }
 
-    BoxWithConstraints(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).windowInsetsPadding(WindowInsets.safeDrawing)) {
+    // Surface memberi warna isi bawaan (onBackground) bagi teks yang tidak diberi warna eksplisit; tanpanya Compose memakai hitam
+    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background, contentColor = MaterialTheme.colorScheme.onBackground) {
+    BoxWithConstraints(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
         val wide = maxWidth >= 840.dp
         if (wide) {
             // Dua panel ala Pengaturan Samsung (tablet) / System Settings macOS
@@ -424,6 +432,7 @@ private fun SettingsScreen(vm: SettingsViewModel, onBack: () -> Unit) {
                 PagePane(page, showBack = true, onBack = { pageName = null }, modifier = Modifier.fillMaxSize()) { pageBody(it) }
             }
         }
+    }
     }
 
     if (confirmReset) AlertDialog(

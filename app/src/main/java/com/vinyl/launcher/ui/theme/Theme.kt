@@ -2,10 +2,12 @@
 
 package com.vinyl.launcher.ui.theme
 
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
@@ -153,10 +155,18 @@ private val VinylTypography = Typography(
     labelSmall = base.copy(fontWeight = FontWeight.Medium, fontSize = 11.sp, letterSpacing = 0.03.em),
 )
 
-/** Tema aplikasi. Mode gelap adalah default (dan satu-satunya mode). */
+/**
+ * Tema aplikasi. Mode gelap adalah default (dan satu-satunya mode).
+ *
+ * [LocalContentColor] diberi nilai di sini: MaterialTheme sendiri TIDAK memberinya, dan nilai bawaan Compose adalah
+ * hitam. Tanpa ini setiap teks/ikon yang tidak diberi warna eksplisit dan tidak berada di dalam Surface/tombol/dialog
+ * tampil hitam di atas latar gelap (terbukti di tangkapan layar uji emulator: judul layar sambutan nyaris tak terbaca).
+ */
 @Composable
 fun VinylTheme(content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = DarkScheme, typography = VinylTypography, content = content)
+    MaterialTheme(colorScheme = DarkScheme, typography = VinylTypography) {
+        CompositionLocalProvider(LocalContentColor provides DarkScheme.onBackground, content = content)
+    }
 }
 
 // ===== Helper konversi pengaturan → nilai Compose =====

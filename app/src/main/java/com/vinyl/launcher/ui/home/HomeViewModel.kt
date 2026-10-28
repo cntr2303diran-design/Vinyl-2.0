@@ -12,7 +12,11 @@ import com.vinyl.launcher.data.BadgeRepository
 import com.vinyl.launcher.data.ContactHit
 import com.vinyl.launcher.data.ContactsRepository
 import com.vinyl.launcher.data.FilmCassette
+import com.vinyl.launcher.data.FilmResume
+import com.vinyl.launcher.data.FilmResumeData
+import com.vinyl.launcher.data.FilmResumeStore
 import com.vinyl.launcher.data.FilmRules
+import com.vinyl.launcher.data.FilmStart
 import com.vinyl.launcher.data.HistoryRepository
 import com.vinyl.launcher.data.HomeSettings
 import com.vinyl.launcher.data.PlayRecord
@@ -30,6 +34,7 @@ import com.vinyl.launcher.media.MediaRepository
 import com.vinyl.launcher.media.NowPlaying
 import com.vinyl.launcher.media.playFromSearch
 import com.vinyl.launcher.ui.film.FilmProbe
+import com.vinyl.launcher.ui.film.FilmResumeSnapshot
 import com.vinyl.launcher.ui.film.FilmSample
 import com.vinyl.launcher.ui.film.MusicEffect
 import com.vinyl.launcher.ui.film.Tape
@@ -56,6 +61,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * ViewModel home screen.
@@ -67,6 +73,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     private val settingsRepo = SettingsRepository.get(app)
     private val appsRepo = AppsRepository.get(app)
     private val usageStore = UsageStore.get(app)
+    private val resumeStore = FilmResumeStore.get(app)
 
     val settings: StateFlow<AppSettings> = settingsRepo.settings
     val nowPlaying: StateFlow<NowPlaying> = MediaRepository.state
@@ -287,7 +294,13 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, MediaRepository.state.value)
 
+    /** Titik lanjut tiap kaset film (halaman + menit terakhir; hanya di perangkat ini), untuk tanda "lanjut" di baki. */
+    val filmResume: StateFlow<FilmResumeData> = resumeStore.points
+
     init {
+        // Titik lanjut milik kaset yang sudah tidak ada dibuang. Memakai pengaturan yang benar-benar tersimpan
+        // (bukan nilai awal sebelum pengaturan selesai dibaca, yang akan menghapus titik kaset buatan pengguna)
+        viewModelScope.launch { resumeStore.prune(settingsRepo.current().film.cassettes) }
         // Kaset film yang dihapus dari laci (atau kaset game yang tidak dikenal) saat sedang di deck → kaset musik kembali
         // (musik tidak dilanjutkan otomatis)
         viewModelScope.launch {
@@ -456,6 +469,25 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     }
     fun closeTheatre() { _theatre.value = false }
 
+    /**
+     * Dari mana kaset film [c] dimulai: halaman terakhir yang tersimpan + menitnya, atau alamat awal kaset. Penyimpanan
+     * yang tidak menjawab dalam 2 detik dilewati (kaset tetap terbuka dari alamat awalnya).
+     */
+    suspend fun filmStart(c: FilmCassette): FilmStart {
+        val saved = withTimeoutOrNull(RESUME_READ_TIMEOUT_MS) { resumeStore.current() } ?: FilmResumeData()
+        return FilmResume.start(saved, c, System.currentTimeMillis())
+    }
+
+    /** Catat titik lanjut dari keadaan pemegang film ([snapshot] null = tidak ada yang dicatat). Tidak memblokir. */
+    fun saveFilmPoint(snapshot: FilmResumeSnapshot?) {
+        val s = snapshot ?: return
+        val c = settings.value.film.cassettes.firstOrNull { it.id == s.cassetteId } ?: return
+        resumeStore.record(c, s.pageUrl, s.positionMs, s.durationMs, s.ended)
+    }
+
+    /** Lupakan titik lanjut kaset [id] (tombol di Pengaturan, atau kaset dihapus). */
+    fun forgetFilmPoint(id: String) = resumeStore.forget(id)
+
     /** Hasil membaca <video> di halaman film (null = tidak ada video yang terbaca). */
     fun onFilmVideo(status: VideoStatus?) {
         _film.update { FilmProbe.update(it, status, SystemClock.elapsedRealtime()) }
@@ -468,8 +500,14 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
             if (next == null) s else s.copy(film = next)
         }
     }
-    fun deleteFilmCassette(id: String) { updateSettings { s -> s.copy(film = FilmRules.remove(s.film, id)) } }
-    fun restoreFilmDefaults() { updateSettings { s -> s.copy(film = s.film.copy(cassettes = FilmRules.defaults())) } }
+    fun deleteFilmCassette(id: String) {
+        updateSettings { s -> s.copy(film = FilmRules.remove(s.film, id)) }
+        resumeStore.forget(id)
+    }
+    fun restoreFilmDefaults() {
+        updateSettings { s -> s.copy(film = s.film.copy(cassettes = FilmRules.defaults())) }
+        resumeStore.prune(FilmRules.defaults())
+    }
 
     private fun filmNowPlaying(c: FilmCassette?, sample: FilmSample?): NowPlaying {
         if (c == null) return NowPlaying()
@@ -491,5 +529,6 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
 
     private companion object {
         const val TRAY_CLOSE_DELAY_MS = 420L
+        const val RESUME_READ_TIMEOUT_MS = 2_000L
     }
 }

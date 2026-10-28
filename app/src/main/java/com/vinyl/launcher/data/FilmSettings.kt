@@ -26,6 +26,8 @@ data class FilmSettings(
     val resumeMusic: Boolean = true,
     /** Skor tertinggi game Snake; tersimpan lokal bersama pengaturan. */
     val snakeBest: Int = 0,
+    /** Kaset film mengingat halaman dan menit terakhir (disimpan di perangkat ini saja, lihat [FilmResume]). */
+    val rememberPlace: Boolean = true,
 )
 
 /** Mengapa sebuah alamat ditolak; [message] ditampilkan apa adanya di editor kaset. */

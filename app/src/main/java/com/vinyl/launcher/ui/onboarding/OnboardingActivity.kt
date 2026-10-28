@@ -8,6 +8,7 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -38,6 +39,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -65,6 +67,8 @@ import com.vinyl.launcher.ui.room.CrtTv
 import com.vinyl.launcher.ui.room.TvGeometry
 import com.vinyl.launcher.ui.room.TvScreenMode
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import com.vinyl.launcher.ui.home.HomeActivity
 import com.vinyl.launcher.ui.settings.SettingsActivity
 import com.vinyl.launcher.ui.theme.VinylTheme
@@ -83,7 +87,12 @@ import android.content.pm.PackageManager
 class OnboardingActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        enableEdgeToEdge()
+        // Tampilan selalu gelap: ikon status bar & bilah navigasi harus terang walau sistem sedang bermode terang
+        // (gaya otomatis mengikuti mode sistem, sehingga jam di status bar jadi gelap di atas latar gelap).
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+        )
         super.onCreate(savedInstanceState)
         lifecycleScope.launch {
             val repo = SettingsRepository.get(this@OnboardingActivity)
@@ -144,11 +153,16 @@ fun PermissionStep(
             contentAlignment = Alignment.Center,
         ) {
             if (done) Icon(Icons.Rounded.CheckCircle, null, tint = Color.Black, modifier = Modifier.size(22.dp))
-            else Text("$number", fontWeight = FontWeight.Bold)
+            else Text("$number", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
         }
         Spacer(Modifier.width(16.dp))
         Column(Modifier.weight(1f)) {
-            Text(title + if (optional) "  (opsional)" else "", style = MaterialTheme.typography.titleMedium)
+            // Warna ditulis eksplisit: tanpa itu teks memakai warna isi bawaan Compose (hitam) bila tidak ada Surface di atasnya
+            Text(
+                title + if (optional) "  (opsional)" else "",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
             Text(description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Spacer(Modifier.width(12.dp))
@@ -214,7 +228,10 @@ private fun OnboardingScreen(onFinish: () -> Unit) {
     val repo = remember { SettingsRepository.get(context) }
     var coverEnabled by remember { mutableIntStateOf(0) } // 0 = belum, 1 = aktif
 
-    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).windowInsetsPadding(WindowInsets.safeDrawing)) {
+    // Surface memberi warna isi bawaan (onBackground) untuk semua teks di bawahnya; tanpa Surface, teks yang tidak
+    // diberi warna eksplisit tampil hitam di atas latar gelap (terbukti di tangkapan layar uji emulator).
+    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background, contentColor = MaterialTheme.colorScheme.onBackground) {
+    Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
         Column(
             Modifier.align(Alignment.TopCenter).widthIn(max = 720.dp).fillMaxWidth()
                 .verticalScroll(rememberScrollState()).padding(32.dp),
@@ -229,7 +246,13 @@ private fun OnboardingScreen(onFinish: () -> Unit) {
                 modifier = Modifier.size(240.dp, 240.dp / TvGeometry.ASPECT).clearAndSetSemantics { },
             )
             Spacer(Modifier.height(20.dp))
-            Text("Selamat datang di TV Launcher", fontSize = 28.sp, fontWeight = FontWeight.Light)
+            Text(
+                "Selamat datang di TV Launcher",
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Light,
+                color = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.semantics { heading() },
+            )
             Text(
                 "Beberapa langkah singkat agar TV dan kaset Anda siap diputar.",
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -242,5 +265,6 @@ private fun OnboardingScreen(onFinish: () -> Unit) {
             Spacer(Modifier.height(28.dp))
             Button(onClick = onFinish, modifier = Modifier.fillMaxWidth().height(52.dp)) { Text("Mulai") }
         }
+    }
     }
 }

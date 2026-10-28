@@ -156,7 +156,9 @@ import androidx.compose.ui.platform.LocalView
 import com.vinyl.launcher.data.CassetteShell
 import com.vinyl.launcher.data.EffectSettings
 import com.vinyl.launcher.data.FilmCassette
+import com.vinyl.launcher.data.FilmResume
 import com.vinyl.launcher.data.FilmRules
+import com.vinyl.launcher.data.FilmStart
 import com.vinyl.launcher.system.StatusText.Transport
 import com.vinyl.launcher.ui.cassette.CassetteLabel
 import com.vinyl.launcher.ui.film.FilmCassetteEditor
@@ -198,6 +200,7 @@ fun HomeScreen(vm: HomeViewModel) {
     val theatre by vm.theatre.collectAsStateWithLifecycle()
     val tvPower by vm.tvPower.collectAsStateWithLifecycle()
     val snakeHud by vm.snakeHud.collectAsStateWithLifecycle()
+    val filmResume by vm.filmResume.collectAsStateWithLifecycle()
     // Yang tampil di ruang TV: lagu (kaset musik) atau film dari laci. np tetap lagu aplikasi musik (perpustakaan, lirik, drawer).
     val shown by vm.roomNowPlaying.collectAsStateWithLifecycle()
     val tape = tapeState.tape
@@ -253,7 +256,11 @@ fun HomeScreen(vm: HomeViewModel) {
 
     // ----- Laci kaset: SATU WebView film seumur beranda (dipasang bergantian di layar TV dan di Teater) -----
     val filmHolder = remember { FilmWebHolder(context).also { it.onVideo = vm::onFilmVideo } }
-    DisposableEffect(filmHolder) { onDispose { filmHolder.close() } }
+    // Titik lanjut (halaman + menit terakhir) dicatat di perangkat ini, kecuali dimatikan di Pengaturan → Laci kaset
+    val saveResume: () -> Unit = remember(vm, filmHolder) {
+        { if (vm.settings.value.film.rememberPlace) vm.saveFilmPoint(filmHolder.resumeSnapshot()) }
+    }
+    DisposableEffect(filmHolder) { onDispose { saveResume(); filmHolder.close() } }
     val filmCassette = (tape as? Tape.Film)?.let { t -> settings.film.cassettes.firstOrNull { it.id == t.id } }
     var editorTarget by remember { mutableStateOf<EditorTarget?>(null) }
     // Layar penuh: Teater, atau tampilan layar penuh yang diminta pemutar di halaman film
@@ -329,7 +336,13 @@ fun HomeScreen(vm: HomeViewModel) {
     val filmVisible = roomVisible && !tvOff
     LaunchedEffect(filmCassette?.id, filmCassette?.url) {
         val c = filmCassette
-        if (c != null) filmHolder.open(c.url) else filmHolder.close()
+        if (c == null) {
+            filmHolder.close()
+            return@LaunchedEffect
+        }
+        // Mulai dari halaman terakhir yang ditonton (dan menitnya) bila diizinkan; selain itu dari alamat awal kaset
+        val from = if (settings.film.rememberPlace) vm.filmStart(c) else FilmStart(c.url)
+        filmHolder.open(c.id, c.url, from)
     }
     SideEffect { filmHolder.setActive(filmVisible) }
     LaunchedEffect(filmCassette?.id, filmVisible) {
@@ -338,6 +351,20 @@ fun HomeScreen(vm: HomeViewModel) {
             filmHolder.poll()
             delay(FILM_POLL_MS)
         }
+    }
+    // Titik lanjut: dicatat tiap beberapa detik selama film tampil, sekali lagi begitu ruang TV ditinggalkan (halaman lain,
+    // aplikasi ke latar), dan sebelum kaset diganti (lihat onPress laci). Yang tak berubah tidak ditulis ulang.
+    LaunchedEffect(filmCassette?.id, filmVisible) {
+        if (filmCassette == null || !filmVisible) return@LaunchedEffect
+        while (true) {
+            delay(RESUME_SAVE_MS)
+            saveResume()
+        }
+    }
+    var filmWasVisible by remember { mutableStateOf(false) }
+    LaunchedEffect(filmVisible) {
+        if (filmWasVisible && !filmVisible) saveResume()
+        filmWasVisible = filmVisible
     }
     // ----- Game Ular: berjalan hanya selama ruang TV tampil, TV menyala, laci tertutup, dan bukan mode edit -----
     val gameActive = roomVisible && !tvOff && !trayOpen && !editing
@@ -415,8 +442,11 @@ fun HomeScreen(vm: HomeViewModel) {
             else -> null
         }
     }
-    val trayItems = remember(settings.film.cassettes, settings.film.snakeBest) {
-        settings.film.cassettes.map { c -> TrayItem(Tape.Film(c.id), c.name, FilmRules.hostOf(c.url), Color(c.color), c) } +
+    val trayItems = remember(settings.film.cassettes, settings.film.snakeBest, filmResume) {
+        val now = System.currentTimeMillis()
+        settings.film.cassettes.map { c ->
+            TrayItem(Tape.Film(c.id), c.name, FilmRules.hostOf(c.url), Color(c.color), c, resumeMs = FilmResume.seekTarget(FilmResume.point(filmResume, c, now)))
+        } +
             Games.all.map { id ->
                 val best = settings.film.snakeBest
                 TrayItem(Tape.Game(id), Games.title(id), if (best > 0) "Game · rekor $best" else "Game", Color(Games.color(id)), null)
@@ -597,7 +627,8 @@ fun HomeScreen(vm: HomeViewModel) {
                 items = trayItems,
                 current = tape,
                 canAdd = settings.film.cassettes.size < FilmRules.MAX_CASSETTES,
-                onPress = vm::pressTape,
+                // Posisi film yang sedang di deck dicatat sebelum kaset diganti atau dikeluarkan
+                onPress = { pressed -> saveResume(); vm.pressTape(pressed) },
                 onAdd = { editorTarget = EditorTarget(null) },
                 onEdit = { editorTarget = EditorTarget(it) },
                 onRestoreDefaults = vm::restoreFilmDefaults,
@@ -770,6 +801,9 @@ private class EditorTarget(val film: FilmCassette?)
 
 /** Selang pembacaan keadaan video di halaman film (ms). */
 private const val FILM_POLL_MS = 1_000L
+
+/** Selang pencatatan titik lanjut selama film tampil (ms). */
+private const val RESUME_SAVE_MS = 15_000L
 
 /** Selang lompat maju/mundur tombol deck saat kaset film (ms). */
 private const val FILM_STEP_MS = 10_000L

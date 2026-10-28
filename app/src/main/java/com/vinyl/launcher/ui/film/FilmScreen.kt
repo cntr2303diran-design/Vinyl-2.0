@@ -44,9 +44,11 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -92,6 +94,7 @@ internal fun FilmTvScreen(holder: FilmWebHolder, theatre: Boolean, motionAllowed
                 FilmLoad.ERROR, FilmLoad.CRASHED -> LostSignal(holder.error, font, onRetry = holder::retry)
                 FilmLoad.IDLE, FilmLoad.READY -> Unit
             }
+            holder.notice?.let { FilmNoticeBadge(it, font, Modifier.align(Alignment.BottomStart).padding(6.dp)) }
         }
     }
 }
@@ -130,6 +133,35 @@ private fun LoadingTape(progress: Int, font: Float, motion: Boolean) {
                 .height(3.dp)
                 .background(RetroColors.Amber),
         )
+    }
+}
+
+/**
+ * Pesan OSD singkat di atas halaman (mis. "LANJUT 12:34", "TIDAK ADA VIDEO"): tulisan putih di atas peredam hitam yang
+ * sama dengan "MEMUAT" (terbaca di atas halaman apa pun). Hilang sendiri; dibacakan pembaca layar saat muncul.
+ */
+@Composable
+private fun FilmNoticeBadge(notice: FilmNotice, font: Float, modifier: Modifier = Modifier) {
+    Column(
+        modifier
+            .background(Color.Black.copy(alpha = Tokens.Film.LOADING_SCRIM_ALPHA.toFloat()))
+            .padding(horizontal = 6.dp, vertical = 3.dp)
+            .semantics(mergeDescendants = true) {
+                contentDescription = notice.spoken
+                liveRegion = LiveRegionMode.Polite
+            },
+    ) {
+        Text(notice.title, color = Color.White, fontFamily = OsdFamily, fontSize = font.sp, lineHeight = font.sp)
+        notice.detail?.let {
+            Text(
+                it,
+                color = Color.White,
+                fontFamily = MonoFamily,
+                fontSize = (font * 0.62f).coerceAtLeast(9f).sp,
+                maxLines = 5,
+                modifier = Modifier.padding(top = 2.dp),
+            )
+        }
     }
 }
 
@@ -191,6 +223,7 @@ internal fun FilmFullscreen(holder: FilmWebHolder, theatre: Boolean, landscape: 
             if (holder.load == FilmLoad.ERROR || holder.load == FilmLoad.CRASHED) {
                 LostSignal(holder.error, 20f, onRetry = holder::retry)
             }
+            holder.notice?.let { FilmNoticeBadge(it, 18f, Modifier.align(Alignment.BottomCenter).windowInsetsPadding(WindowInsets.displayCutout).padding(16.dp)) }
         }
         Box(
             Modifier

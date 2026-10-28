@@ -37,6 +37,16 @@ class FilmPaletteTest {
     }
 
     @Test
+    fun osdNoticeIsReadableOverAnyPage() {
+        // Pesan "LANJUT mm:ss" / "TIDAK ADA VIDEO": judul dan keterangan putih di atas peredam yang sama dengan "MEMUAT"
+        for (page in pages) {
+            val behind = BackdropDim.darken(page, Film.LOADING_SCRIM_ALPHA)
+            assertReadable("pesan OSD judul/%08X".format(page), 0xFFFFFFFFL, behind)
+            assertReadable("pesan OSD keterangan/%08X".format(page), 0xFFFFFFFFL, behind)
+        }
+    }
+
+    @Test
     fun lostSignalTextIsReadableOverAnyPage() {
         val messageAlpha = Math.round(Film.LOST_MESSAGE_ALPHA * 255).toLong()
         val message = (messageAlpha shl 24) or 0xFFFFFFL

@@ -6,6 +6,7 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
@@ -28,7 +29,11 @@ class CoverActivity : ComponentActivity() {
     private val keyguard by lazy { getSystemService(KeyguardManager::class.java) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        enableEdgeToEdge()
+        // Tampilan selalu gelap: bila bilah sistem muncul sesaat (geser dari tepi), ikonnya harus terang
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+        )
         super.onCreate(savedInstanceState)
         setShowWhenLocked(true)
         // Sengaja TIDAK memakai setTurnScreenOn: activity ini dibuka saat layar dimatikan,

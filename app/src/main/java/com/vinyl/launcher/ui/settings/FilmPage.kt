@@ -18,14 +18,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.vinyl.launcher.data.FilmResumeStore
 import com.vinyl.launcher.data.FilmRules
 import com.vinyl.launcher.data.FilmSettings
 import com.vinyl.launcher.ui.film.FilmSiteData
 
 /**
  * Pengaturan laci kaset di meja ruang TV. Kaset sendiri ditambah, diubah, dan dihapus dari laci (tahan sebuah kaset);
- * halaman ini memuat pilihan umum, memulihkan kaset bawaan, rekor game Ular, dan menghapus data situs film (cookie,
- * penyimpanan lokal, cache).
+ * halaman ini memuat pilihan umum, ingatan "lanjut tonton" (halaman + menit terakhir), memulihkan kaset bawaan, rekor
+ * game Ular, dan menghapus data situs film (cookie, penyimpanan lokal, cache, posisi terakhir).
  */
 @Composable
 fun FilmControls(film: FilmSettings, onChange: (FilmSettings) -> Unit) {
@@ -46,6 +47,18 @@ fun FilmControls(film: FilmSettings, onChange: (FilmSettings) -> Unit) {
             "Lanjutkan musik", film.resumeMusic, { on -> onChange(film.copy(resumeMusic = on)) },
             subtitle = "Musik yang tadi diputar dilanjutkan saat kaset musik kembali ke TV",
         )
+        SwitchRow(
+            "Ingat tempat terakhir", film.rememberPlace,
+            { on ->
+                onChange(film.copy(rememberPlace = on))
+                // Dimatikan = yang sudah diingat ikut dilupakan
+                if (!on) FilmResumeStore.get(context).clear()
+            },
+            subtitle = "Kaset film dibuka di halaman dan menit terakhir yang Anda tonton. Hanya disimpan di perangkat ini",
+        )
+        if (film.rememberPlace) {
+            OutlinedButton(onClick = { confirm = FilmConfirm.FORGET }, modifier = Modifier.fillMaxWidth()) { Text("Lupakan posisi terakhir") }
+        }
         Text(
             "${film.cassettes.size} dari ${FilmRules.MAX_CASSETTES} kaset di laci.",
             style = MaterialTheme.typography.bodySmall,
@@ -86,10 +99,18 @@ fun FilmControls(film: FilmSettings, onChange: (FilmSettings) -> Unit) {
                 TextButton(onClick = {
                     confirm = null
                     when (c) {
-                        FilmConfirm.RESTORE -> onChange(film.copy(cassettes = FilmRules.defaults()))
+                        FilmConfirm.RESTORE -> {
+                            onChange(film.copy(cassettes = FilmRules.defaults()))
+                            FilmResumeStore.get(context).prune(FilmRules.defaults())
+                        }
                         FilmConfirm.RESET_SNAKE -> onChange(film.copy(snakeBest = 0))
+                        FilmConfirm.FORGET -> {
+                            FilmResumeStore.get(context).clear()
+                            Toast.makeText(context, "Posisi terakhir semua kaset dilupakan.", Toast.LENGTH_SHORT).show()
+                        }
                         FilmConfirm.CLEAR -> {
                             FilmSiteData.clear(context)
+                            FilmResumeStore.get(context).clear()
                             Toast.makeText(context, "Data situs film dihapus.", Toast.LENGTH_SHORT).show()
                         }
                     }
@@ -111,9 +132,14 @@ private enum class FilmConfirm(val title: String, val message: String, val actio
         "Rekor game Ular kembali ke nol. Ini tidak bisa dibatalkan.",
         "Setel ulang",
     ),
+    FORGET(
+        "Lupakan posisi terakhir?",
+        "Halaman dan menit terakhir semua kaset film dilupakan. Kaset berikutnya dibuka dari alamat awalnya.",
+        "Lupakan",
+    ),
     CLEAR(
         "Hapus data situs film?",
-        "Cookie, penyimpanan lokal, dan cache semua situs film dihapus. Anda mungkin harus masuk lagi ke situs yang memakai akun.",
+        "Cookie, penyimpanan lokal, dan cache semua situs film dihapus, begitu pula posisi terakhir semua kaset. Anda mungkin harus masuk lagi ke situs yang memakai akun.",
         "Hapus",
     ),
 }
