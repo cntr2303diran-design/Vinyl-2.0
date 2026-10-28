@@ -20,6 +20,10 @@
 # Emulator baru booting sangat sibuk (aplikasi Google menyiapkan diri); ANR pada saat itu bukan kesalahan aplikasi.
 # Karena itu skrip menunggu CPU emulator tenang dulu, dan sebuah ANR hanya dihitung GAGAL bila terjadi saat emulator
 # tenang (beban rata-rata <= 2x jumlah inti); selain itu hanya PERINGATAN lengkap dengan angka bebannya.
+# Dialog sistem "<aplikasi lain> isn't responding" (mis. Pixel Launcher yang kehabisan CPU saat booting) menutupi layar dan
+# membuat onboarding tak bisa diselesaikan; dialog itu ditutup seperti oleh pengguna (dump_ui / ui_dialog.py). Pemeriksaan
+# "pengaturan bertahan setelah proses dimatikan" hanya sah bila onboarding sungguh selesai; bila tidak, hasilnya GAGAL
+# "tidak terverifikasi", bukan hijau.
 #
 # Keluaran di <folder-keluaran>: result.txt (baris pertama PASS / FAIL: ... / INCONCLUSIVE: ...), log.txt, *.png,
 # logcat_*.txt, ui_*.xml, gfx_*.txt. Skrip SELALU keluar dengan status 0; langkah CI berikutnya membaca result.txt.
@@ -44,6 +48,10 @@ WARNS=()
 OKS=()
 COMPLETED=0
 SETTLED=0
+# 1 bila ketukan "Mulai" di onboarding sungguh terjadi DAN beranda terbaca sesudahnya: hanya dengan begitu onboardingDone
+# pernah ditulis, sehingga "pengaturan bertahan setelah proses dimatikan" bisa dinilai
+FIRST_TAP=0
+ONBOARDED=0
 NPROC=2
 ANR_SEEN=" "
 W=1080
@@ -84,12 +92,42 @@ shot() {
   if [ ! -s "$f" ]; then warn "tangkapan layar gagal: $1"; rm -f "$f"; fi
 }
 
-# uiautomator kadang gagal ("could not get idle state") pada layar yang terus beranimasi, maka dicoba beberapa kali
+# Dialog sistem "<aplikasi> isn't responding" / "keeps stopping" menutupi seluruh layar dan membuat pencarian simpul mana pun
+# gagal. Di CI hal ini terjadi pada aplikasi LAIN (Pixel Launcher bawaan emulator) selagi emulator baru booting dan CPU-nya
+# penuh; onboarding aplikasi ini lalu tak pernah bisa diselesaikan (terbukti di run CI 40707300168). Pengguna sungguhan akan
+# menutup dialog itu, jadi skrip pun begitu ("Wait" untuk ANR, "Close app" untuk crash; lihat ui_dialog.py). Ini TIDAK
+# menutupi masalah aplikasi ini: ANR/crash paket ini tetap dinilai dari logcat (report_anrs, scan_log), dan dialog yang
+# judulnya memuat nama aplikasi ini dicatat sebagai PERINGATAN.
+APP_LABEL="TV Launcher"
+DIALOGS_CLOSED=0
+# dismiss_error_dialog <berkas ui xml>: status 0 bila layar itu dialog galat sistem dan tombolnya sudah diketuk, 1 bila bukan
+dismiss_error_dialog() {
+  local res title btn cx cy
+  res=$(python3 -I "$HERE/ui_dialog.py" "$1") || return 1
+  IFS=$'\t' read -r title btn cx cy <<< "$res"
+  DIALOGS_CLOSED=$((DIALOGS_CLOSED + 1))
+  case "$title" in
+    "$APP_LABEL"*) warn "dialog sistem milik aplikasi ini: \"$title\"; tombol \"$btn\" diketuk (ANR/crash-nya dinilai dari logcat)" ;;
+    *) say "dialog sistem menutupi layar: \"$title\" (aplikasi lain, bukan yang diuji); tombol \"$btn\" diketuk" ;;
+  esac
+  adb shell input tap "$cx" "$cy"
+  return 0
+}
+
+# uiautomator kadang gagal ("could not get idle state") pada layar yang terus beranimasi, maka dicoba beberapa kali.
+# Dialog galat sistem yang menutupi layar ditutup dulu (paling banyak 4 kali per pembacaan), lalu layar dibaca ulang.
 dump_ui() {
-  local f="$OUT/ui_$1.xml" i
-  for i in 1 2 3; do
+  local f="$OUT/ui_$1.xml" tries=0 dialogs=0
+  while [ "$tries" -lt 3 ]; do
+    tries=$((tries + 1))
     if timeout 45 adb shell uiautomator dump /sdcard/ui_dump.xml 2>&1 | grep -q 'dumped to'; then
-      if adb pull /sdcard/ui_dump.xml "$f" > /dev/null 2>&1 && [ -s "$f" ]; then return 0; fi
+      if adb pull /sdcard/ui_dump.xml "$f" > /dev/null 2>&1 && [ -s "$f" ]; then
+        if [ "$dialogs" -lt 4 ] && dismiss_error_dialog "$f"; then
+          dialogs=$((dialogs + 1)); tries=$((tries - 1)); sleep 2
+          continue
+        fi
+        return 0
+      fi
     fi
     sleep 2
   done
@@ -456,9 +494,10 @@ fi
 step "Buka aplikasi (onboarding pertama-buka)"
 launch_home release || exit 0
 shot "pertama_buka"
-first_run release
+if first_run release; then FIRST_TAP=1; fi
 if wait_node beranda_siap '^Tombol daya TV$' 45; then
   ok "beranda tampil dan terbaca (Tombol daya TV ada)"
+  if [ "$FIRST_TAP" -eq 1 ]; then ONBOARDED=1; fi
 else
   warn "beranda belum menampilkan 'Tombol daya TV' dalam 45 detik; layar depan: $(top_desc)"
 fi
@@ -814,10 +853,22 @@ if alive; then warn "proses tidak bisa dimatikan; uji kematian proses dilewati";
     sleep 6
   fi
   shot "setelah_proses_dimatikan"
+  # Ketahanan pengaturan hanya bisa dinilai bila onboarding memang pernah selesai pada uji ini (ONBOARDED=1). Tanpa itu tidak ada
+  # pengaturan yang bisa hilang, jadi "onboarding muncul lagi" tidak membuktikan apa pun tentang DataStore/JSON dan hasil hijau
+  # akan menipu: dinilai GAGAL sebagai "tidak terverifikasi" (rilis tidak terbit; jalankan ulang).
+  unverified="ketahanan pengaturan setelah proses dimatikan TIDAK TERVERIFIKASI: onboarding tidak pernah selesai pada uji ini (tombol Mulai tak terketuk atau beranda tak terbaca)"
   if top_is Onboarding; then
-    fail "onboarding muncul lagi setelah proses dimatikan: pengaturan tidak bertahan (DataStore/JSON)"
+    if [ "$ONBOARDED" -eq 1 ]; then
+      fail "onboarding muncul lagi setelah proses dimatikan: pengaturan tidak bertahan (DataStore/JSON)"
+    else
+      fail "$unverified"
+    fi
   elif top_is_home; then
-    ok "beranda terbuka tanpa onboarding: pengaturan bertahan setelah proses dimatikan"
+    if [ "$ONBOARDED" -eq 1 ]; then
+      ok "beranda terbuka tanpa onboarding: pengaturan bertahan setelah proses dimatikan"
+    else
+      fail "$unverified"
+    fi
   else
     warn "layar depan tidak dikenali setelah kill: $(top_desc)"
   fi
