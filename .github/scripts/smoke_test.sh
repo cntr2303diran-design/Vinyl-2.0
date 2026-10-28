@@ -141,9 +141,11 @@ scroll_tap() {
   return 1
 }
 
-# node_checked <nama> <regex>: atribut "checked" simpul pertama yang cocok di ui_<nama>.xml, yang baru dibuat oleh find_node
+# node_checked <nama> <regex>: atribut "checked" sakelar yang labelnya cocok di ui_<nama>.xml, yang baru dibuat oleh find_node
 # ("true" / "false"; kosong bila tak terbaca). Tidak membaca layar sendiri, jadi aman dipanggil di dalam $( ).
-node_checked() { python3 -I "$HERE/ui_attr.py" "$OUT/ui_$1.xml" "$2" checked 2>/dev/null; }
+# --baris: di pohon aksesibilitas, baris sakelar di editor adalah simpul checkable tanpa teks dan labelnya simpul TextView
+# lain di dalam batasnya (terbukti di dump emulator), jadi nilainya dibaca dari baris itu, bukan dari simpul berlabel.
+node_checked() { python3 -I "$HERE/ui_attr.py" "$OUT/ui_$1.xml" "$2" checked --baris 2>/dev/null; }
 
 # open_editor <nama>: tekan lama di titik kosong layar utama sampai editor "Edit beranda" terbuka (status 0; 1 bila tidak)
 open_editor() {
@@ -574,7 +576,7 @@ check_alive "setelah lampu ruangan"
 # Satu kaset game: laci -> ketuk kaset -> TV menampilkan game -> main sebentar -> keluarkan kaset lagi.
 #   <kunci> penanda nama berkas, <judul> nama di label kaset (Ular / Bata), <gaya> usap = Ular, palet = Bata
 play_game() {
-  local key=$1 title=$2 style=$3 d
+  local key=$1 title=$2 style=$3 d paused tries
   ensure_front "game_$key" > /dev/null
   goto_room "game_$key" || return 1
   if ! tap_wait "laci_$key" '^Laci kaset' 20; then
@@ -601,8 +603,18 @@ play_game() {
         adb shell input swipe $((GX + GW / 4)) "$GY" $((GX - GW / 4)) "$GY" 200; sleep 0.5
       done
       shot "game_${key}_jalan"
-      # Jeda lewat tombol deck (menguji aksi deck sekaligus menyimpan rekor)
-      if tap_node "deck_${key}_jeda" '^Jeda game$'; then
+      # Jeda lewat tombol deck (menguji aksi deck sekaligus menyimpan rekor). Selama usapan bola bisa saja lolos (nyawa
+      # berkurang): papan lalu menunggu luncuran dan tombol deck berbunyi 'Mulai game'. Itu keadaan sah (terlihat di
+      # tangkapan layar uji emulator), bukan galat: bola diluncurkan lagi lewat tombol yang sama, lalu dijeda.
+      paused=0
+      for tries in 1 2; do
+        if tap_node "deck_${key}_jeda_$tries" '^Jeda game$'; then paused=1; break; fi
+        if find_node "deck_${key}_menunggu_$tries" '^Mulai game$'; then
+          ok "$title menunggu luncuran (bola lolos selama usapan); diluncurkan lagi lewat tombol deck"
+          tap_node "deck_${key}_luncur_$tries" '^Mulai game$' > /dev/null; sleep 1.2
+        fi
+      done
+      if [ "$paused" -eq 1 ]; then
         sleep 2; shot "game_${key}_jeda"
         expect_node "deck_${key}_jeda_cek" '^Mulai game$' "$title dijeda lewat tombol deck" "tombol deck tidak berubah menjadi 'Mulai game' setelah dijeda"
         # Bola yang sempat memecahkan bata menaikkan rekor; rekor tampil di label kaset di deck ("Kaset: BATA, Game · rekor N")
