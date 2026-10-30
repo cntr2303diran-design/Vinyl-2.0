@@ -46,4 +46,14 @@ class PosterChoiceTest {
         assertEquals(1f to 1f, PosterChoice.cropFraction(0, 10, 5f, 5f))
         assertEquals(1f to 1f, PosterChoice.cropFraction(10, 10, 0f, 5f))
     }
+
+    @Test
+    fun exifOrientationMapsToUprightRotation() {
+        assertEquals(0, PosterChoice.exifRotation(1))
+        assertEquals(180, PosterChoice.exifRotation(3))
+        assertEquals(90, PosterChoice.exifRotation(6))
+        assertEquals(270, PosterChoice.exifRotation(8))
+        // cermin, tak dikenal, atau di luar rentang: dibiarkan apa adanya
+        for (o in listOf(0, 2, 4, 5, 7, 9, -1, 99)) assertEquals("o=$o", 0, PosterChoice.exifRotation(o))
+    }
 }

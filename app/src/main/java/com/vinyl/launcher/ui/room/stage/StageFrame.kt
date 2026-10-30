@@ -1,6 +1,9 @@
 package com.vinyl.launcher.ui.room.stage
 
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Matrix
+import android.media.ExifInterface
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
@@ -46,7 +49,14 @@ internal fun rememberPosterPhoto(path: String?): ImageBitmap? {
                 BitmapFactory.decodeFile(path, bounds)
                 var sample = 1
                 while (maxOf(bounds.outWidth, bounds.outHeight) / (sample * 2) >= PHOTO_MAX_PX) sample *= 2
-                BitmapFactory.decodeFile(path, BitmapFactory.Options().apply { inSampleSize = sample })?.asImageBitmap()
+                val raw = BitmapFactory.decodeFile(path, BitmapFactory.Options().apply { inSampleSize = sample }) ?: return@runCatching null
+                // Foto kamera sering disimpan miring dengan tag EXIF; putar supaya tegak
+                val turn = PosterChoice.exifRotation(ExifInterface(path).getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL))
+                val upright = if (turn == 0) raw else {
+                    Bitmap.createBitmap(raw, 0, 0, raw.width, raw.height, Matrix().apply { postRotate(turn.toFloat()) }, true)
+                        .also { if (it !== raw) raw.recycle() }
+                }
+                upright.asImageBitmap()
             }.getOrNull()
         }
     }
