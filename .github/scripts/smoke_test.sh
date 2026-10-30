@@ -271,16 +271,35 @@ wait_boot() {
 }
 
 # ---------- ANR, mati-nya proses, logcat ----------
+# Jejak tumpukan semua thread saat ANR (ditulis sistem ke /data/anr; perlu root, emulator google_apis mengizinkannya):
+# memperlihatkan apa yang dikerjakan thread utama selama macet. Disalin (sekali) ke folder keluaran supaya ikut ke branch log.
+ANR_TRACES_SAVED=0
+save_anr_traces() {
+  [ "$ANR_TRACES_SAVED" -eq 1 ] && return 0
+  ANR_TRACES_SAVED=1
+  adb root > /dev/null 2>&1
+  adb wait-for-device
+  mkdir -p "$OUT/anr"
+  local f
+  for f in $(adbs "ls /data/anr 2>/dev/null"); do
+    case "$f" in
+      anr_*) adb pull "/data/anr/$f" "$OUT/anr/$f" > /dev/null 2>&1 && gzip -9 "$OUT/anr/$f" 2>/dev/null ;;
+    esac
+  done
+  say "jejak ANR disalin: $(ls "$OUT/anr" 2>/dev/null | tr '\n' ' ')"
+}
+
 # report_anrs <berkas logcat> <label>: tiap ANR paket ini dilaporkan sekali (ErrorId). GAGAL hanya bila emulator tenang.
 ANR_PARSED=0   # jumlah ANR paket ini yang terbaca pada pemanggilan report_anrs terakhir (baru maupun yang sudah dilaporkan)
 report_anrs() {
-  local id load reason
+  local id load reason new_anr=0
   ANR_PARSED=0
   while IFS=$'\t' read -r id load reason; do
     [ -z "$id" ] && continue
     ANR_PARSED=$((ANR_PARSED + 1))
     case "$ANR_SEEN" in *" $id "*) continue ;; esac
     ANR_SEEN="$ANR_SEEN$id "
+    new_anr=1
     load=${load:-?}
     if [ "$SETTLED" -ne 1 ]; then
       warn "ANR di $PKG ($2) saat emulator belum sempat tenang (load $load, $NPROC inti): $reason"
@@ -290,6 +309,8 @@ report_anrs() {
       fail "ANR di $PKG ($2) pada emulator yang tenang (load $load, $NPROC inti): $reason"
     fi
   done < <(python3 -I "$HERE/anr_scan.py" "$1" "$PKG")
+  # Sesudah loop (bukan di dalamnya): perintah adb membaca stdin dan akan menelan sisa baris ANR yang belum dibaca
+  if [ "$new_anr" -eq 1 ]; then save_anr_traces < /dev/null; fi
 }
 
 # Proses launcher mati tiba-tiba: cari tahu sebabnya (crash = GAGAL, ANR = aturan ANR, selain itu GAGAL)
@@ -928,6 +949,16 @@ if alive; then
 fi
 if alive; then warn "proses tidak bisa dimatikan; uji kematian proses dilewati"; else
   ok "proses dimatikan"
+  # Perangkat nyata membuka launcher dengan kode yang sudah dikompilasi (profil dasar, dexopt latar belakang). Emulator CI
+  # menjalankan semuanya di interpreter: komposisi pertama beranda memakan ±6 dtk di thread utama, jadi FocusEvent pertama
+  # menunggu 4,4-5,5 dtk dan sering melewati batas ANR 5 dtk. Pada kode sebelum perubahan data pribadi pun nilainya 4,8 dtk
+  # (garis dasar); sesudahnya 5,1-5,5 dtk pada 3 dari 5 run, sehingga uji ini bergantung pada jitter emulator, bukan pada
+  # kode. Karena itu aplikasi dikompilasi (speed) selagi mati. ANR yang sungguhan (thread utama macet di kode terkompilasi)
+  # tetap GAGAL; yang tidak lagi dihitung hanyalah macet gara-gara interpreter.
+  say "kompilasi sebelum dibuka dari nol (speed)"
+  adbs cmd package compile -f -m speed "$PKG" | tail -3 | tee -a "$OUT/log.txt"
+  adbs dumpsys package dexopt | grep -A2 "\[$PKG\]" | head -4 | tee -a "$OUT/log.txt"
+  settle 90 > /dev/null || true
   # Tombol Home: sistem membuka launcher default dari nol, seperti saat pengguna kembali ke beranda
   adb shell input keyevent KEYCODE_HOME
   for i in 1 2 3 4 5 6 7 8; do

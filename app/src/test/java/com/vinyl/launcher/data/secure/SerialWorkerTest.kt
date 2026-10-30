@@ -44,6 +44,32 @@ class SerialWorkerTest {
     }
 
     @Test
+    fun theDefaultWorkerRunsOnItsOwnLowestPriorityDaemonThread() {
+        // Pekerjaan Keystore tidak mendesak: tidak boleh berebut CPU dengan thread utama saat beranda pertama digambar
+        val worker = SerialWorker()
+        val where = arrayOfNulls<Thread>(1)
+        worker.post { where[0] = Thread.currentThread() }
+        worker.drain()
+        val thread = where[0]!!
+        assertEquals("vinyl-secure", thread.name)
+        assertEquals(Thread.MIN_PRIORITY, thread.priority)
+        assertTrue(thread.isDaemon)
+    }
+
+    @Test
+    fun eachDefaultWorkerHasItsOwnThread() {
+        val a = SerialWorker()
+        val b = SerialWorker()
+        val threads = arrayOfNulls<Thread>(2)
+        a.post { threads[0] = Thread.currentThread() }
+        b.post { threads[1] = Thread.currentThread() }
+        a.drain()
+        b.drain()
+        // Satu antrean yang macet (mis. Keystore tidak menjawab) tidak menahan antrean lain
+        assertNotSame(threads[0], threads[1])
+    }
+
+    @Test
     fun aFailingJobDoesNotStopTheQueue() {
         val worker = SerialWorker()
         val after = AtomicBoolean(false)
