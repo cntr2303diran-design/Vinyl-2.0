@@ -84,6 +84,7 @@ import com.vinyl.launcher.data.CassetteShell
 import com.vinyl.launcher.data.KnobStyle
 import com.vinyl.launcher.data.ReelSpeed
 import com.vinyl.launcher.data.RetroSettings
+import com.vinyl.launcher.data.RoomEra
 import com.vinyl.launcher.data.RoomTone
 import com.vinyl.launcher.data.OsdSettings
 import com.vinyl.launcher.data.ProjectorSettings
@@ -423,6 +424,12 @@ fun HomeSectionControls(
             SectionTitle("Dinding ruang")
             ControlCard {
                 ChipRow("Ruang", RoomTone.entries, retro.room, { it.label() }) { onRetro(retro.copy(room = it)) }
+                ChipRow("Era", RoomEra.entries, retro.era, { it.label() }) { onRetro(retro.copy(era = it)) }
+                Text(
+                    "Era mengganti warna dinding, meja, dan lantai sekaligus. Dinding Warna/Gradien pilihan Anda tetap menang atas era.",
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 6.dp),
+                )
                 BackgroundControls(home.background, allowGradient = true, pickerName = "home") { onChange(home.copy(background = it)) }
                 Text(
                     "Album: cahaya layar mengikuti warna cover. Warna/gradien: dinding diwarnai. Gambar: gambar Anda diproyeksikan samar di dinding.",
@@ -575,6 +582,13 @@ fun AlbumMotion.label() = when (this) {
 fun RoomTone.label() = when (this) {
     RoomTone.DIM -> "Gelap"
     RoomTone.LIGHT -> "Terang"
+}
+
+fun RoomEra.label() = when (this) {
+    RoomEra.DEFAULT -> "Bawaan"
+    RoomEra.SEVENTIES -> "70-an"
+    RoomEra.EIGHTIES -> "80-an"
+    RoomEra.NINETIES -> "90-an"
 }
 
 fun VfdColor.label() = when (this) {

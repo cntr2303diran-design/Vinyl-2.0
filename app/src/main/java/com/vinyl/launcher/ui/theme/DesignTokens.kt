@@ -1,5 +1,7 @@
 package com.vinyl.launcher.ui.theme
 
+import com.vinyl.launcher.data.RoomEra
+
 /*
  * Design token Vinyl — SATU file untuk warna, spacing, radius, gerak, dan batas aksesibilitas.
  * Murni Kotlin (tanpa Compose) supaya nilainya bisa diuji unit; Theme.kt yang menerjemahkannya ke Compose.
@@ -197,6 +199,34 @@ object Tokens {
         const val GLOW = 0xFFFFC870L
     }
 
+    /**
+     * Palet ruangan per era (Tahap A "ruang hidup"). Satu [EraRoom] = warna dinding (terang di tengah, gelap di tepi),
+     * lantai, tiga warna kayu/plastik meja, dan dua warna aksen hiasan dinding. Setiap era punya versi gelap (malam) dan
+     * terang (siang) supaya lampu dinding tetap berfungsi. Teks tidak pernah diletakkan langsung di atas warna ini
+     * (teks OSD selalu di atas peredam hitam, benda di atas pelatnya sendiri); yang dijaga EraPaletteTest: teks OSD tetap
+     * >= 4,5:1 di atas dinding era, kap lampu terbaca >= 3:1, dan dinding berbeda dari lantai.
+     * [room] bernilai null untuk DEFAULT: tampilan lama (Vhs) dipakai apa adanya.
+     */
+    object Era {
+        // 70-an: cokelat dan oranye hangat, panel kayu gelap
+        val SEVENTIES_DIM = EraRoom(0xFF4A2E1AL, 0xFF1F1209L, 0xFF2A1A0EL, 0xFF9A5B2AL, 0xFF6E3F1CL, 0xFF3A200FL, 0xFFD9822BL, 0xFFA4501AL)
+        val SEVENTIES_LIGHT = EraRoom(0xFFE8C99AL, 0xFFB98A55L, 0xFF9C6B3EL, 0xFF8A4F22L, 0xFF6A3A18L, 0xFF3A200FL, 0xFFC8651BL, 0xFF8A4A1AL)
+        // 80-an: ungu malam dengan neon magenta dan cyan, lak gelap
+        val EIGHTIES_DIM = EraRoom(0xFF24104AL, 0xFF07030FL, 0xFF08040FL, 0xFF4B3F8AL, 0xFF332B66L, 0xFF160F2EL, 0xFFFF2BD6L, 0xFF22E5FFL)
+        val EIGHTIES_LIGHT = EraRoom(0xFFCFC2F2L, 0xFF8E7DC9L, 0xFF6F5FB0L, 0xFF5A4C99L, 0xFF42376FL, 0xFF271F47L, 0xFFD614B0L, 0xFF0AA9C4L)
+        // 90-an: abu-abu pastel, plastik matte dengan aksen mint dan merah muda
+        val NINETIES_DIM = EraRoom(0xFF4A4D55L, 0xFF22242AL, 0xFF1D1E22L, 0xFF8E919AL, 0xFF6C6F78L, 0xFF40424AL, 0xFF9EC5C0L, 0xFFE2B6C8L)
+        val NINETIES_LIGHT = EraRoom(0xFFDADCE2L, 0xFFA9ACB6L, 0xFF9396A0L, 0xFFA7AAB3L, 0xFF858892L, 0xFF555861L, 0xFF6FA8A0L, 0xFFC98BA6L)
+
+        /** Palet era untuk [era] pada ruang gelap ([dim] true) atau terang; null untuk DEFAULT. */
+        fun room(era: RoomEra, dim: Boolean): EraRoom? = when (era) {
+            RoomEra.DEFAULT -> null
+            RoomEra.SEVENTIES -> if (dim) SEVENTIES_DIM else SEVENTIES_LIGHT
+            RoomEra.EIGHTIES -> if (dim) EIGHTIES_DIM else EIGHTIES_LIGHT
+            RoomEra.NINETIES -> if (dim) NINETIES_DIM else NINETIES_LIGHT
+        }
+    }
+
     /** Jarak dalam dp. Kelipatan 4 supaya ritme tata letak konsisten. */
     object Space {
         const val XS = 4
@@ -299,3 +329,10 @@ object Tokens {
         const val MAX_FONT_SCALE = 2.0f
     }
 }
+
+/** Palet satu ruangan era (lihat [Tokens.Era]); semua warna ARGB buram. */
+class EraRoom(
+    val wallLit: Long, val wallDark: Long, val floor: Long,
+    val woodLight: Long, val woodMid: Long, val woodDark: Long,
+    val accent: Long, val accent2: Long,
+)

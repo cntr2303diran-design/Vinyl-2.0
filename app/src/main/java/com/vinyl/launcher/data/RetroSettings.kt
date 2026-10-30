@@ -39,6 +39,15 @@ enum class AlbumMotion { OFF, ROTATE, ZOOM, PERSPECTIVE, ANALOG }
 @Serializable
 enum class RoomTone { LIGHT, DIM }
 
+/**
+ * Era dekor ruangan: satu pilihan yang mengganti palet dinding, lantai, kayu meja, dan hiasan dinding sekaligus
+ * (palet dan hiasannya di [com.vinyl.launcher.ui.theme.Tokens.Era]). DEFAULT = tampilan lama tanpa perubahan.
+ * Dinding Warna/Gradien pilihan pengguna tetap menang atas era (hanya meja, lantai, dan hiasan yang ikut era).
+ * Nama konstanta disimpan apa adanya di berkas pengaturan dan cadangan: jangan diganti nama.
+ */
+@Serializable
+enum class RoomEra { DEFAULT, SEVENTIES, EIGHTIES, NINETIES }
+
 /** Warna karakter VFD. */
 @Serializable
 enum class VfdColor { AMBER, GREEN }
@@ -105,4 +114,6 @@ data class RetroSettings(
     val rememberTvPower: Boolean = false,
     val projector: ProjectorSettings = ProjectorSettings(),
     val osd: OsdSettings = OsdSettings(),
+    /** Era dekor ruangan (lihat [RoomEra]). Field baru: dokumen lama tanpa kunci ini terbaca sebagai DEFAULT. */
+    val era: RoomEra = RoomEra.DEFAULT,
 )

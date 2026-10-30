@@ -137,7 +137,7 @@ fun RoomStage(
     val screenOn = mode != TvScreenMode.STANDBY && !tvOff
     val screenGlow = if (np.hasTrack) accent else Color(0xFFBFD4FF)
     val material = tvMaterial(retro.tvBody)
-    val pal = stagePalette(tone, wallColor)
+    val pal = stagePalette(tone, wallColor, retro.era, userWall = wallColor != null || wallGradient != null)
     val projectionGlow = if (projection != null) {
         val c = (projection as? ProjectionContent.Tint)?.color ?: accent
         c.copy(alpha = 0.30f * retro.projector.brightness.coerceIn(0.1f, 1f))

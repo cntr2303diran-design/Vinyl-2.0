@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.translate
+import com.vinyl.launcher.data.RoomEra
 import com.vinyl.launcher.data.RoomTone
 import com.vinyl.launcher.ui.room.TvMaterial
 import com.vinyl.launcher.ui.room.woodGrain
@@ -42,13 +43,29 @@ private fun DrawScope.quadPath(points: List<V3>, f: StageLayout.Frame): Path {
 }
 
 /** Warna ruangan untuk nada pilihan (gelap = malam VHS; terang = dinding putih hangat versi lama). */
-internal data class StagePalette(val wallLit: Color, val wallDark: Color, val floor: Color, val woodLight: Color, val woodMid: Color, val woodDark: Color)
+internal data class StagePalette(
+    val wallLit: Color, val wallDark: Color, val floor: Color, val woodLight: Color, val woodMid: Color, val woodDark: Color,
+    /** Aksen hiasan dinding era; hanya dipakai bila [era] bukan DEFAULT. */
+    val accent: Color = Color.Transparent, val accent2: Color = Color.Transparent,
+    /** Era yang menentukan hiasan dinding (DEFAULT bila dinding dipilih pengguna: hiasan tidak menimpa pilihannya). */
+    val era: RoomEra = RoomEra.DEFAULT,
+)
 
-internal fun stagePalette(tone: RoomTone, wallColor: Color?): StagePalette {
-    val base = if (tone == RoomTone.LIGHT) {
-        StagePalette(Color(0xFFE9E5DD), Color(0xFFBDB7AC), Color(0xFFB4ADA1), Color(0xFF8A6446), Color(0xFF6C4C33), Color(0xFF3F2B1C))
-    } else {
-        StagePalette(
+/**
+ * Palet panggung. [era] mengganti palet dinding, lantai, dan meja ([Tokens.Era]); [wallColor] pilihan pengguna (dinding
+ * Warna) tetap menang atas warna dinding era. [userWall] true bila dinding Warna/Gradien pilihan pengguna dipakai: meja
+ * dan lantai tetap mengikuti era, tetapi hiasan dinding era tidak digambar di atas pilihan itu.
+ */
+internal fun stagePalette(tone: RoomTone, wallColor: Color?, era: RoomEra = RoomEra.DEFAULT, userWall: Boolean = wallColor != null): StagePalette {
+    val e = Tokens.Era.room(era, dim = tone != RoomTone.LIGHT)
+    val base = when {
+        e != null -> StagePalette(
+            Color(e.wallLit), Color(e.wallDark), Color(e.floor), Color(e.woodLight), Color(e.woodMid), Color(e.woodDark),
+            Color(e.accent), Color(e.accent2), if (userWall) RoomEra.DEFAULT else era,
+        )
+        tone == RoomTone.LIGHT ->
+            StagePalette(Color(0xFFE9E5DD), Color(0xFFBDB7AC), Color(0xFFB4ADA1), Color(0xFF8A6446), Color(0xFF6C4C33), Color(0xFF3F2B1C))
+        else -> StagePalette(
             Color(Tokens.Vhs.WALL_LIT), Color(Tokens.Vhs.WALL_DARK), Color(Tokens.Vhs.FLOOR),
             Color(Tokens.Vhs.WOOD_LIGHT), Color(Tokens.Vhs.WOOD_MID), Color(Tokens.Vhs.WOOD_DARK),
         )
@@ -91,7 +108,13 @@ internal fun DrawScope.drawStageBackdrop(
         drawRect(Brush.radialGradient(listOf(pal.wallLit, pal.wallDark), center = Offset(tv.center.x, proj.center.y), radius = maxOf(w, h) * 0.75f))
     }
     // Panel kayu tegak: alur gelap + tepi terang tipis, papan selang-seling sedikit lebih gelap
-    if (paneling) {
+    // (70-an selalu berpanel kayu; 80-an dan 90-an berdinding polos dengan hiasannya sendiri)
+    val panels = when (pal.era) {
+        RoomEra.DEFAULT -> paneling
+        RoomEra.SEVENTIES -> true
+        RoomEra.EIGHTIES, RoomEra.NINETIES -> false
+    }
+    if (panels) {
         val s = f.camera.scaleAt(StageLayout.WALL_Z) * d
         val step = StageLayout.PANEL_W * s
         if (step > 6f) {
@@ -110,6 +133,7 @@ internal fun DrawScope.drawStageBackdrop(
             }
         }
     }
+    drawEraDecor(pal, f)
     // Cahaya proyeksi memantul ke dinding di sekitar gambar (halo lembut)
     if (projectionGlow.alpha > 0f) {
         val r = maxOf(proj.width, proj.height) * 0.85f
@@ -140,6 +164,43 @@ internal fun DrawScope.drawStageBackdrop(
     )
     if (carpet != null && floorH > 0f) drawRect(carpet, topLeft = Offset(0f, floorY), size = Size(w, floorH), alpha = 0.5f)
     drawLine(Color.Black.copy(alpha = 0.6f), Offset(0f, floorY), Offset(w, floorY), strokeWidth = 1.5f * d)
+}
+
+/**
+ * Hiasan dinding era, digambar di atas dinding dan panel, di bawah cahaya proyeksi (jadi cahaya tetap menyinarinya):
+ * 70-an = dua garis oranye-cokelat melintang setinggi sandaran kursi; 80-an = kisi neon tipis dan garis neon cyan di atas
+ * lis dinding; 90-an = pita pastel mint dan merah muda. Hanya sedikit garis (murah digambar) dan tanpa gerak.
+ */
+private fun DrawScope.drawEraDecor(pal: StagePalette, f: StageLayout.Frame) {
+    if (pal.era == RoomEra.DEFAULT) return
+    val d = density
+    val w = size.width
+    val baseY = f.baseboardTop * d
+    when (pal.era) {
+        RoomEra.DEFAULT -> Unit
+        RoomEra.SEVENTIES -> {
+            val y = baseY * 0.66f
+            drawRect(pal.accent.copy(alpha = 0.85f), Offset(0f, y), Size(w, 6f * d))
+            drawRect(pal.accent2.copy(alpha = 0.85f), Offset(0f, y + 9f * d), Size(w, 3f * d))
+        }
+        RoomEra.EIGHTIES -> {
+            // Kisi: garis tegak setiap 28 dp dan garis datar yang makin rapat ke lis dinding (perspektif sederhana)
+            val step = 28f * d
+            var x = 0f
+            while (x <= w) { drawLine(pal.accent.copy(alpha = 0.16f), Offset(x, 0f), Offset(x, baseY), strokeWidth = 1f * d); x += step }
+            var y = baseY
+            var gap = 10f * d
+            while (y > 0f) { drawLine(pal.accent2.copy(alpha = 0.14f), Offset(0f, y), Offset(w, y), strokeWidth = 1f * d); y -= gap; gap *= 1.35f }
+            // Garis neon di atas lis dinding: pendar lebar dan inti tipis
+            drawLine(pal.accent2.copy(alpha = 0.22f), Offset(0f, baseY), Offset(w, baseY), strokeWidth = 7f * d)
+            drawLine(pal.accent2.copy(alpha = 0.95f), Offset(0f, baseY), Offset(w, baseY), strokeWidth = 2f * d)
+        }
+        RoomEra.NINETIES -> {
+            val y = baseY * 0.58f
+            drawRect(pal.accent.copy(alpha = 0.9f), Offset(0f, y), Size(w, 7f * d))
+            drawRect(pal.accent2.copy(alpha = 0.9f), Offset(0f, y + 11f * d), Size(w, 3f * d))
+        }
+    }
 }
 
 /**
