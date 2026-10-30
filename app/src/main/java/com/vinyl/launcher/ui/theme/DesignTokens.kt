@@ -227,6 +227,25 @@ object Tokens {
         }
     }
 
+    /**
+     * Benda tambahan di ruangan (jam dinding, radio, telepon putar). Tulisan di benda selalu di atas pelatnya sendiri:
+     * angka jam dan angka telepon berupa tinta gelap di atas muka krem; dibuktikan PropPaletteTest.
+     */
+    object Props {
+        const val CLOCK_FACE = 0xFFF1E8D4L
+        const val INK = 0xFF1B1410L
+        const val BAKELITE = 0xFF231E1CL
+        const val BAKELITE_DARK = 0xFF0F0C0BL
+        const val SILVER = 0xFFC9C6BDL
+        const val SILVER_DARK = 0xFF8C897FL
+        /** Pelat angka telepon di balik cakram jari. */
+        const val DIAL_PLATE = 0xFFE9E0CCL
+        /** Jarum penala radio dan lampu timer tidur menyala. */
+        const val NEEDLE = 0xFFB3261EL
+        const val LED_ON = 0xFFFFB347L
+        const val LED_OFF = 0xFF4A3A2AL
+    }
+
     /** Jarak dalam dp. Kelipatan 4 supaya ritme tata letak konsisten. */
     object Space {
         const val XS = 4

@@ -76,6 +76,25 @@ class StageActions(
     val tvActions: List<Pair<String, () -> Unit>> = emptyList(),
 )
 
+/**
+ * Aksi dan keadaan benda tambahan di ruangan (jam dinding, radio, telepon putar). Null pada RoomStage = benda-benda itu
+ * tidak dipasang. Tiap benda hanya tampil bila ada tempat bersih untuknya ([StageLayout.Frame.props]) dan saklarnya
+ * ([com.vinyl.launcher.data.RoomPropSettings]) menyala.
+ */
+class PropActions(
+    val onClockAlarms: () -> Unit = {},
+    val onClockTimers: () -> Unit = {},
+    val onRadioPlay: () -> Unit = {},
+    val onRadioSleep: () -> Unit = {},
+    /** Timer tidur sedang berjalan (lampu radio menyala). */
+    val radioSleepActive: Boolean = false,
+    /** Angka yang diputar di telepon (0–9). */
+    val onDial: (Int) -> Unit = {},
+    val onOpenPhone: () -> Unit = {},
+    /** Nama kontak pintasan per angka 1–9 yang sudah diisi. */
+    val phoneFavorites: Map<Int, String> = emptyMap(),
+)
+
 /** Keadaan laci kaset di meja: terbuka atau tidak, warna kaset yang mengintip, dan jumlah kasetnya. */
 @Immutable
 class StageDrawerInfo(val open: Boolean, val peek: List<Color>, val count: Int)
@@ -138,6 +157,10 @@ fun RoomStage(
      * tingkatnya sendiri dari [ProjectorSettings.light].
      */
     lightOk: Boolean = true,
+    /** Benda tambahan di ruangan; null = tidak dipasang. */
+    propActions: PropActions? = null,
+    /** Waktu tetap untuk jam dinding (tangkapan layar); null = waktu perangkat. */
+    clockTime: java.time.LocalTime? = null,
     /** Isi tambahan di layar TV (subtitel lirik). Lambda terakhir. */
     screenExtra: @Composable () -> Unit = {},
 ) {
@@ -304,6 +327,26 @@ fun RoomStage(
                 f, pal, open = drawer.open, peek = drawer.peek, tapeOut = tape != DeckTape.MUSIC,
                 motionAllowed = motionAllowed && !editing, enabled = !editing, count = drawer.count, onToggle = actions.onToggleDrawer,
             )
+        }
+
+        // ---------- Benda tambahan: jam dinding, radio, telepon putar (hanya yang punya tempat bersih dan saklarnya menyala)
+        if (propActions != null) {
+            val look = remember(pal) { propLook(pal) }
+            f.props[Prop.CLOCK]?.takeIf { retro.props.clock }?.let {
+                StageClock(it, look, enabled = !editing, fixed = clockTime, onOpenAlarms = propActions.onClockAlarms, onOpenTimers = propActions.onClockTimers)
+            }
+            f.props[Prop.RADIO]?.takeIf { retro.props.radio }?.let {
+                StageRadio(
+                    it, look, enabled = !editing, sleepActive = propActions.radioSleepActive, motionAllowed = motionAllowed && !editing,
+                    onPlayRandom = propActions.onRadioPlay, onSleep = propActions.onRadioSleep,
+                )
+            }
+            f.props[Prop.PHONE]?.takeIf { retro.props.phone }?.let {
+                StagePhone(
+                    it, look, enabled = !editing, motionAllowed = motionAllowed && !editing, favorites = propActions.phoneFavorites,
+                    onDial = propActions.onDial, onOpenPhone = propActions.onOpenPhone,
+                )
+            }
         }
 
         // ---------- Lampu dinding: ketuk = ruang terang/gelap (hanya bila ada tempat bersih dan aksinya dipasang)

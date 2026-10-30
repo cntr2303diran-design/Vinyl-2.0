@@ -116,6 +116,11 @@ object StageLayout {
          * dan laci. Boleh menimpa gambar proyeksi, yang hanya cahaya di dinding.
          */
         val lamp: SRect?,
+        /**
+         * Tempat benda tambahan (jam dinding, radio, telepon putar), hanya yang muat; lihat [StageProps]. Benda yang tidak
+         * ada di sini tidak digambar di ruangan, tetapi fungsinya tetap bisa dipakai dari Pengaturan → Benda ruangan.
+         */
+        val props: Map<Prop, PropSpot>,
         /** Garis temu dinding–lantai dan tepi atas lis dinding (y layar). */
         val floorLine: Float,
         val baseboardTop: Float,
@@ -243,13 +248,20 @@ object StageLayout {
         val floorLine = cam.project(V3(0f, 0f, WALL_Z)).y
         val baseboardTop = cam.project(V3(0f, BASEBOARD_H, WALL_Z)).y
         val lamp = lampRect(w, OSD_TOP_LEFT_BOTTOM + topInset, osdY, tvFront, cassetteBounds, standFront, drawerHit, deck)
+        // Benda tambahan: TV dihitung termasuk atapnya (yang tampak di atas muka depan karena mata kamera lebih tinggi)
+        val tvRoof = SRect.around(tv.corners().map(cam::project))
+        val tvAll = SRect(minOf(tvRoof.left, tvFront.left), minOf(tvRoof.top, tvFront.top), maxOf(tvRoof.right, tvFront.right), maxOf(tvRoof.bottom, tvFront.bottom))
+        val props = StageProps.place(
+            w, OSD_TOP_LEFT_BOTTOM + topInset, osdY, cam, standHalfW, tvAll, cassetteBounds,
+            listOfNotNull(drawerHit, deck, shelf, lamp),
+        )
 
         return Frame(
             width = w, height = h, landscape = landscape, camera = cam, tv = tv, stand = stand, cassette = cassette,
             tvFront = tvFront, standFront = standFront, shelf = shelf, deck = deck, slabEdge = slabEdge, plinth = plinth,
             grilleLeft = grilleLeft, grilleRight = if (drawerIsBay) null else grilleRight, cassetteBounds = cassetteBounds,
             drawer = drawer, drawerHit = drawerHit, drawerInBay = drawerIsBay,
-            projection = projection, lamp = lamp, floorLine = floorLine, baseboardTop = baseboardTop, osdTop = top, osdBottom = h - osdBottom,
+            projection = projection, lamp = lamp, props = props, floorLine = floorLine, baseboardTop = baseboardTop, osdTop = top, osdBottom = h - osdBottom,
         )
     }
 

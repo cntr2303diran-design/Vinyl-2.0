@@ -22,6 +22,9 @@ object PrivacyInfo {
         "Semua pengaturan, riwayat lagu, dan kebiasaan memakai aplikasi disimpan hanya di perangkat ini. " +
             "Riwayat aplikasi yang sering dibuka (untuk baris Sering dipakai) bisa dihapus kapan saja di Pengaturan → App drawer, " +
             "dan tidak ikut dalam berkas cadangan.",
+        "Telepon putar di ruangan (opsional): kontak favorit dipilih lewat pemilih kontak sistem. Yang disimpan hanya nama dan " +
+            "alamat kontak (angka 1–9) di perangkat ini; nomornya tidak disalin, tidak ikut berkas cadangan, dan bisa dihapus di " +
+            "Pengaturan → Benda ruangan. Menelepon selalu lewat aplikasi telepon, yang meminta Anda menekan tombol panggil.",
         "Tidak ada akun, iklan, analitik, atau pelacak. Tidak ada data yang dikirim ke server milik pengembang.",
         "Aplikasi hanya terhubung ke internet untuk empat hal: lirik (judul dan artis lagu dikirim ke lrclib.net; " +
             "bisa dimatikan di Pengaturan → Musik → Cari lirik online), " +

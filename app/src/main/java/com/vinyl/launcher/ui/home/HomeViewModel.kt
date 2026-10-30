@@ -24,6 +24,8 @@ import com.vinyl.launcher.data.RoomTone
 import com.vinyl.launcher.data.SettingsMigration
 import com.vinyl.launcher.util.SoundFx
 import com.vinyl.launcher.data.MAX_DOCK_APPS
+import com.vinyl.launcher.data.PhoneBook
+import com.vinyl.launcher.system.RoomShortcuts
 import com.vinyl.launcher.data.SettingsRepository
 import com.vinyl.launcher.data.SystemSettingsLauncher
 import com.vinyl.launcher.data.ThemePreset
@@ -381,6 +383,33 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         if (_trayOpen.value == open) return
         _trayOpen.value = open
         SoundFx.drawer(getApplication(), settings.value.effects, open)
+    }
+
+    // ---------- Benda di ruangan: jam dinding, radio, telepon putar ----------
+    private var lastRadioId: String? = null
+
+    fun openAlarms() = RoomShortcuts.openAlarms(getApplication())
+    fun openTimers() = RoomShortcuts.openTimers(getApplication())
+    fun openPhone() = RoomShortcuts.openPhone(getApplication())
+
+    /** Angka diputar di telepon: klik kecil, lalu buka kontak pintasan (1–9) atau aplikasi telepon (0). */
+    fun dial(digit: Int) {
+        SoundFx.tick(getApplication(), settings.value.effects)
+        RoomShortcuts.dial(getApplication(), digit, PhoneBook.get(getApplication()).favorites.value)
+    }
+
+    /** Radio diketuk: lagu acak dari koleksi pemutar bawaan (pesan jelas bila kosong); TV dibangunkan bila sedang mati. */
+    fun radioPlay() {
+        viewModelScope.launch {
+            val id = RoomShortcuts.playRandom(getApplication(), settings.value.player.folderUri, lastRadioId)
+            if (id != null) { lastRadioId = id; wakeTv() }
+        }
+    }
+
+    /** Radio ditahan: timer tidur (lama menurut Pengaturan → Musik) dimulai atau dibatalkan. */
+    fun radioSleep() {
+        SoundFx.tick(getApplication(), settings.value.effects)
+        RoomShortcuts.toggleSleep(getApplication(), settings.value.music.sleepMinutes)
     }
 
     /** Kaset meluncur ke/dari deck: bunyi mekanis (latched = terkunci di tempatnya). Mengikuti sakelar efek sentuh. */

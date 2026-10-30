@@ -129,6 +129,8 @@ internal fun StagePreview(
                 projection = np.art?.let { ProjectionContent.Picture(it) },
                 tape = tape, tapeLabel = tapeLabel, tvScreen = tvScreen, drawer = drawer, tvOff = tvOff,
                 onToggleLamp = if (lamp) ({}) else null,
+                propActions = com.vinyl.launcher.ui.room.stage.PropActions(),
+                clockTime = java.time.LocalTime.of(7, 5),
             )
             VhsFilm(animate = false, modifier = Modifier.fillMaxSize())
             VhsOsd(

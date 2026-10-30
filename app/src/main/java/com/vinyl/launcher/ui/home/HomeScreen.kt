@@ -137,6 +137,8 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.unit.sp
 import com.vinyl.launcher.ui.library.LibraryCatalog
 import com.vinyl.launcher.ui.library.rememberLibraryState
+import com.vinyl.launcher.data.PhoneBook
+import com.vinyl.launcher.ui.room.stage.PropActions
 import com.vinyl.launcher.ui.room.stage.RoomStage
 import com.vinyl.launcher.player.HiFi
 import com.vinyl.launcher.ui.room.stage.SeekState
@@ -977,6 +979,19 @@ private fun HomeContent(
             )
         }
     }
+    // Benda tambahan di ruangan: jam dinding, radio (lagu acak / timer tidur), telepon putar (pintasan kontak lokal)
+    val sleepState by SleepTimer.state.collectAsStateWithLifecycle()
+    val phoneBook = remember(context) { PhoneBook.get(context) }
+    val phoneFavorites by phoneBook.favorites.collectAsStateWithLifecycle()
+    val sleepRunning = sleepState is SleepTimer.State.Running
+    val propActions = remember(vm, sleepRunning, phoneFavorites) {
+        PropActions(
+            onClockAlarms = vm::openAlarms, onClockTimers = vm::openTimers,
+            onRadioPlay = vm::radioPlay, onRadioSleep = vm::radioSleep, radioSleepActive = sleepRunning,
+            onDial = vm::dial, onOpenPhone = vm::openPhone,
+            phoneFavorites = phoneFavorites.mapValues { it.value.name },
+        )
+    }
     val tvScreen: (@Composable () -> Unit)? = when {
         isFilm -> {
             val content: @Composable () -> Unit = { FilmTvScreen(filmHolder, theatre, motionAllowed) }
@@ -1024,6 +1039,7 @@ private fun HomeContent(
             // Lampu dinding hanya bila nada ruang yang menentukan dinding (bukan warna/gradasi pilihan sendiri): ketukannya terlihat
             onToggleLamp = if (RoomInk.toneDecidesWall(home.background.type)) vm::toggleRoomLamp else null,
             onCassetteSlot = vm::cassetteSlot,
+            propActions = propActions,
             lightOk = !rememberPowerSave(),
             atmosphere = {
                 // Debu halus melayang di cahaya proyeksi (di depan dinding, di belakang TV)

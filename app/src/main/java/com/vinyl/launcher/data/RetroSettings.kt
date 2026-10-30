@@ -67,6 +67,18 @@ enum class ProjectorSource { COVER, VISUALIZER, OFF }
 @Serializable
 enum class LightLevel { OFF, SOFT, NORMAL }
 
+/**
+ * Benda tambahan di ruangan (jam dinding, radio, telepon putar). Satu saklar per benda: mati = benda tidak digambar dan
+ * tidak bisa diketuk di ruangan. Benda yang tidak muat di layar kecil tidak tampil walau saklarnya menyala; fungsinya tetap
+ * bisa dibuka dari Pengaturan → Benda ruangan. Field baru: dokumen lama terbaca dengan semua benda menyala.
+ */
+@Serializable
+data class RoomPropSettings(
+    val clock: Boolean = true,
+    val radio: Boolean = true,
+    val phone: Boolean = true,
+)
+
 @Serializable
 data class ProjectorSettings(
     val source: ProjectorSource = ProjectorSource.COVER,
@@ -126,4 +138,6 @@ data class RetroSettings(
     val osd: OsdSettings = OsdSettings(),
     /** Era dekor ruangan (lihat [RoomEra]). Field baru: dokumen lama tanpa kunci ini terbaca sebagai DEFAULT. */
     val era: RoomEra = RoomEra.DEFAULT,
+    /** Benda tambahan di ruangan (lihat [RoomPropSettings]). */
+    val props: RoomPropSettings = RoomPropSettings(),
 )
