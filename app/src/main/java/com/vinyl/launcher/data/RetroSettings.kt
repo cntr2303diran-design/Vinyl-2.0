@@ -59,6 +59,14 @@ enum class VfdColor { AMBER, GREEN }
 @Serializable
 enum class ProjectorSource { COVER, VISUALIZER, OFF }
 
+/**
+ * Tingkat cahaya dan debu proyektor: berkas cahaya tipis dari proyektor, kilau di kaca TV, pantulan di meja, dan debu
+ * yang melayang di berkas cahaya. OFF = tidak digambar sama sekali (tidak ada kerja tambahan); SOFT = separuh terang dan
+ * debu lebih sedikit. Hemat daya mematikan semuanya, "Hapus animasi" menahannya diam. Nama konstanta disimpan apa adanya.
+ */
+@Serializable
+enum class LightLevel { OFF, SOFT, NORMAL }
+
 @Serializable
 data class ProjectorSettings(
     val source: ProjectorSource = ProjectorSource.COVER,
@@ -70,6 +78,8 @@ data class ProjectorSettings(
     val focus: Float = 0.85f,
     /** Gangguan pita VHS (goyang & garis tracking) pada gambar proyeksi. */
     val vhs: Boolean = true,
+    /** Berkas cahaya, kilau, pantulan, dan debu proyektor (lihat [LightLevel]). Field baru: dokumen lama terbaca NORMAL. */
+    val light: LightLevel = LightLevel.NORMAL,
 )
 
 /** Teks layar kamera (OSD) di beranda: pengganti status bar Samsung saat beranda tampil. */

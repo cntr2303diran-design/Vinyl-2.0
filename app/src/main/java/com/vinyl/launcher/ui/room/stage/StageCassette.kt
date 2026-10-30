@@ -1,11 +1,14 @@
 package com.vinyl.launcher.ui.room.stage
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -13,6 +16,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
@@ -35,11 +39,16 @@ import com.vinyl.launcher.ui.cassette.rememberLabelText
 import com.vinyl.launcher.ui.cassette.rememberReelAngles
 import com.vinyl.launcher.ui.cassette.shellLook
 import android.graphics.Matrix as AndroidMatrix
+import kotlin.math.PI
+import kotlin.math.sin
 
 /**
  * Kaset 3D yang berdiri miring di atas meja, di samping TV: muka depan berlabel spidol dengan jendela pita (gulungan
  * berputar hanya saat musik berjalan), tebal cangkang di sisi & atap, dan bayangan di meja. Diterangi layar TV dari
- * kiri. Ketuk = putar/jeda. Saat lagu berganti, kaset lama terangkat keluar dan kaset baru turun masuk.
+ * kiri. Ketuk = putar/jeda. Saat lagu berganti, kaset lama meluncur mengecil ke deck di rak meja dan kaset baru meluncur
+ * keluar dari deck ke tempatnya ([CassetteSlide]); dua kali "klak" mekanis berbunyi lewat [onSlot] (false = masuk ke deck,
+ * true = terkunci di tempatnya). Begitu musik mulai berjalan, kaset bergetar sebentar seperti pita yang mulai ditarik.
+ * Tanpa gerak ([motionAllowed] false) kaset berganti langsung, tanpa getar.
  */
 @Composable
 fun StageCassette(
@@ -58,6 +67,7 @@ fun StageCassette(
     motionAllowed: Boolean,
     enabled: Boolean,
     onPlayPause: () -> Unit,
+    onSlot: (latched: Boolean) -> Unit = {},
 ) {
     val swapState by rememberCassetteSwap(label, motionAllowed)
     val (shown, frame) = swapState
@@ -76,6 +86,29 @@ fun StageCassette(
         CassetteSwap.Phase.EJECT -> frame.progress
         CassetteSwap.Phase.INSERT -> 1f - frame.progress
         CassetteSwap.Phase.IDLE -> 0f
+    }
+    // Bunyi mekanis di dua titik: kaset hilang masuk deck (EJECT → INSERT) dan kaset baru terkunci (INSERT → IDLE)
+    var lastPhase by remember { androidx.compose.runtime.mutableStateOf(frame.phase) }
+    LaunchedEffect(frame.phase) {
+        val before = lastPhase
+        lastPhase = frame.phase
+        if (motionAllowed) {
+            if (before == CassetteSwap.Phase.EJECT && frame.phase == CassetteSwap.Phase.INSERT) onSlot(false)
+            else if (before == CassetteSwap.Phase.INSERT && frame.phase == CassetteSwap.Phase.IDLE) onSlot(true)
+        }
+    }
+    // Pita bergetar sebentar begitu mulai berjalan (putar setelah jeda, atau kaset baru sudah terkunci)
+    val shake = remember { Animatable(0f) }
+    LaunchedEffect(playing, frame.phase, motionAllowed) {
+        if (playing && motionAllowed && frame.phase == CassetteSwap.Phase.IDLE) {
+            shake.snapTo(1f)
+            shake.animateTo(0f, tween(CassetteSlide.SHAKE_MS))
+        } else shake.snapTo(0f)
+    }
+    // Tujuan luncuran: deck di rak meja, dihitung dari pusat kaset (dp)
+    val slide = remember(f) { CassetteSlide.target(f) }
+    val pivot = remember(f, area) {
+        TransformOrigin((f.cassetteBounds.centerX - area.left) / area.width, (f.cassetteBounds.centerY - area.top) / area.height)
     }
     val tapeName = if (shown.key == null) "Kaset kosong" else "Kaset: ${shown.title}" + if (shown.artist.isNotBlank()) ", ${shown.artist}" else ""
     Box(
@@ -97,11 +130,26 @@ fun StageCassette(
         Modifier
             .offset(area.left.dp, area.top.dp)
             .size(area.width.dp, area.height.dp)
-            .graphicsLayer { alpha = 1f - lift },
+            .graphicsLayer {
+                val e = CassetteSlide.ease(lift)
+                transformOrigin = pivot
+                translationX = slide.dx * density * e
+                translationY = slide.dy * density * e
+                val sc = CassetteSlide.scale(e)
+                scaleX = sc; scaleY = sc
+                alpha = CassetteSlide.alpha(e)
+                // Getar pita: goyang kecil yang mereda
+                val sh = shake.value
+                if (sh > 0f) {
+                    val w = sin(sh * 2.0 * PI * CassetteSlide.SHAKE_CYCLES).toFloat() * sh
+                    translationX += w * CassetteSlide.SHAKE_DP * density
+                    rotationZ = w * CassetteSlide.SHAKE_DEG
+                }
+            },
     ) {
         val d = density
         val origin = Offset(area.left * d, area.top * d)
-        val solid = f.cassette.copy(origin = f.cassette.origin + V3(0f, lift * StageLayout.CASSETTE_H * 0.8f, 0f))
+        val solid = f.cassette
         fun proj(v: V3) = f.camera.project(v).px(d) - origin
         fun path(vs: List<V3>) = Path().apply {
             vs.forEachIndexed { i, v -> val p = proj(v); if (i == 0) moveTo(p.x, p.y) else lineTo(p.x, p.y) }
@@ -159,5 +207,38 @@ fun StageCassette(
                 }
             }
         }
+    }
+}
+
+/**
+ * Luncuran kaset ke/dari deck (murni, teruji): [target] jarak pusat kaset ke pusat deck (dp), dan kurva [ease], [scale],
+ * [alpha] untuk kemajuan 0 (di tempat) .. 1 (di dalam deck). Kaset menyusut dan memudar saat mendekat; deck digambar di
+ * depannya, jadi kaset tampak masuk ke celah deck.
+ */
+object CassetteSlide {
+    class Target(val dx: Float, val dy: Float)
+
+    const val SHAKE_MS = 420
+    const val SHAKE_CYCLES = 7
+    const val SHAKE_DP = 1.3f
+    const val SHAKE_DEG = 0.9f
+    /** Ukuran kaset saat sudah di mulut deck, dan kemajuan tempat kaset mulai memudar. */
+    const val MIN_SCALE = 0.55f
+    private const val FADE_FROM = 0.6f
+
+    fun target(f: StageLayout.Frame): Target =
+        Target(f.deck.centerX - f.cassetteBounds.centerX, f.deck.centerY - f.cassetteBounds.centerY)
+
+    /** Smoothstep: mulai dan berhenti lembut. Di luar 0..1 dijepit; NaN dianggap 0. */
+    fun ease(p: Float): Float {
+        val x = if (p.isNaN()) 0f else p.coerceIn(0f, 1f)
+        return x * x * (3f - 2f * x)
+    }
+
+    fun scale(e: Float): Float = 1f - (1f - MIN_SCALE) * e.coerceIn(0f, 1f)
+
+    fun alpha(e: Float): Float {
+        val x = e.coerceIn(0f, 1f)
+        return if (x <= FADE_FROM) 1f else 1f - (x - FADE_FROM) / (1f - FADE_FROM)
     }
 }

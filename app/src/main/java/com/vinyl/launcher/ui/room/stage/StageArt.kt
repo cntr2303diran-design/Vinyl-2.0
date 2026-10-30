@@ -219,6 +219,9 @@ internal fun DrawScope.drawStageFurniture(
     frontGrain: Path?,
     /** Tenunan kain kisi speaker (lihat [weaveBrush]). */
     weave: Brush?,
+    /** Warna cahaya proyeksi yang memantul lembut di pernis meja; [lightK] 0 = tanpa pantulan (tingkat cahaya mati). */
+    projectionGlow: Color = Color.Transparent,
+    lightK: Float = 0f,
 ) {
     val d = density
     val eye = f.camera.eye
@@ -248,6 +251,15 @@ internal fun DrawScope.drawStageFurniture(
             drawOval(
                 Brush.radialGradient(listOf(screenGlow.copy(alpha = 0.42f * g), Color.Transparent), center = spot, radius = r),
                 topLeft = Offset(spot.x - r, spot.y - r * 0.35f), size = Size(r * 2f, r * 0.7f), blendMode = BlendMode.Screen,
+            )
+        }
+        // Cahaya proyeksi memantul lembut di pernis, di belakang TV dan di kedua sisinya
+        if (lightK > 0f && projectionGlow.alpha > 0f) {
+            val spot = f.camera.project(V3(0f, StageLayout.STAND_H, StageLayout.STAND_BACK_Z - 10f)).px(d)
+            val r = f.stand.w * f.camera.scaleAt(StageLayout.STAND_BACK_Z) * d * 0.36f
+            drawOval(
+                Brush.radialGradient(listOf(projectionGlow.copy(alpha = (projectionGlow.alpha * 0.9f).coerceAtMost(0.5f) * lightK), Color.Transparent), center = spot, radius = r),
+                topLeft = Offset(spot.x - r, spot.y - r * 0.28f), size = Size(r * 2f, r * 0.56f), blendMode = BlendMode.Screen,
             )
         }
         // Bayangan kontak di bawah TV

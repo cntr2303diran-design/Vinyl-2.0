@@ -383,6 +383,9 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         SoundFx.drawer(getApplication(), settings.value.effects, open)
     }
 
+    /** Kaset meluncur ke/dari deck: bunyi mekanis (latched = terkunci di tempatnya). Mengikuti sakelar efek sentuh. */
+    fun cassetteSlot(latched: Boolean) = SoundFx.cassetteSlot(getApplication(), settings.value.effects, latched)
+
     // ---------- Lampu dinding ----------
     /**
      * Lampu dinding diketuk: ruang terang ↔ gelap, yaitu pilihan "Ruang" di Pengaturan → Dinding ruang (satu pengaturan,

@@ -87,6 +87,7 @@ import com.vinyl.launcher.data.RetroSettings
 import com.vinyl.launcher.data.RoomEra
 import com.vinyl.launcher.data.RoomTone
 import com.vinyl.launcher.data.OsdSettings
+import com.vinyl.launcher.data.LightLevel
 import com.vinyl.launcher.data.ProjectorSettings
 import com.vinyl.launcher.data.ProjectorSource
 import com.vinyl.launcher.data.TvBody
@@ -527,6 +528,12 @@ private fun ProjectorControls(p: ProjectorSettings, onChange: (ProjectorSettings
             SliderRow("Ukuran gambar", p.size, 0.6f..1.2f, { onChange(p.copy(size = it)) })
             SliderRow("Fokus (tajam ↔ buram)", p.focus, 0f..1f, { onChange(p.copy(focus = it)) })
             SwitchRow("Gangguan pita VHS", p.vhs, { onChange(p.copy(vhs = it)) }, subtitle = "Gambar sedikit bergoyang seperti rekaman lama")
+            ChipRow("Cahaya & debu", LightLevel.entries, p.light, { it.label() }) { onChange(p.copy(light = it)) }
+            Text(
+                "Berkas cahaya tipis, kilau di kaca TV, pantulan di meja, dan debu di cahaya. Berhenti sendiri saat Hemat daya aktif; diam saat Hapus animasi.",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 6.dp),
+            )
         }
         Text(
             when (p.source) {
@@ -538,6 +545,12 @@ private fun ProjectorControls(p: ProjectorSettings, onChange: (ProjectorSettings
             modifier = Modifier.padding(top = 6.dp),
         )
     }
+}
+
+fun LightLevel.label() = when (this) {
+    LightLevel.OFF -> "Mati"
+    LightLevel.SOFT -> "Lembut"
+    LightLevel.NORMAL -> "Normal"
 }
 
 fun ProjectorSource.label() = when (this) {

@@ -43,6 +43,8 @@ object SoundFx {
     private val dropPcm: ShortArray by lazy { synthDrop() }
     private val liftPcm: ShortArray by lazy { synthLift() }
     private val tickPcm: ShortArray by lazy { synthTick() }
+    private val slotInPcm: ShortArray by lazy { synthSlot(latched = false) }
+    private val slotLatchPcm: ShortArray by lazy { synthSlot(latched = true) }
     private val flipPcm: ShortArray by lazy { synthFlip() }
     private val cracklePcm: ShortArray by lazy { synthCrackle() }
 
@@ -100,7 +102,7 @@ object SoundFx {
         scope.launch {
             val samples = dropPcm.size + liftPcm.size + tickPcm.size + flipPcm.size + crtPcm.size + staticPcm.size +
                 crtOffPcm.size + drawerOpenPcm.size + drawerClosePcm.size + eatPcm.size + overPcm.size + winPcm.size +
-                paddlePcm.size + brickPcm.size + missPcm.size + switchPcm.size
+                paddlePcm.size + brickPcm.size + missPcm.size + switchPcm.size + slotInPcm.size + slotLatchPcm.size
             check(samples > 0)
         }
     }
@@ -140,6 +142,19 @@ object SoundFx {
         if (!fx.interactionFx) return
         if (fx.haptics) buzz(context, fx.hapticStrength, longArrayOf(26, 22, 18), intArrayOf(120, 0, if (open) 150 else 230))
         if (fx.needleSound) play(if (open) drawerOpenPcm else drawerClosePcm, gain(fx.volume) * 0.9f)
+    }
+
+    /**
+     * Kaset masuk deck ([latched] false: gesekan plastik singkat lalu "klak" pelan) atau terkunci di tempatnya ([latched] true:
+     * "klik-klak" dua ketukan mekanis yang lebih tajam). Mengikuti sakelar efek sentuh.
+     */
+    fun cassetteSlot(context: Context, fx: EffectSettings, latched: Boolean) {
+        if (!fx.interactionFx) return
+        if (fx.haptics) {
+            if (latched) buzz(context, fx.hapticStrength, longArrayOf(10, 40, 14), intArrayOf(170, 0, 230))
+            else buzz(context, fx.hapticStrength, longArrayOf(18), intArrayOf(120))
+        }
+        if (fx.needleSound) play(if (latched) slotLatchPcm else slotInPcm, gain(fx.volume) * if (latched) 0.85f else 0.7f)
     }
 
     /** Ular makan: dua nada pendek naik, getar tipis. */
@@ -284,6 +299,30 @@ object SoundFx {
         return ShortArray(n) { i ->
             val t = i.toDouble() / RATE
             toShort((rnd.nextDouble() * 2 - 1) * exp(-t * 80) * 0.7 + sin(2 * PI * 200 * t) * exp(-t * 50) * 0.5)
+        }
+    }
+
+    /** Mekanisme kaset: gesekan plastik pendek ([latched] false) atau dua ketukan "klik" lalu "klak" ([latched] true). */
+    private fun synthSlot(latched: Boolean): ShortArray {
+        val n = (RATE * if (latched) 0.16 else 0.12).toInt()
+        val rnd = Random(if (latched) 61 else 58)
+        var lp = 0.0
+        return ShortArray(n) { i ->
+            val t = i.toDouble() / RATE
+            val v = if (latched) {
+                val click = (rnd.nextDouble() * 2 - 1) * exp(-t * 420) * 0.7 + sin(2 * PI * 2600 * t) * exp(-t * 330) * 0.3
+                val t2 = (t - 0.07).coerceAtLeast(0.0)
+                val clack = if (t >= 0.07) sin(2 * PI * 210 * t2) * exp(-t2 * 90) * 0.85 + (rnd.nextDouble() * 2 - 1) * exp(-t2 * 300) * 0.5 else 0.0
+                click + clack
+            } else {
+                lp += 0.25 * ((rnd.nextDouble() * 2 - 1) - lp)
+                val scrape = lp * 0.35 * (1 - (t / 0.08).coerceAtMost(1.0))
+                val t2 = (t - 0.07).coerceAtLeast(0.0)
+                val thunk = if (t >= 0.07) sin(2 * PI * 150 * t2) * exp(-t2 * 110) * 0.7 else 0.0
+                scrape + thunk
+            }
+            val edge = ((n - 1 - i) / (RATE * 0.004)).coerceAtMost(1.0)
+            toShort(v * edge)
         }
     }
 

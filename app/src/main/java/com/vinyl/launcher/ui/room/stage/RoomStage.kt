@@ -31,6 +31,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import com.vinyl.launcher.data.LightLevel
 import com.vinyl.launcher.data.RetroSettings
 import com.vinyl.launcher.data.RoomTone
 import com.vinyl.launcher.media.NowPlaying
@@ -130,6 +131,13 @@ fun RoomStage(
      * mengikuti nada ruang, sehingga ketukannya tidak akan terlihat).
      */
     onToggleLamp: (() -> Unit)? = null,
+    /** Bunyi mekanis kaset: false = kaset masuk ke deck, true = kaset baru terkunci di tempatnya. */
+    onCassetteSlot: (latched: Boolean) -> Unit = {},
+    /**
+     * Cahaya proyektor (berkas, kilau, pantulan, debu) boleh digambar. HomeScreen mengisi false saat Hemat daya aktif;
+     * tingkatnya sendiri dari [ProjectorSettings.light].
+     */
+    lightOk: Boolean = true,
     /** Isi tambahan di layar TV (subtitel lirik). Lambda terakhir. */
     screenExtra: @Composable () -> Unit = {},
 ) {
@@ -143,6 +151,8 @@ fun RoomStage(
         c.copy(alpha = 0.30f * retro.projector.brightness.coerceIn(0.1f, 1f))
     } else Color.Transparent
 
+    val lightLevel = if (lightOk) retro.projector.light else LightLevel.OFF
+    val lightK = ProjectorLight.strength(lightLevel)
     val weave = remember { weaveBrush() }
     val carpet = remember { carpetBrush() }
     // Panggung adalah benda fisik: tidak dicerminkan pada bahasa kanan-ke-kiri (tombol pita & knob juga tidak, seperti
@@ -175,6 +185,12 @@ fun RoomStage(
             WallProjection(f.projection, projection, retro.projector, animate = motionAllowed && np.isPlaying)
         }
 
+        // Berkas cahaya dari proyektor dan debunya (di depan gambar proyeksi, di belakang meja dan TV)
+        if (projection != null) {
+            val beamColor = androidx.compose.ui.graphics.lerp(projectionGlow.copy(alpha = 1f), Color.White, 0.55f)
+            ProjectorBeam(f, beamColor, lightLevel, animate = motionAllowed && np.isPlaying && screenOn)
+        }
+
         atmosphere()
 
         // ---------- Meja, rak, atap & sisi kabinet TV
@@ -184,7 +200,7 @@ fun RoomStage(
                 .clearAndSetSemantics { }
                 .drawWithCache {
                     val grain = standGrain(f, density)
-                    onDrawBehind { drawStageFurniture(f, pal, material, screenGlow, retro.glowIntensity, screenOn, grain, weave) }
+                    onDrawBehind { drawStageFurniture(f, pal, material, screenGlow, retro.glowIntensity, screenOn, grain, weave, projectionGlow, lightK) }
                 },
         )
 
@@ -230,6 +246,8 @@ fun RoomStage(
                 },
             )
         }
+        // Kilau di kaca TV (tidak menangkap sentuhan; layar mati = tanpa kilau bergerak)
+        if (screenOn) TvGlint(tv, lightLevel, animate = motionAllowed && np.isPlaying && !editing)
         // Knob SEEK: area sentuh di atas gambar knob (tidak ikut klik TV)
         SeekKnob(
             seek, np,
@@ -269,7 +287,7 @@ fun RoomStage(
             f, label, hasSession = np.hasSession, playing = np.isPlaying, progress = progress, timeText = info.tapeTime,
             shell = retro.cassetteShell, speed = retro.reelSpeed, accent = accent, screenGlow = screenGlow,
             glow = retro.glowIntensity * if (screenOn) 1f else 0.2f, motionAllowed = motionAllowed && !editing,
-            enabled = !editing, onPlayPause = actions.onCassette ?: actions.onPlayPause,
+            enabled = !editing, onPlayPause = actions.onCassette ?: actions.onPlayPause, onSlot = onCassetteSlot,
         )
 
         // ---------- Deck kaset di rak meja

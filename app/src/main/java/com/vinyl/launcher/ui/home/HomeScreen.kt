@@ -1023,6 +1023,8 @@ private fun HomeContent(
             drawer = drawerInfo,
             // Lampu dinding hanya bila nada ruang yang menentukan dinding (bukan warna/gradasi pilihan sendiri): ketukannya terlihat
             onToggleLamp = if (RoomInk.toneDecidesWall(home.background.type)) vm::toggleRoomLamp else null,
+            onCassetteSlot = vm::cassetteSlot,
+            lightOk = !rememberPowerSave(),
             atmosphere = {
                 // Debu halus melayang di cahaya proyeksi (di depan dinding, di belakang TV)
                 if (fxPlan.particles) {
