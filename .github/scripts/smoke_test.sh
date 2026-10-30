@@ -23,6 +23,9 @@
 # Emulator baru booting sangat sibuk (aplikasi Google menyiapkan diri); ANR pada saat itu bukan kesalahan aplikasi.
 # Karena itu skrip menunggu CPU emulator tenang dulu, dan sebuah ANR hanya dihitung GAGAL bila terjadi saat emulator
 # tenang (beban rata-rata <= 2x jumlah inti); selain itu hanya PERINGATAN lengkap dengan angka bebannya.
+# ANR yang jejak tumpukannya (diambil dari /data/anr) menunjukkan thread utama hanya menunggu RenderThread yang sedang menunggu
+# GPU emulator (render perangkat lunak di runner CI, bukan kerja kode aplikasi) juga hanya PERINGATAN, lengkap dengan buktinya
+# (anr_trace_kind.py). ANR yang thread utamanya berada di tempat lain, atau tanpa jejak yang cocok, tetap GAGAL.
 # Dialog sistem "<aplikasi lain> isn't responding" (mis. Pixel Launcher yang kehabisan CPU saat booting) menutupi layar dan
 # membuat onboarding tak bisa diselesaikan; dialog itu ditutup seperti oleh pengguna (dump_ui / ui_dialog.py). Pemeriksaan
 # "pengaturan bertahan setelah proses dimatikan" hanya sah bila onboarding sungguh selesai; bila tidak, hasilnya GAGAL
@@ -271,46 +274,65 @@ wait_boot() {
 }
 
 # ---------- ANR, mati-nya proses, logcat ----------
+# Pemilah jenis ANR (anr_trace_kind.py) diuji dulu dengan jejak buatan: bila ia rusak, penilaian ANR di bawah tidak bisa dipercaya
+if python3 -I "$HERE/anr_trace_kind.py" --selftest > "$OUT/anr_selftest.txt" 2>&1; then
+  ok "pemilah jenis ANR lulus uji diri (jejak buatan)"
+else
+  fail "pemilah jenis ANR gagal uji diri (lihat anr_selftest.txt)"
+fi
+
 # Jejak tumpukan semua thread saat ANR (ditulis sistem ke /data/anr; perlu root, emulator google_apis mengizinkannya):
-# memperlihatkan apa yang dikerjakan thread utama selama macet. Disalin (sekali) ke folder keluaran supaya ikut ke branch log.
-ANR_TRACES_SAVED=0
+# memperlihatkan apa yang dikerjakan thread utama selama macet. Disalin ke folder keluaran (yang sudah ada dilewati) supaya
+# ikut ke branch log dan bisa dinilai oleh anr_trace_kind.py.
 save_anr_traces() {
-  [ "$ANR_TRACES_SAVED" -eq 1 ] && return 0
-  ANR_TRACES_SAVED=1
   adb root > /dev/null 2>&1
   adb wait-for-device
   mkdir -p "$OUT/anr"
   local f
   for f in $(adbs "ls /data/anr 2>/dev/null"); do
     case "$f" in
-      anr_*) adb pull "/data/anr/$f" "$OUT/anr/$f" > /dev/null 2>&1 && gzip -9 "$OUT/anr/$f" 2>/dev/null ;;
+      anr_*)
+        [ -e "$OUT/anr/$f.gz" ] && continue
+        adb pull "/data/anr/$f" "$OUT/anr/$f" > /dev/null 2>&1 && gzip -9 "$OUT/anr/$f" 2>/dev/null ;;
     esac
   done
   say "jejak ANR disalin: $(ls "$OUT/anr" 2>/dev/null | tr '\n' ' ')"
 }
 
-# report_anrs <berkas logcat> <label>: tiap ANR paket ini dilaporkan sekali (ErrorId). GAGAL hanya bila emulator tenang.
+# report_anrs <berkas logcat> <label>: tiap ANR paket ini dilaporkan sekali (ErrorId). GAGAL hanya bila emulator tenang DAN
+# jejak tumpukannya tidak menunjukkan penyebab di emulator: ANR yang thread utamanya hanya menunggu RenderThread yang sedang
+# menunggu GPU emulator (render perangkat lunak di runner CI) dilaporkan sebagai PERINGATAN lengkap dengan buktinya
+# (anr_trace_kind.py). Tanpa jejak yang cocok, atau bila thread utama mengerjakan hal lain, aturan lama berlaku.
 ANR_PARSED=0   # jumlah ANR paket ini yang terbaca pada pemanggilan report_anrs terakhir (baru maupun yang sudah dilaporkan)
 report_anrs() {
-  local id load reason new_anr=0
+  local id load reason rows kind detail new_anr=0
   ANR_PARSED=0
+  rows=$(python3 -I "$HERE/anr_scan.py" "$1" "$PKG")
+  while IFS=$'\t' read -r id load reason; do
+    [ -z "$id" ] && continue
+    case "$ANR_SEEN" in *" $id "*) ;; *) new_anr=1 ;; esac
+  done <<< "$rows"
+  # Jejak diambil lebih dulu supaya jenis tiap ANR bisa dinilai; adb membaca stdin, jadi dipanggil dari /dev/null di luar loop
+  if [ "$new_anr" -eq 1 ]; then save_anr_traces < /dev/null; fi
   while IFS=$'\t' read -r id load reason; do
     [ -z "$id" ] && continue
     ANR_PARSED=$((ANR_PARSED + 1))
     case "$ANR_SEEN" in *" $id "*) continue ;; esac
     ANR_SEEN="$ANR_SEEN$id "
-    new_anr=1
     load=${load:-?}
-    if [ "$SETTLED" -ne 1 ]; then
+    kind=$(python3 -I "$HERE/anr_trace_kind.py" "$OUT/anr" "$PKG" "$reason" < /dev/null)
+    detail=${kind#*$'\t'}
+    kind=${kind%%$'\t'*}
+    if [ "$kind" = "EMULATOR_GPU" ]; then
+      warn "ANR di $PKG ($2) berasal dari penggambaran emulator, bukan dari kode aplikasi ($detail): $reason"
+    elif [ "$SETTLED" -ne 1 ]; then
       warn "ANR di $PKG ($2) saat emulator belum sempat tenang (load $load, $NPROC inti): $reason"
     elif awk -v l="$load" -v c="$NPROC" 'BEGIN { exit !(l + 0 > 2 * c) }'; then
       warn "ANR di $PKG ($2) saat emulator terbebani (load $load > 2x $NPROC inti): $reason"
     else
-      fail "ANR di $PKG ($2) pada emulator yang tenang (load $load, $NPROC inti): $reason"
+      fail "ANR di $PKG ($2) pada emulator yang tenang (load $load, $NPROC inti; jejak: ${kind:-?}${detail:+ — $detail}): $reason"
     fi
-  done < <(python3 -I "$HERE/anr_scan.py" "$1" "$PKG")
-  # Sesudah loop (bukan di dalamnya): perintah adb membaca stdin dan akan menelan sisa baris ANR yang belum dibaca
-  if [ "$new_anr" -eq 1 ]; then save_anr_traces < /dev/null; fi
+  done <<< "$rows"
 }
 
 # Proses launcher mati tiba-tiba: cari tahu sebabnya (crash = GAGAL, ANR = aturan ANR, selain itu GAGAL)
@@ -358,6 +380,11 @@ scan_log() { # <label>: baca logcat sejauh ini
     grep -A14 'FATAL EXCEPTION' "$f" | head -50 | tee -a "$OUT/log.txt"
   fi
   report_anrs "$f" "$1"
+  # Informasi (tidak menentukan lulus): lama tiap FocusEvent diproses jendela beranda; batas ANR Android 5000 ms. Angka ini
+  # di emulator CI (render perangkat lunak) hanya untuk melihat kecenderungan antar-run, bukan ukuran waktu mulai di HP.
+  local fts
+  fts=$(grep -o "$PKG/[^ ]* (server) spent [0-9]*ms processing FocusEvent" "$f" | grep -o '[0-9]*ms' | tr '\n' ' ')
+  [ -n "$fts" ] && say "info: FocusEvent beranda diproses ($1): ${fts}(batas ANR 5000ms)"
   local sig='NoSuchMethodError|NoSuchFieldError|AbstractMethodError|IncompatibleClassChangeError|VerifyError|SerializationException|MissingFieldException'
   if grep -E "$sig" "$f" | grep -q .; then
     fail "tanda R8 rusak di logcat ($1): $(grep -E "$sig" "$f" | head -3 | tr '\n' ' ')"
