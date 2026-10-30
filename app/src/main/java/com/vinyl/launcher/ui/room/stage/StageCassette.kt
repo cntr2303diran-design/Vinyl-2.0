@@ -10,7 +10,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -88,7 +90,7 @@ fun StageCassette(
         CassetteSwap.Phase.IDLE -> 0f
     }
     // Bunyi mekanis di dua titik: kaset hilang masuk deck (EJECT → INSERT) dan kaset baru terkunci (INSERT → IDLE)
-    var lastPhase by remember { androidx.compose.runtime.mutableStateOf(frame.phase) }
+    var lastPhase by remember { mutableStateOf(frame.phase) }
     LaunchedEffect(frame.phase) {
         val before = lastPhase
         lastPhase = frame.phase
