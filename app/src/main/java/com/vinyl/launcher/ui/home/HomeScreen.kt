@@ -1000,10 +1000,11 @@ private fun HomeContent(
     val diaryRecording by diaryStore.recording.collectAsStateWithLifecycle()
     var showTrophies by rememberSaveable { mutableStateOf(false) }
     var showDiary by rememberSaveable { mutableStateOf(false) }
-    val trophies = remember(settings.film.snakeBest, settings.film.breakoutBest, playRecords) {
+    val filmSettings = vm.settings.collectAsStateWithLifecycle().value.film
+    val trophies = remember(filmSettings.snakeBest, filmSettings.breakoutBest, playRecords) {
         Achievements.compute(
             AchievementInput(
-                snakeBest = Games.best(settings.film, Games.SNAKE), breakoutBest = Games.best(settings.film, Games.BREAKOUT),
+                snakeBest = Games.best(filmSettings, Games.SNAKE), breakoutBest = Games.best(filmSettings, Games.BREAKOUT),
                 listenedMs = playRecords.sumOf { it.listenedMs }, songs = playRecords.size,
             ),
         )
