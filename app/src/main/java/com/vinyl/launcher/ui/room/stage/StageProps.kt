@@ -19,6 +19,8 @@ class PropSpot(val bounds: SRect, val hit: SRect)
  */
 object StageProps {
     const val MIN_TOUCH = 48f
+    /** Lebar gambar terkecil benda meja (area sentuhnya tetap ≥ [MIN_TOUCH]). */
+    private const val MIN_PROP_W = 44f
     const val GAP = 8f
     /** Kedalaman (cm) tempat benda meja berdiri: sejajar bagian tengah TV. */
     private const val TABLE_Z = StageLayout.TV_FRONT_Z + 14f
@@ -152,9 +154,18 @@ object StageProps {
             }
         }
 
-        val radioW = (RADIO_CM * st).coerceIn(50f, 120f)
+        // Di layar besar (tablet) satu cm dunia bisa 8 dp: radio + telepon yang diskalakan penuh melebihi ruang di kiri TV.
+        // Ukurannya diperkecil seragam sampai keduanya muat di antara tepi kiri (papan meja / layar) dan TV; tidak diperbesar.
+        val tableGap = GAP + 0.5f
+        var radioW = (RADIO_CM * st).coerceIn(50f, 120f)
+        var phoneW = (PHONE_CM * st).coerceIn(50f, 120f)
+        val roomLeft = tv.left - maxOf(slabLeft, StageLayout.SIDE)
+        if (radioW + phoneW + 2 * tableGap > roomLeft) {
+            val k = ((roomLeft - 2 * tableGap) / (radioW + phoneW)).coerceIn(0f, 1f)
+            radioW = (radioW * k).coerceAtLeast(MIN_PROP_W)
+            phoneW = (phoneW * k).coerceAtLeast(MIN_PROP_W)
+        }
         table(Prop.RADIO, radioW, radioW * 0.6f, listOf(Slot.LEFT_NEAR, Slot.LEFT_FAR, Slot.RIGHT_NEAR, Slot.RIGHT_FAR))
-        val phoneW = (PHONE_CM * st).coerceIn(50f, 120f)
         table(Prop.PHONE, phoneW, phoneW * 0.8f, listOf(Slot.LEFT_FAR, Slot.LEFT_NEAR, Slot.RIGHT_NEAR, Slot.RIGHT_FAR))
         return placed
     }
