@@ -1,7 +1,7 @@
 package com.vinyl.launcher.ui.room.stage
 
 /** Benda tambahan di ruangan yang punya tempat sendiri di [StageLayout.Frame.props]. Urutan = prioritas tempat. */
-enum class Prop { CLOCK, FRAME, RADIO, PHONE }
+enum class Prop { CLOCK, FRAME, TROPHY, RADIO, PHONE, DIARY }
 
 /** Tempat satu benda: kotak gambar dan area sentuh (≥ 48 × 48 dp, menutupi kotak gambar), keduanya dalam dp layar. */
 class PropSpot(val bounds: SRect, val hit: SRect)
@@ -24,11 +24,15 @@ object StageProps {
     private const val TABLE_Z = StageLayout.TV_FRONT_Z + 14f
 
     const val CLOCK_CM = 26f
-    const val RADIO_CM = 22f
-    const val PHONE_CM = 22f
+    const val RADIO_CM = 18f
+    const val PHONE_CM = 17f
     /** Lebar poster (cm) dan perbandingan tinggi : lebar. */
     const val FRAME_CM = 24f
     const val FRAME_RATIO = 1.3f
+    /** Rak piala di dinding (lebar cm, tinggi : lebar) dan buku harian di meja. */
+    const val TROPHY_CM = 30f
+    const val TROPHY_RATIO = 0.75f
+    const val DIARY_CM = 13f
 
     /**
      * @param wallTop batas atas benda (di bawah teks OSD sudut atas)
@@ -89,6 +93,23 @@ object StageProps {
             if (accept(Prop.FRAME, b, b)) break
         }
 
+        // ---------- Rak piala: di sebelah kiri poster (atau jam) pada baris yang sama, atau di bawahnya
+        val tw = (TROPHY_CM * sw).coerceIn(MIN_TOUCH + 16f, 110f)
+        val th = tw * TROPHY_RATIO
+        val anchor = placed[Prop.FRAME]?.hit ?: placed[Prop.CLOCK]?.hit
+        val trophySlots = if (anchor != null) {
+            listOf(
+                anchor.left - GAP * 1.5f - tw to anchor.top,
+                anchor.right - tw to anchor.bottom + GAP * 1.5f,
+            )
+        } else {
+            listOf(clockLeft + clock - tw to wallTop)
+        }
+        for ((tx, ty) in trophySlots) {
+            val b = SRect(tx, ty, tx + tw, ty + th)
+            if (accept(Prop.TROPHY, b, growTouch(b))) break
+        }
+
         // ---------- Benda meja: dasar di garis papan meja, kandidat kiri-kanan TV dan kaset
         val st = cam.scaleAt(StageLayout.TV_FRONT_Z)
         val tableY = cam.project(V3(0f, StageLayout.STAND_H, TABLE_Z)).y
@@ -112,10 +133,12 @@ object StageProps {
             }
         }
 
-        val radioW = (RADIO_CM * st).coerceIn(64f, 120f)
+        val radioW = (RADIO_CM * st).coerceIn(56f, 120f)
         table(Prop.RADIO, radioW, radioW * 0.6f, listOf(Slot.LEFT_NEAR, Slot.LEFT_FAR, Slot.RIGHT_NEAR, Slot.RIGHT_FAR))
-        val phoneW = (PHONE_CM * st).coerceIn(72f, 120f)
+        val phoneW = (PHONE_CM * st).coerceIn(60f, 120f)
         table(Prop.PHONE, phoneW, phoneW * 0.8f, listOf(Slot.LEFT_FAR, Slot.LEFT_NEAR, Slot.RIGHT_NEAR, Slot.RIGHT_FAR))
+        val diaryW = (DIARY_CM * st).coerceIn(48f, 96f)
+        table(Prop.DIARY, diaryW, diaryW * 0.7f, listOf(Slot.RIGHT_NEAR, Slot.RIGHT_FAR, Slot.LEFT_FAR, Slot.LEFT_NEAR))
         return placed
     }
 

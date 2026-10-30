@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -20,12 +21,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.vinyl.launcher.data.AchievementInput
+import com.vinyl.launcher.data.Achievements
+import com.vinyl.launcher.data.DiaryRules
+import com.vinyl.launcher.data.DiaryStore
+import com.vinyl.launcher.data.FilmSettings
+import com.vinyl.launcher.data.HistoryRepository
 import com.vinyl.launcher.data.PhoneBook
 import com.vinyl.launcher.data.PhoneBookRules
 import com.vinyl.launcher.data.PhoneFavorite
@@ -35,6 +43,7 @@ import com.vinyl.launcher.data.SettingsRepository
 import com.vinyl.launcher.data.RetroSettings
 import com.vinyl.launcher.data.RoomPropSettings
 import com.vinyl.launcher.system.RoomShortcuts
+import com.vinyl.launcher.ui.game.Games
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -49,6 +58,7 @@ fun RoomPropsControls(
     retro: RetroSettings,
     sleepMinutes: Int,
     musicFolderUri: String?,
+    film: FilmSettings,
     onRetro: (RetroSettings) -> Unit,
 ) {
     val context = LocalContext.current
@@ -63,6 +73,21 @@ fun RoomPropsControls(
         onRetro(retro.copy(poster = PosterSettings(PosterSource.PHOTO, path)))
         if (old != null && old != path) scope.launch { SettingsRepository.get(context).deleteImage(old) }
     }
+
+    val playRecords by HistoryRepository.records.collectAsState()
+    val trophies = remember(film.snakeBest, film.breakoutBest, playRecords) {
+        Achievements.compute(
+            AchievementInput(
+                snakeBest = Games.best(film, Games.SNAKE), breakoutBest = Games.best(film, Games.BREAKOUT),
+                listenedMs = playRecords.sumOf { it.listenedMs }, songs = playRecords.size,
+            ),
+        )
+    }
+    val diary = remember { DiaryStore.get(context.applicationContext) }
+    val diaryEntries by diary.entries.collectAsState()
+    val diaryRecording by diary.recording.collectAsState()
+    var showDiary by remember { mutableStateOf(false) }
+    var confirmClearDiary by remember { mutableStateOf(false) }
 
     var pendingDigit by remember { mutableIntStateOf(0) }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickContact()) { uri: Uri? ->
@@ -83,6 +108,14 @@ fun RoomPropsControls(
         SwitchRow(
             "Poster berbingkai", props.frame, { on -> setProps(props.copy(frame = on)) },
             subtitle = "Menampilkan cover lagu yang diputar atau foto pilihan Anda. Ketuk untuk mengganti foto, tahan untuk kembali ke cover",
+        )
+        SwitchRow(
+            "Rak piala", props.trophy, { on -> setProps(props.copy(trophy = on)) },
+            subtitle = "Piala dari rekor game, jam dengar, dan jumlah lagu. Ketuk rak untuk melihat semuanya",
+        )
+        SwitchRow(
+            "Buku harian kaset", props.diary, { on -> setProps(props.copy(diary = on)) },
+            subtitle = "Buku di meja; ketuk untuk membuka. Perekaman lagu punya saklar sendiri di bawah",
         )
         SwitchRow(
             "Radio kecil", props.radio, { on -> setProps(props.copy(radio = on)) },
@@ -115,6 +148,32 @@ fun RoomPropsControls(
                 }) { Text("Pakai cover album, hapus foto") }
             }
         }
+    }
+
+    SectionTitle("Rak piala")
+    ControlCard { TrophyList(trophies) }
+
+    SectionTitle("Buku harian kaset")
+    ControlCard {
+        SwitchRow(
+            "Catat lagu yang diputar", diaryRecording, diary::setRecording,
+            subtitle = "Mati secara bawaan. Hanya judul, artis, dan waktu putar; disimpan di perangkat ini (maks ${DiaryRules.MAX_ENTRIES} catatan), tidak ikut cadangan.",
+        )
+        Text("${diaryEntries.size} catatan", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+            OutlinedButton(onClick = { showDiary = true }) { Text("Lihat isi") }
+            if (diaryEntries.isNotEmpty()) OutlinedButton(onClick = { confirmClearDiary = true }) { Text("Hapus semua catatan") }
+        }
+    }
+    if (showDiary) DiaryDialog(diary, onDismiss = { showDiary = false })
+    if (confirmClearDiary) {
+        AlertDialog(
+            onDismissRequest = { confirmClearDiary = false },
+            title = { Text("Hapus seluruh buku harian?") },
+            text = { Text("${diaryEntries.size} catatan akan dihapus dari perangkat ini dan tidak bisa dikembalikan.") },
+            confirmButton = { TextButton(onClick = { diary.clearAll(); confirmClearDiary = false }) { Text("Hapus") } },
+            dismissButton = { TextButton(onClick = { confirmClearDiary = false }) { Text("Batal") } },
+        )
     }
 
     SectionTitle("Pintasan langsung")

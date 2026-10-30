@@ -244,6 +244,14 @@ object Tokens {
         const val NEEDLE = 0xFFB3261EL
         const val LED_ON = 0xFFFFB347L
         const val LED_OFF = 0xFF4A3A2AL
+        /** Piala di rak: emas, perak, perunggu. */
+        const val CUP_GOLD = 0xFFE0B341L
+        const val CUP_SILVER = 0xFFCFD3D8L
+        const val CUP_BRONZE = 0xFFC07A3EL
+        /** Buku harian kaset di meja: sampul, halaman, dan titik merah saat merekam. */
+        const val DIARY_COVER = 0xFF5B3A29L
+        const val DIARY_PAGES = 0xFFEFE6D2L
+        const val DIARY_REC = 0xFFD93025L
     }
 
     /** Jarak dalam dp. Kelipatan 4 supaya ritme tata letak konsisten. */

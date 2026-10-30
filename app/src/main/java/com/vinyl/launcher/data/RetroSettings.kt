@@ -78,6 +78,9 @@ data class RoomPropSettings(
     val radio: Boolean = true,
     val phone: Boolean = true,
     val frame: Boolean = true,
+    val trophy: Boolean = true,
+    /** Buku di meja saja; perekaman buku harian punya saklar sendiri (mati secara bawaan) di [DiaryStore]. */
+    val diary: Boolean = true,
 )
 
 /** Isi poster/bingkai di dinding: cover lagu yang sedang diputar, atau satu foto pilihan sendiri. */

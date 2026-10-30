@@ -96,6 +96,13 @@ class PropActions(
     /** Poster: pilih foto sendiri (Photo Picker) dan kembali ke cover album. */
     val onFramePick: () -> Unit = {},
     val onFrameClear: () -> Unit = {},
+    /** Rak piala: semua piala (untuk hitungan dan pajangan) dan pembuka daftarnya. */
+    val trophies: List<com.vinyl.launcher.data.Trophy> = emptyList(),
+    val onTrophies: () -> Unit = {},
+    /** Buku harian: sedang merekam, jumlah catatan, dan pembuka isinya. */
+    val diaryRecording: Boolean = false,
+    val diaryCount: Int = 0,
+    val onDiary: () -> Unit = {},
 )
 
 /** Keadaan laci kaset di meja: terbuka atau tidak, warna kaset yang mengintip, dan jumlah kasetnya. */
@@ -340,6 +347,16 @@ fun RoomStage(
             }
             f.props[Prop.FRAME]?.takeIf { retro.props.frame }?.let {
                 StageFrame(it, look, retro.poster, np.art, enabled = !editing, onPick = propActions.onFramePick, onClear = propActions.onFrameClear)
+            }
+            f.props[Prop.TROPHY]?.takeIf { retro.props.trophy }?.let {
+                val all = propActions.trophies
+                StageTrophy(
+                    it, look, shown = com.vinyl.launcher.data.Achievements.display(all, TROPHY_SLOTS),
+                    earned = all.count { t -> t.earned }, total = all.size, enabled = !editing, onOpen = propActions.onTrophies,
+                )
+            }
+            f.props[Prop.DIARY]?.takeIf { retro.props.diary }?.let {
+                StageDiary(it, look, propActions.diaryRecording, propActions.diaryCount, enabled = !editing, onOpen = propActions.onDiary)
             }
             f.props[Prop.RADIO]?.takeIf { retro.props.radio }?.let {
                 StageRadio(

@@ -122,7 +122,7 @@ private enum class Page(val title: String, val subtitle: String, val icon: Image
     NAV("Tombol navigasi", "Kembali, Home, Terbaru", Icons.Rounded.TouchApp, Color(0xFF64D2FF)),
     VISUAL("Gambar & efek", "Video di TV, distorsi, cahaya, partikel, parallax, visualizer", Icons.Rounded.GraphicEq, Color(0xFF00C7BE)),
     FILM("Laci kaset", "Kaset film di TV, Teater, data situs", Icons.Rounded.Movie, Color(0xFFE0A15A)),
-    PROPS("Benda ruangan", "Jam dinding, poster, radio, telepon putar", Icons.Rounded.Movie, Color(0xFFC77D4A)),
+    PROPS("Benda ruangan", "Jam, poster, piala, buku harian, radio, telepon", Icons.Rounded.Movie, Color(0xFFC77D4A)),
     FX("Suara & getar", "Tombol kaset, desis pita, getar", Icons.Rounded.Vibration, Color(0xFFBF5AF2)),
     GESTURES("Gestur", "Swipe & gestur gambar sendiri", Icons.Rounded.Gesture, Color(0xFFFFD60A)),
     WEATHER("Cuaca", "Lokasi untuk widget cuaca", Icons.Rounded.WbSunny, Color(0xFFFF9F0A)),
@@ -308,7 +308,7 @@ private fun SettingsScreen(vm: SettingsViewModel, onBack: () -> Unit) {
             }
             Page.FILM -> Group("Laci kaset") { FilmControls(s.film) { f -> vm.update { it.copy(film = f) } } }
             Page.PROPS -> RoomPropsControls(
-                s.retro, s.music.sleepMinutes, s.player.folderUri,
+                s.retro, s.music.sleepMinutes, s.player.folderUri, s.film,
                 onRetro = { r -> vm.update { it.copy(retro = r) } },
             )
             Page.FX -> ControlCard {

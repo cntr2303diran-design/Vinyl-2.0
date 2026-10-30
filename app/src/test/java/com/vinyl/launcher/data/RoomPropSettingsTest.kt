@@ -24,7 +24,7 @@ class RoomPropSettingsTest {
 
     @Test
     fun theChoiceSurvivesSavingLoadingAndBackup() {
-        val s = AppSettings(retro = RetroSettings(props = RoomPropSettings(clock = false, radio = true, phone = false)))
+        val s = AppSettings(retro = RetroSettings(props = RoomPropSettings(clock = false, radio = true, phone = false, frame = false, trophy = false, diary = false)))
         assertEquals(s.retro.props, SettingsMigration.decode(json, json.encodeToString(AppSettings.serializer(), s)).retro.props)
         val r = SettingsBackup.parse(SettingsBackup.export(s), AppSettings()) as SettingsBackup.ImportResult.Ok
         assertEquals(s.retro.props, r.settings.retro.props)

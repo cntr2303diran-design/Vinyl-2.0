@@ -25,6 +25,12 @@ object PrivacyInfo {
         "Telepon putar di ruangan (opsional): kontak favorit dipilih lewat pemilih kontak sistem. Yang disimpan hanya nama dan " +
             "alamat kontak (angka 1–9) di perangkat ini; nomornya tidak disalin, tidak ikut berkas cadangan, dan bisa dihapus di " +
             "Pengaturan → Benda ruangan. Menelepon selalu lewat aplikasi telepon, yang meminta Anda menekan tombol panggil.",
+        "Buku harian kaset (opsional, mati secara bawaan): bila Anda menyalakannya, judul, artis, dan waktu putar tiap lagu yang " +
+            "didengarkan dicatat di perangkat ini (maksimal 500 catatan; yang terlama dibuang). Tidak ikut berkas cadangan atau " +
+            "preset, tidak dikirim ke mana pun, dan bisa dihapus kapan saja di Pengaturan → Benda ruangan. Rak piala hanya menghitung " +
+            "dari rekor game, total waktu dengar, dan jumlah lagu yang sudah ada; tidak ada data tambahan yang dikumpulkan.",
+        "Poster di dinding (opsional): foto dipilih lewat pemilih foto sistem tanpa izin penyimpanan, disalin ke penyimpanan aplikasi " +
+            "ini saja, dan tidak ikut berkas cadangan. Menggantinya atau memilih cover album menghapus berkas foto lama.",
         "Tidak ada akun, iklan, analitik, atau pelacak. Tidak ada data yang dikirim ke server milik pengembang.",
         "Aplikasi hanya terhubung ke internet untuk empat hal: lirik (judul dan artis lagu dikirim ke lrclib.net; " +
             "bisa dimatikan di Pengaturan → Musik → Cari lirik online), " +

@@ -1,5 +1,6 @@
 package com.vinyl.launcher.media
 
+import com.vinyl.launcher.data.DiaryStore
 import com.vinyl.launcher.data.HistoryRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -57,6 +58,7 @@ object HistoryRecorder {
                 counted = true
                 val s = last
                 HistoryRepository.recordPlay(key, s.title, s.artist, s.album, s.packageName, s.art)
+                DiaryStore.recordIfOn(s.title, s.artist)
             }
         }
     }

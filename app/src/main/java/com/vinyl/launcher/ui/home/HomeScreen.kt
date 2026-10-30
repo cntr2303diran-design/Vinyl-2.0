@@ -43,6 +43,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
@@ -138,6 +139,12 @@ import androidx.compose.ui.unit.sp
 import com.vinyl.launcher.ui.library.LibraryCatalog
 import com.vinyl.launcher.ui.library.rememberLibraryState
 import com.vinyl.launcher.data.PhoneBook
+import com.vinyl.launcher.data.AchievementInput
+import com.vinyl.launcher.data.Achievements
+import com.vinyl.launcher.data.DiaryStore
+import com.vinyl.launcher.data.HistoryRepository
+import com.vinyl.launcher.ui.settings.DiaryDialog
+import com.vinyl.launcher.ui.settings.TrophyDialog
 import com.vinyl.launcher.ui.settings.rememberImagePicker
 import com.vinyl.launcher.ui.room.stage.PropActions
 import com.vinyl.launcher.ui.room.stage.RoomStage
@@ -986,15 +993,34 @@ private fun HomeContent(
     val phoneFavorites by phoneBook.favorites.collectAsStateWithLifecycle()
     val sleepRunning = sleepState is SleepTimer.State.Running
     val pickPoster = rememberImagePicker("poster") { vm.setPoster(it) }
-    val propActions = remember(vm, sleepRunning, phoneFavorites) {
+    // Rak piala dan buku harian: dihitung dari data lokal yang sudah ada (rekor game, riwayat putar) dan buku harian opsional
+    val playRecords by HistoryRepository.records.collectAsStateWithLifecycle()
+    val diaryStore = remember(context) { DiaryStore.get(context) }
+    val diaryEntries by diaryStore.entries.collectAsStateWithLifecycle()
+    val diaryRecording by diaryStore.recording.collectAsStateWithLifecycle()
+    var showTrophies by rememberSaveable { mutableStateOf(false) }
+    var showDiary by rememberSaveable { mutableStateOf(false) }
+    val trophies = remember(settings.film.snakeBest, settings.film.breakoutBest, playRecords) {
+        Achievements.compute(
+            AchievementInput(
+                snakeBest = Games.best(settings.film, Games.SNAKE), breakoutBest = Games.best(settings.film, Games.BREAKOUT),
+                listenedMs = playRecords.sumOf { it.listenedMs }, songs = playRecords.size,
+            ),
+        )
+    }
+    val propActions = remember(vm, sleepRunning, phoneFavorites, trophies, diaryRecording, diaryEntries.size) {
         PropActions(
             onClockAlarms = vm::openAlarms, onClockTimers = vm::openTimers,
             onRadioPlay = vm::radioPlay, onRadioSleep = vm::radioSleep, radioSleepActive = sleepRunning,
             onDial = vm::dial, onOpenPhone = vm::openPhone,
             phoneFavorites = phoneFavorites.mapValues { it.value.name },
             onFramePick = pickPoster, onFrameClear = { vm.clearPoster() },
+            trophies = trophies, onTrophies = { showTrophies = true },
+            diaryRecording = diaryRecording, diaryCount = diaryEntries.size, onDiary = { showDiary = true },
         )
     }
+    if (showTrophies) TrophyDialog(trophies, onDismiss = { showTrophies = false })
+    if (showDiary) DiaryDialog(diaryStore, onDismiss = { showDiary = false })
     val tvScreen: (@Composable () -> Unit)? = when {
         isFilm -> {
             val content: @Composable () -> Unit = { FilmTvScreen(filmHolder, theatre, motionAllowed) }
