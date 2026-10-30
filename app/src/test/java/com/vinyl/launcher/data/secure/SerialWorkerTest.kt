@@ -47,13 +47,16 @@ class SerialWorkerTest {
     fun theDefaultWorkerRunsOnItsOwnLowestPriorityDaemonThread() {
         // Pekerjaan Keystore tidak mendesak: tidak boleh berebut CPU dengan thread utama saat beranda pertama digambar
         val worker = SerialWorker()
-        val where = arrayOfNulls<Thread>(1)
-        worker.post { where[0] = Thread.currentThread() }
+        val seen = arrayOfNulls<String>(1)
+        worker.post {
+            val t = Thread.currentThread()
+            // Saat mode debug coroutine menyala (tes Gradle memakai -ea), nama thread diberi akhiran " @coroutine#N" selama
+            // pekerjaan berjalan dan baru dicopot sesudah coroutine berhenti. Karena itu nilainya diambil DI DALAM pekerjaan
+            // dan akhirannya dibuang; membaca nama thread dari luar sesudah drain() bisa kebetulan masih berakhiran.
+            seen[0] = "${t.name.substringBefore(" @")}|${t.priority}|${t.isDaemon}"
+        }
         worker.drain()
-        val thread = where[0]!!
-        assertEquals("vinyl-secure", thread.name)
-        assertEquals(Thread.MIN_PRIORITY, thread.priority)
-        assertTrue(thread.isDaemon)
+        assertEquals("vinyl-secure|${Thread.MIN_PRIORITY}|true", seen[0])
     }
 
     @Test
