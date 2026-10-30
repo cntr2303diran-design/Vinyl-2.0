@@ -48,7 +48,7 @@ class StagePropsTest {
         val missing = tablets.mapNotNull { (w, h) ->
             val f = StageLayout.compute(w, h)
             val lack = Prop.entries.toSet() - f.props.keys
-            if (lack.isEmpty()) null else "w=$w h=$h tanpa $lack"
+            if (lack.isEmpty()) null else "w=$w h=$h tanpa $lack; tvFront=${f.tvFront} stand=${f.standFront} radio=${f.props[Prop.RADIO]?.bounds} cassette=${f.cassetteBounds} scaleTv=${f.camera.scaleAt(StageLayout.TV_FRONT_Z)}"
         }
         assertTrue(missing.joinToString("; "), missing.isEmpty())
     }
