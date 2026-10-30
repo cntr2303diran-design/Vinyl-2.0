@@ -115,7 +115,7 @@ fun RoomPropsControls(
         )
         SwitchRow(
             "Buku harian kaset", props.diary, { on -> setProps(props.copy(diary = on)) },
-            subtitle = "Buku di meja; ketuk untuk membuka. Perekaman lagu punya saklar sendiri di bawah",
+            subtitle = "Buku yang digantung di dinding; ketuk untuk membuka. Perekaman lagu punya saklar sendiri di bawah",
         )
         SwitchRow(
             "Radio kecil", props.radio, { on -> setProps(props.copy(radio = on)) },

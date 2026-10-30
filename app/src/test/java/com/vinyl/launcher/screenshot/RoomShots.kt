@@ -104,6 +104,8 @@ internal fun StagePreview(
     gameLine: String = "",
     /** Pasang lampu dinding (seperti di beranda sungguhan bila dindingnya mengikuti nada ruang). */
     lamp: Boolean = true,
+    /** Benda ruangan (jam, radio, telepon, poster, piala, buku harian) dan isinya. */
+    props: com.vinyl.launcher.ui.room.stage.PropActions = com.vinyl.launcher.ui.room.stage.PropActions(),
 ) {
     val s = seek ?: remember { SeekState() }
     VinylTheme {
@@ -129,7 +131,7 @@ internal fun StagePreview(
                 projection = np.art?.let { ProjectionContent.Picture(it) },
                 tape = tape, tapeLabel = tapeLabel, tvScreen = tvScreen, drawer = drawer, tvOff = tvOff,
                 onToggleLamp = if (lamp) ({}) else null,
-                propActions = com.vinyl.launcher.ui.room.stage.PropActions(),
+                propActions = props,
                 clockTime = java.time.LocalTime.of(7, 5),
             )
             VhsFilm(animate = false, modifier = Modifier.fillMaxSize())

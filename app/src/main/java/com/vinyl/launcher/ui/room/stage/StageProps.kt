@@ -24,15 +24,16 @@ object StageProps {
     private const val TABLE_Z = StageLayout.TV_FRONT_Z + 14f
 
     const val CLOCK_CM = 26f
-    const val RADIO_CM = 18f
-    const val PHONE_CM = 17f
+    const val RADIO_CM = 15f
+    const val PHONE_CM = 14f
     /** Lebar poster (cm) dan perbandingan tinggi : lebar. */
     const val FRAME_CM = 24f
     const val FRAME_RATIO = 1.3f
-    /** Rak piala di dinding (lebar cm, tinggi : lebar) dan buku harian di meja. */
+    /** Rak piala dan buku harian (digantung) di dinding: lebar cm dan tinggi : lebar. */
     const val TROPHY_CM = 30f
     const val TROPHY_RATIO = 0.75f
-    const val DIARY_CM = 13f
+    const val DIARY_CM = 14f
+    const val DIARY_RATIO = 1.2f
 
     /**
      * @param wallTop batas atas benda (di bawah teks OSD sudut atas)
@@ -110,6 +111,24 @@ object StageProps {
             if (accept(Prop.TROPHY, b, growTouch(b))) break
         }
 
+        // ---------- Buku harian: digantung di dinding di sebelah kiri rak piala (atau poster/jam), atau di bawahnya
+        val dw = (DIARY_CM * sw).coerceIn(MIN_TOUCH, 72f)
+        val dh = dw * DIARY_RATIO
+        val dAnchor = placed[Prop.TROPHY]?.hit ?: placed[Prop.FRAME]?.hit ?: placed[Prop.CLOCK]?.hit
+        val diarySlots = if (dAnchor != null) {
+            listOf(
+                dAnchor.left - GAP * 1.5f - dw to dAnchor.top,
+                dAnchor.right - dw to dAnchor.bottom + GAP * 1.5f,
+                dAnchor.left - GAP * 1.5f - dw to dAnchor.bottom + GAP * 1.5f,
+            )
+        } else {
+            listOf(clockLeft to wallTop)
+        }
+        for ((dx, dy) in diarySlots) {
+            val b = SRect(dx, dy, dx + dw, dy + dh)
+            if (accept(Prop.DIARY, b, b)) break
+        }
+
         // ---------- Benda meja: dasar di garis papan meja, kandidat kiri-kanan TV dan kaset
         val st = cam.scaleAt(StageLayout.TV_FRONT_Z)
         val tableY = cam.project(V3(0f, StageLayout.STAND_H, TABLE_Z)).y
@@ -117,7 +136,7 @@ object StageProps {
         val slabRight = cam.project(V3(standHalfW - 6f, StageLayout.STAND_H, TABLE_Z)).x
 
         fun table(prop: Prop, width: Float, height: Float, order: List<Slot>) {
-            val gap = GAP * 1.5f
+            val gap = GAP + 1f
             val leftNear = tv.left - gap - width
             val rightNear = cassette.right + gap
             for (slot in order) {
@@ -137,8 +156,6 @@ object StageProps {
         table(Prop.RADIO, radioW, radioW * 0.6f, listOf(Slot.LEFT_NEAR, Slot.LEFT_FAR, Slot.RIGHT_NEAR, Slot.RIGHT_FAR))
         val phoneW = (PHONE_CM * st).coerceIn(60f, 120f)
         table(Prop.PHONE, phoneW, phoneW * 0.8f, listOf(Slot.LEFT_FAR, Slot.LEFT_NEAR, Slot.RIGHT_NEAR, Slot.RIGHT_FAR))
-        val diaryW = (DIARY_CM * st).coerceIn(48f, 96f)
-        table(Prop.DIARY, diaryW, diaryW * 0.7f, listOf(Slot.RIGHT_NEAR, Slot.RIGHT_FAR, Slot.LEFT_FAR, Slot.LEFT_NEAR))
         return placed
     }
 

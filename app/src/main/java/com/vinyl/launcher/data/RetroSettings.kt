@@ -79,7 +79,7 @@ data class RoomPropSettings(
     val phone: Boolean = true,
     val frame: Boolean = true,
     val trophy: Boolean = true,
-    /** Buku di meja saja; perekaman buku harian punya saklar sendiri (mati secara bawaan) di [DiaryStore]. */
+    /** Hanya bukunya di dinding; perekaman buku harian punya saklar sendiri (mati secara bawaan) di [DiaryStore]. */
     val diary: Boolean = true,
 )
 

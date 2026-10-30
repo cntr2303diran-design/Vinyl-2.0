@@ -22,7 +22,7 @@ import androidx.compose.ui.unit.dp
 import com.vinyl.launcher.ui.theme.Tokens
 
 /**
- * Buku harian kaset di meja: buku tertutup dengan pita pembatas; titik merah kecil di sampulnya menyala bila perekaman aktif.
+ * Buku harian kaset yang digantung di dinding dengan tali: buku tertutup; titik merah kecil di sampulnya menyala bila perekaman aktif.
  * Ketuk = buka isi buku (daftar lagu per hari) beserta saklar perekaman dan tombol hapus.
  */
 @Composable
@@ -56,25 +56,31 @@ private fun DrawScope.drawDiary(look: PropLook, recording: Boolean) {
     val cover = Color(Tokens.Props.DIARY_COVER)
     val pages = Color(Tokens.Props.DIARY_PAGES)
     val r = CornerRadius(2f * d, 2f * d)
-    // Bayangan di meja, halaman yang mengintip di bawah, lalu sampul
-    drawRoundRect(Color.Black.copy(alpha = 0.30f), Offset(0.5f * d, h * 0.86f), Size(w, h * 0.16f), r)
-    drawRoundRect(pages, Offset(w * 0.04f, h * 0.80f), Size(w * 0.92f, h * 0.18f), r)
-    drawRoundRect(Brush.verticalGradient(listOf(cover, Color(Tokens.Props.BAKELITE_DARK).copy(alpha = 0.6f).compositeOver(cover))), Offset.Zero, Size(w, h * 0.86f), r)
+    // Buku digantung di dinding dengan tali dari sebuah paku di atasnya
+    val top = h * 0.17f
+    val bh = h - top - 2f * d
+    val nail = Offset(w / 2f, 2.2f * d)
+    val string = Color.Black.copy(alpha = 0.55f)
+    drawLine(string, nail, Offset(w * 0.20f, top + 2f * d), strokeWidth = 1.1f * d)
+    drawLine(string, nail, Offset(w * 0.80f, top + 2f * d), strokeWidth = 1.1f * d)
+    drawCircle(look.rimDark, 2.2f * d, nail)
+    // Bayangan di dinding, halaman yang mengintip di bawah, lalu sampul
+    drawRoundRect(Color.Black.copy(alpha = 0.30f), Offset(1.2f * d, top + 1.6f * d), Size(w, bh), r)
+    drawRoundRect(pages, Offset(w * 0.05f, top + bh * 0.90f), Size(w * 0.90f, bh * 0.10f + 1.5f * d), r)
+    drawRoundRect(Brush.verticalGradient(listOf(cover, cover.copy(alpha = 0.82f).compositeOver(Color.Black))), Offset(0f, top), Size(w, bh * 0.93f), r)
     // Punggung buku dan garis hias
-    drawRect(Color.Black.copy(alpha = 0.25f), Offset.Zero, Size(w * 0.10f, h * 0.86f))
+    drawRect(Color.Black.copy(alpha = 0.25f), Offset(0f, top), Size(w * 0.10f, bh * 0.93f))
     val trim = look.rim
-    drawRect(trim, Offset(w * 0.18f, h * 0.14f), Size(w * 0.64f, 1.2f * d))
-    drawRect(trim, Offset(w * 0.18f, h * 0.60f), Size(w * 0.64f, 1.2f * d))
+    drawRect(trim, Offset(w * 0.20f, top + bh * 0.12f), Size(w * 0.62f, 1.2f * d))
+    drawRect(trim, Offset(w * 0.20f, top + bh * 0.66f), Size(w * 0.62f, 1.2f * d))
     // Label kecil berbentuk kaset di sampul
-    val lw = w * 0.46f
-    val lh = h * 0.24f
-    val lx = (w - lw) / 2f + w * 0.04f
-    val ly = h * 0.28f
+    val lw = w * 0.50f
+    val lh = bh * 0.24f
+    val lx = (w - lw) / 2f + w * 0.05f
+    val ly = top + bh * 0.28f
     drawRoundRect(pages, Offset(lx, ly), Size(lw, lh), CornerRadius(1.5f * d, 1.5f * d))
     drawCircle(cover, lh * 0.20f, Offset(lx + lw * 0.28f, ly + lh * 0.5f))
     drawCircle(cover, lh * 0.20f, Offset(lx + lw * 0.72f, ly + lh * 0.5f))
-    // Pita pembatas
-    drawRect(Color(Tokens.Props.NEEDLE), Offset(w * 0.78f, h * 0.86f), Size(2.2f * d, h * 0.12f))
     // Titik perekaman
-    if (recording) drawCircle(Color(Tokens.Props.DIARY_REC), 2.6f * d, Offset(w * 0.90f, h * 0.10f))
+    if (recording) drawCircle(Color(Tokens.Props.DIARY_REC), 2.8f * d, Offset(w * 0.88f, top + bh * 0.09f))
 }
