@@ -148,8 +148,9 @@ fun DiaryList(entries: List<DiaryEntry>, onDelete: (DiaryEntry) -> Unit, modifie
                         Text(e.title, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
                         Text(
                             listOf(time, kind, e.artist).filter { it.isNotBlank() }.joinToString(" · "),
+                            // 2 baris: di huruf 200% "waktu · Game · Skor 120" tetap terbaca, tidak terpotong jadi "waktu · Game ·…"
                             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            maxLines = 2, overflow = TextOverflow.Ellipsis,
                         )
                     }
                     TextButton(

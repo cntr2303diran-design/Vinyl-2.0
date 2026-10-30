@@ -171,7 +171,8 @@ fun SwitchRow(label: String, checked: Boolean, onChange: (Boolean) -> Unit, subt
         Modifier.fillMaxWidth().toggleable(value = checked, role = Role.Switch, onValueChange = onChange).padding(vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(Modifier.weight(1f)) {
+        // Jarak 12 dp antara teks dan saklar (padding "end" ikut berbalik di RTL) supaya keterangan panjang tidak menempel ke saklar
+        Column(Modifier.weight(1f).padding(end = 12.dp)) {
             Text(label, style = MaterialTheme.typography.bodyLarge)
             if (subtitle != null) Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
