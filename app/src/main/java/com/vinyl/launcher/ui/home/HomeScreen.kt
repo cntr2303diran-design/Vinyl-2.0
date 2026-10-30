@@ -138,6 +138,7 @@ import androidx.compose.ui.unit.sp
 import com.vinyl.launcher.ui.library.LibraryCatalog
 import com.vinyl.launcher.ui.library.rememberLibraryState
 import com.vinyl.launcher.data.PhoneBook
+import com.vinyl.launcher.ui.settings.rememberImagePicker
 import com.vinyl.launcher.ui.room.stage.PropActions
 import com.vinyl.launcher.ui.room.stage.RoomStage
 import com.vinyl.launcher.player.HiFi
@@ -984,12 +985,14 @@ private fun HomeContent(
     val phoneBook = remember(context) { PhoneBook.get(context) }
     val phoneFavorites by phoneBook.favorites.collectAsStateWithLifecycle()
     val sleepRunning = sleepState is SleepTimer.State.Running
+    val pickPoster = rememberImagePicker("poster") { vm.setPoster(it) }
     val propActions = remember(vm, sleepRunning, phoneFavorites) {
         PropActions(
             onClockAlarms = vm::openAlarms, onClockTimers = vm::openTimers,
             onRadioPlay = vm::radioPlay, onRadioSleep = vm::radioSleep, radioSleepActive = sleepRunning,
             onDial = vm::dial, onOpenPhone = vm::openPhone,
             phoneFavorites = phoneFavorites.mapValues { it.value.name },
+            onFramePick = pickPoster, onFrameClear = { vm.clearPoster() },
         )
     }
     val tvScreen: (@Composable () -> Unit)? = when {

@@ -25,6 +25,8 @@ import com.vinyl.launcher.data.SettingsMigration
 import com.vinyl.launcher.util.SoundFx
 import com.vinyl.launcher.data.MAX_DOCK_APPS
 import com.vinyl.launcher.data.PhoneBook
+import com.vinyl.launcher.data.PosterSettings
+import com.vinyl.launcher.data.PosterSource
 import com.vinyl.launcher.system.RoomShortcuts
 import com.vinyl.launcher.data.SettingsRepository
 import com.vinyl.launcher.data.SystemSettingsLauncher
@@ -179,6 +181,20 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         _draft.value = null
     }
 
+    /** Foto poster baru dari Photo Picker; berkas foto lama dihapus supaya tidak menumpuk di penyimpanan. */
+    fun setPoster(path: String) = viewModelScope.launch {
+        val old = settings.value.retro.poster.photoPath
+        settingsRepo.update { it.copy(retro = it.retro.copy(poster = PosterSettings(PosterSource.PHOTO, path))) }
+        if (old != null && old != path) settingsRepo.deleteImage(old)
+    }
+
+    /** Kembali ke cover album dan hapus foto poster yang tersimpan. */
+    fun clearPoster() = viewModelScope.launch {
+        val old = settings.value.retro.poster.photoPath
+        settingsRepo.update { it.copy(retro = it.retro.copy(poster = PosterSettings())) }
+        if (old != null) settingsRepo.deleteImage(old)
+    }
+
     /** Pengaturan non-gaya (mis. gestur) disimpan langsung tanpa draft. */
     fun updateSettings(transform: (AppSettings) -> AppSettings) = viewModelScope.launch { settingsRepo.update(transform) }
 
@@ -186,7 +202,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     fun savePreset(name: String) = viewModelScope.launch {
         val home = _draft.value ?: settings.value.home
         settingsRepo.update {
-            it.copy(presets = it.presets + ThemePreset(System.currentTimeMillis(), name.ifBlank { "Preset ${it.presets.size + 1}" }, home, it.cover, it.retro))
+            it.copy(presets = it.presets + ThemePreset(System.currentTimeMillis(), name.ifBlank { "Preset ${it.presets.size + 1}" }, home, it.cover, it.retro.copy(poster = PosterSettings())))
         }
     }
     fun applyPreset(preset: ThemePreset) {

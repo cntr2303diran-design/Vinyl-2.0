@@ -77,6 +77,21 @@ data class RoomPropSettings(
     val clock: Boolean = true,
     val radio: Boolean = true,
     val phone: Boolean = true,
+    val frame: Boolean = true,
+)
+
+/** Isi poster/bingkai di dinding: cover lagu yang sedang diputar, atau satu foto pilihan sendiri. */
+@Serializable
+enum class PosterSource { ALBUM, PHOTO }
+
+/**
+ * Poster di dinding. Foto dipilih lewat Photo Picker sistem (tanpa izin penyimpanan) lalu disalin ke folder internal
+ * aplikasi; path-nya tidak ikut berkas cadangan. Tanpa foto, sumbernya selalu cover album.
+ */
+@Serializable
+data class PosterSettings(
+    val source: PosterSource = PosterSource.ALBUM,
+    val photoPath: String? = null,
 )
 
 @Serializable
@@ -140,4 +155,5 @@ data class RetroSettings(
     val era: RoomEra = RoomEra.DEFAULT,
     /** Benda tambahan di ruangan (lihat [RoomPropSettings]). */
     val props: RoomPropSettings = RoomPropSettings(),
+    val poster: PosterSettings = PosterSettings(),
 )

@@ -93,6 +93,9 @@ class PropActions(
     val onOpenPhone: () -> Unit = {},
     /** Nama kontak pintasan per angka 1–9 yang sudah diisi. */
     val phoneFavorites: Map<Int, String> = emptyMap(),
+    /** Poster: pilih foto sendiri (Photo Picker) dan kembali ke cover album. */
+    val onFramePick: () -> Unit = {},
+    val onFrameClear: () -> Unit = {},
 )
 
 /** Keadaan laci kaset di meja: terbuka atau tidak, warna kaset yang mengintip, dan jumlah kasetnya. */
@@ -334,6 +337,9 @@ fun RoomStage(
             val look = remember(pal) { propLook(pal) }
             f.props[Prop.CLOCK]?.takeIf { retro.props.clock }?.let {
                 StageClock(it, look, enabled = !editing, fixed = clockTime, onOpenAlarms = propActions.onClockAlarms, onOpenTimers = propActions.onClockTimers)
+            }
+            f.props[Prop.FRAME]?.takeIf { retro.props.frame }?.let {
+                StageFrame(it, look, retro.poster, np.art, enabled = !editing, onPick = propActions.onFramePick, onClear = propActions.onFrameClear)
             }
             f.props[Prop.RADIO]?.takeIf { retro.props.radio }?.let {
                 StageRadio(

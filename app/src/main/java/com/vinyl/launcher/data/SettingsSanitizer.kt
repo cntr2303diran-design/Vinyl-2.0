@@ -55,7 +55,7 @@ object SettingsSanitizer {
             favorites = s.music.favorites.map { it.text(MAX_SONG_KEY) }.filter { it.isNotEmpty() }.take(MAX_FAVORITES).toSet(),
         ),
         visual = s.visual.copy(parallaxStrength = s.visual.parallaxStrength.fix(MIN_PARALLAX, 1f, 0.6f)),
-        retro = retro(s.retro),
+        retro = retro(s.retro, isAllowedImage),
         audio = AudioConsoleRules.sanitize(s.audio),
         video = VideoRules.sanitize(s.video),
         film = FilmRules.sanitize(s.film),
@@ -84,7 +84,7 @@ object SettingsSanitizer {
                     name = it.name.text(MAX_NAME),
                     home = home(it.home, isAllowedImage),
                     cover = cover(it.cover, isAllowedImage),
-                    retro = it.retro?.let(::retro),
+                    retro = it.retro?.let { r -> retro(r, isAllowedImage) },
                 )
             },
     )
@@ -138,7 +138,13 @@ object SettingsSanitizer {
         imagePath = b.imagePath?.takeIf { it.length <= 1024 && ok(it) },
     )
 
-    private fun retro(r: RetroSettings) = r.copy(
+    private fun poster(p: PosterSettings, ok: (String) -> Boolean): PosterSettings {
+        val path = p.photoPath?.takeIf { it.length <= 1024 && ok(it) }
+        return PosterSettings(source = if (path == null) PosterSource.ALBUM else p.source, photoPath = path)
+    }
+
+    private fun retro(r: RetroSettings, ok: (String) -> Boolean) = r.copy(
+        poster = poster(r.poster, ok),
         crtStrength = r.crtStrength.fix(0f, 1f, 0.6f),
         glowIntensity = r.glowIntensity.fix(0f, 1f, 0.7f),
         projector = r.projector.copy(

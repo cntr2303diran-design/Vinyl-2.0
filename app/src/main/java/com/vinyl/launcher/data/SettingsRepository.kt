@@ -89,6 +89,12 @@ class SettingsRepository private constructor(private val context: Context) {
      * setelah izin URI sementara kedaluwarsa. Mengembalikan path file, atau null bila gagal
      * atau gambar lebih besar dari [MAX_IMAGE_BYTES].
      */
+    /** Hapus satu gambar yang diimpor (hanya berkas di folder gambar internal aplikasi). Dipakai untuk foto poster. */
+    suspend fun deleteImage(path: String): Boolean = withContext(Dispatchers.IO) {
+        val f = File(path)
+        isAllowedImage(path) && runCatching { f.delete() }.getOrDefault(false)
+    }
+
     suspend fun importImage(uri: Uri, name: String): String? = withContext(Dispatchers.IO) {
         val out = File(imagesDir.apply { mkdirs() }, "${name.filter { it.isLetterOrDigit() }.take(24)}-${System.currentTimeMillis()}.img")
         val ok = runCatching {

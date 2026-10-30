@@ -40,9 +40,10 @@ object SettingsBackup {
 
     /** Buang path file lokal sebelum dibagikan. */
     fun stripPrivate(s: AppSettings): AppSettings = s.copy(
+        retro = s.retro.copy(poster = PosterSettings()),
         home = stripHome(s.home),
         cover = stripCover(s.cover),
-        presets = s.presets.map { it.copy(home = stripHome(it.home), cover = stripCover(it.cover)) },
+        presets = s.presets.map { it.copy(home = stripHome(it.home), cover = stripCover(it.cover), retro = it.retro?.copy(poster = PosterSettings())) },
         // Izin folder video melekat pada perangkat ini; URI & tautannya tidak berarti di perangkat lain
         video = VideoSettings(),
         // Sama untuk folder musik pemutar bawaan; pengaturan suaranya (EQ, ReplayGain, crossfeed) ikut dicadangkan
@@ -87,6 +88,8 @@ object SettingsBackup {
                 drawer = clean.drawer.copy(searchContacts = current.drawer.searchContacts),
                 // Folder video bergantung pada izin akses folder di perangkat ini
                 video = current.video,
+                // Foto poster ada di folder internal perangkat ini dan tidak ikut cadangan: pertahankan yang sekarang
+                retro = clean.retro.copy(poster = current.retro.poster),
                 // Folder musik juga; pengaturan suara pemutar diambil dari cadangan
                 player = clean.player.copy(folderUri = current.player.folderUri, folderName = current.player.folderName),
                 // Visualizer audio asli bergantung pada izin mikrofon di perangkat ini: cadangan tidak boleh

@@ -1,7 +1,7 @@
 package com.vinyl.launcher.ui.room.stage
 
 /** Benda tambahan di ruangan yang punya tempat sendiri di [StageLayout.Frame.props]. Urutan = prioritas tempat. */
-enum class Prop { CLOCK, RADIO, PHONE }
+enum class Prop { CLOCK, FRAME, RADIO, PHONE }
 
 /** Tempat satu benda: kotak gambar dan area sentuh (≥ 48 × 48 dp, menutupi kotak gambar), keduanya dalam dp layar. */
 class PropSpot(val bounds: SRect, val hit: SRect)
@@ -26,6 +26,9 @@ object StageProps {
     const val CLOCK_CM = 26f
     const val RADIO_CM = 22f
     const val PHONE_CM = 22f
+    /** Lebar poster (cm) dan perbandingan tinggi : lebar. */
+    const val FRAME_CM = 24f
+    const val FRAME_RATIO = 1.3f
 
     /**
      * @param wallTop batas atas benda (di bawah teks OSD sudut atas)
@@ -67,6 +70,23 @@ object StageProps {
         for (dy in listOf(0f, clock * 0.4f)) {
             val b = SRect(clockLeft, wallTop + dy, clockLeft + clock, wallTop + dy + clock)
             if (accept(Prop.CLOCK, b, b)) break
+        }
+
+        // ---------- Poster: di sebelah kiri jam bila muat, atau di bawahnya; bila jam tidak muat/mati, di tempat jam
+        val fw = (FRAME_CM * sw).coerceIn(MIN_TOUCH + 8f, 80f)
+        val fh = fw * FRAME_RATIO
+        val clockSpot = placed[Prop.CLOCK]?.hit
+        val frameSlots = if (clockSpot != null) {
+            listOf(
+                clockSpot.left - GAP * 1.5f - fw to clockSpot.top,
+                clockSpot.right - fw to clockSpot.bottom + GAP * 1.5f,
+            )
+        } else {
+            listOf(clockLeft to wallTop, clockLeft - fw - GAP * 1.5f to wallTop)
+        }
+        for ((fx, fy) in frameSlots) {
+            val b = SRect(fx, fy, fx + fw, fy + fh)
+            if (accept(Prop.FRAME, b, b)) break
         }
 
         // ---------- Benda meja: dasar di garis papan meja, kandidat kiri-kanan TV dan kaset

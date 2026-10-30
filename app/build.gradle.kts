@@ -96,6 +96,13 @@ android {
     // Robolectric (tangkapan layar Compose di JVM) butuh resource Android saat tes
     testOptions {
         unitTests.isIncludeAndroidResources = true
+        // Pesan kegagalan tes tampil di log CI (tanpa ini hanya "AssertionError at baris N")
+        unitTests.all { test ->
+            test.testLogging {
+                exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+                events("failed")
+            }
+        }
     }
 
     lint {

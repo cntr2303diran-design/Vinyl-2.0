@@ -29,6 +29,9 @@ import androidx.compose.ui.unit.dp
 import com.vinyl.launcher.data.PhoneBook
 import com.vinyl.launcher.data.PhoneBookRules
 import com.vinyl.launcher.data.PhoneFavorite
+import com.vinyl.launcher.data.PosterSettings
+import com.vinyl.launcher.data.PosterSource
+import com.vinyl.launcher.data.SettingsRepository
 import com.vinyl.launcher.data.RetroSettings
 import com.vinyl.launcher.data.RoomPropSettings
 import com.vinyl.launcher.system.RoomShortcuts
@@ -55,6 +58,12 @@ fun RoomPropsControls(
     val props = retro.props
     fun setProps(p: RoomPropSettings) = onRetro(retro.copy(props = p))
 
+    val pickPoster = rememberImagePicker("poster") { path ->
+        val old = retro.poster.photoPath
+        onRetro(retro.copy(poster = PosterSettings(PosterSource.PHOTO, path)))
+        if (old != null && old != path) scope.launch { SettingsRepository.get(context).deleteImage(old) }
+    }
+
     var pendingDigit by remember { mutableIntStateOf(0) }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickContact()) { uri: Uri? ->
         val digit = pendingDigit
@@ -72,6 +81,10 @@ fun RoomPropsControls(
             subtitle = "Ketuk untuk alarm, tahan untuk timer. Tampil di dinding bila muat",
         )
         SwitchRow(
+            "Poster berbingkai", props.frame, { on -> setProps(props.copy(frame = on)) },
+            subtitle = "Menampilkan cover lagu yang diputar atau foto pilihan Anda. Ketuk untuk mengganti foto, tahan untuk kembali ke cover",
+        )
+        SwitchRow(
             "Radio kecil", props.radio, { on -> setProps(props.copy(radio = on)) },
             subtitle = "Ketuk memutar lagu acak dari musik lokal, tahan untuk menyalakan timer tidur",
         )
@@ -79,6 +92,29 @@ fun RoomPropsControls(
             "Telepon putar", props.phone, { on -> setProps(props.copy(phone = on)) },
             subtitle = "Putar angka 1–9 untuk menelepon kontak favorit, ketuk badan telepon untuk aplikasi telepon",
         )
+    }
+
+    SectionTitle("Isi poster")
+    ControlCard {
+        val poster = retro.poster
+        Text(
+            if (poster.photoPath != null) "Sekarang: foto pilihan Anda." else "Sekarang: cover album yang sedang diputar.",
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        Text(
+            "Foto dipilih lewat pemilih foto sistem (tanpa izin penyimpanan), disalin ke penyimpanan aplikasi ini saja, dan tidak ikut cadangan.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+            OutlinedButton(onClick = pickPoster) { Text(if (poster.photoPath == null) "Pilih foto…" else "Ganti foto…") }
+            if (poster.photoPath != null) {
+                OutlinedButton(onClick = {
+                    onRetro(retro.copy(poster = PosterSettings()))
+                    poster.photoPath?.let { old -> scope.launch { SettingsRepository.get(context).deleteImage(old) } }
+                }) { Text("Pakai cover album, hapus foto") }
+            }
+        }
     }
 
     SectionTitle("Pintasan langsung")
