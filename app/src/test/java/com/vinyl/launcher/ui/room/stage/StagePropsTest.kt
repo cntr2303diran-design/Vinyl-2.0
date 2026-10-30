@@ -44,10 +44,12 @@ class StagePropsTest {
 
     @Test
     fun tabletsAndWideLandscapeFitAllThreeProps() {
-        for ((w, h) in tablets) {
+        val missing = tablets.mapNotNull { (w, h) ->
             val f = StageLayout.compute(w, h)
-            assertEquals("w=$w h=$h", Prop.entries.toSet(), f.props.keys)
+            val lack = Prop.entries.toSet() - f.props.keys
+            if (lack.isEmpty()) null else "w=$w h=$h tanpa $lack"
         }
+        assertTrue(missing.joinToString("; "), missing.isEmpty())
     }
 
     @Test
