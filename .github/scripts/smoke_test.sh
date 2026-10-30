@@ -612,6 +612,38 @@ else
 fi
 check_alive "setelah lampu ruangan"
 
+# Benda ruangan (jam dinding, poster, rak piala, buku harian, radio, telepon): muncul hanya bila ada tempat bersih di layar,
+# jadi tidak adanya benda hanya PERINGATAN. Yang wajib: aplikasi tetap hidup setelah mengetuk yang ada, dan bukunya
+# (dialog) bisa dibuka lalu ditutup.
+step "Benda ruangan (jam, poster, rak piala, buku harian, radio, telepon)"
+ensure_front benda > /dev/null
+goto_room benda
+found_props=0
+for spec in 'jam:^Jam dinding$' 'poster:^Poster di dinding$' 'piala:^Rak piala$' 'buku:^Buku harian kaset$' 'radio:^Radio' 'telepon:^Telepon putar$'; do
+  nm=${spec%%:*}; rx=${spec#*:}
+  if find_node "benda_$nm" "$rx"; then found_props=$((found_props + 1)); say "benda ruangan terlihat: $nm"; else say "benda ruangan tidak terlihat (mungkin tidak muat di layar ini): $nm"; fi
+done
+shot "benda_ruangan"
+if [ "$found_props" -eq 0 ]; then
+  warn "tidak satu pun benda ruangan terlihat di beranda (layar kecil/tegak menyembunyikannya; fungsinya ada di Pengaturan → Benda ruangan); layar depan: $(top_desc)"
+else
+  ok "$found_props benda ruangan terlihat di beranda"
+fi
+if find_node benda_piala_buka '^Rak piala$'; then
+  adb shell input tap "$NX" "$NY"; sleep 2; shot "benda_piala_dialog"
+  if find_node benda_piala_judul '^Rak piala'; then ok "daftar piala terbuka"; else warn "daftar piala tidak tampak setelah rak diketuk"; fi
+  tap_node benda_piala_tutup '^Tutup$' > /dev/null || adb shell input keyevent KEYCODE_BACK
+  sleep 1
+fi
+if find_node benda_buku_buka '^Buku harian kaset$'; then
+  adb shell input tap "$NX" "$NY"; sleep 2; shot "benda_buku_dialog"
+  if find_node benda_buku_saklar '^Catat lagu yang diputar'; then ok "buku harian terbuka dengan saklar perekaman"; else warn "saklar perekaman tidak tampak di buku harian"; fi
+  tap_node benda_buku_tutup '^Tutup$' > /dev/null || adb shell input keyevent KEYCODE_BACK
+  sleep 1
+fi
+check_alive "setelah benda ruangan"
+scan_log benda_ruangan
+
 # Satu kaset game: laci -> ketuk kaset -> TV menampilkan game -> main sebentar -> keluarkan kaset lagi.
 #   <kunci> penanda nama berkas, <judul> nama di label kaset (Ular / Bata), <gaya> usap = Ular, palet = Bata
 play_game() {
@@ -754,6 +786,14 @@ if top_is SettingsActivity; then
     adb shell input keyevent KEYCODE_BACK; sleep 1.5
   else
     warn "baris 'Laci kaset' tidak ditemukan di Pengaturan"
+  fi
+  # Halaman "Benda ruangan" harus selalu terjangkau walau bendanya tidak muat di layar
+  if scroll_tap set_benda '^Benda ruangan' ; then
+    sleep 2; shot "pengaturan_benda_ruangan"
+    if wait_node set_benda_telepon '^Telepon putar' 10; then ok "halaman Benda ruangan memuat saklar telepon putar"; else warn "saklar 'Telepon putar' tidak tampak di Benda ruangan"; fi
+    adb shell input keyevent KEYCODE_BACK; sleep 1.5
+  else
+    warn "baris 'Benda ruangan' tidak ditemukan di Pengaturan"
   fi
   adb shell input keyevent KEYCODE_BACK; sleep 1.5
 else

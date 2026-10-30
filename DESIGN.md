@@ -449,3 +449,52 @@ selain kerucut cahaya yang hanya ada saat menyala. `GamePaletteTest` kini juga m
 - Lampu dihitung ulang tiap ukuran layar; pada layar kecil atau huruf OSD sangat besar yang tidak menyisakan tempat bersih, lampu **tidak dipasang** daripada menimpa teks atau benda lain
   (nada ruang tetap bisa diubah di Pengaturan). Panggung tetap kiri→kanan pada RTL, jadi lampu selalu di kiri atas dinding secara fisik.
 - Tangkapan layar otomatis: Bata siap/jalan/jeda (ponsel), game over (tablet), mendatar, ponsel kecil + huruf 200%, RTL, laci dengan dua game, serta lampu terang (ponsel), lampu mati + huruf 200%, dan lampu terang mendatar.
+
+## Putaran 3: ruangan yang lebih hidup (Tahap 16)
+
+Aturan Tahap 14–15 tetap: **tidak ada layar baru kecuali satu halaman Pengaturan**, dan setiap benda adalah bagian dari ruangan, bukan menu. Benda hanya digambar
+bila ada tempat bersih di layar; supaya tidak ada fitur yang "hilang" di layar kecil, setiap fungsinya juga terjangkau di **Pengaturan → Benda ruangan**.
+
+### Prinsip yang dipakai
+
+| Prinsip | Sumber | Dipakai untuk |
+|---|---|---|
+| Warna dinamis yang tetap terbaca | Google Material 3 | Enam palet era (tiga era × terang/gelap) menggantikan warna dinding dan kayu, sementara teks OSD tetap diuji ≥ 4,5 : 1 di atas scrim yang sama |
+| Hierarki visual dan animasi pegas halus | Apple HIG | Kaset lama mengecil ke deck dan kaset baru keluar dengan kurva smoothstep; cakram telepon kembali berputar ke posisi awal; semua gerak mati bila *Hapus animasi* / Penghemat baterai |
+| Aksi utama di jangkauan jempol, target ≥ 48 dp | Samsung One UI | Area sentuh tiap benda ≥ 48 × 48 dp (diperbesar tanpa menimpa benda lain); fungsi cadangan di halaman Pengaturan |
+| Kedalaman lewat lapisan tembus pandang | Microsoft Fluent | Kerucut cahaya proyektor, debu, kilau kaca TV, dan pantulan di meja adalah lapisan alfa rendah di atas dinding |
+| Informasi menjadi bagian dari dunia | Game horor *found footage* (prinsip, bukan aset) | Rekor game dan jam dengar muncul sebagai piala di rak, riwayat putar sebagai buku harian; tidak ada papan peringkat terpisah |
+
+### Perilaku
+
+- **Era** (`RoomEra`): *Bawaan*, *70-an*, *80-an*, *90-an*. Era hanya mengubah dinding, kayu, dan aksen benda; pilihan terang/gelap (dan lampu dinding) tetap bekerja. Dinding pilihan pengguna (warna/gradasi) tidak ditimpa.
+- **Kaset masuk-keluar** (`CassetteSlide`): fase EJECT → INSERT → IDLE sudah ada; kini kaset meluncur ke arah deck (skala turun sampai 0,55, alfa memudar), dengan bunyi *klak* saat masuk dan saat terkunci, serta gulungan bergetar `SHAKE_MS`. Disintesis di perangkat; mengikuti *Bunyi tombol kaset & TV* dan *Getar*.
+- **Cahaya proyektor** (`ProjectorLight`): kerucut dari 40 dp di bawah layar TV ke tepi atas proyeksi, 28 butir debu (12 pada *Lembut*) yang posisinya deterministik menurut waktu (tidak ada bilangan acak per bingkai), kilau di kaca TV, dan pantulan di meja. *Cahaya & debu*: Mati / Lembut / Normal.
+- **Penempatan benda** (`StageProps.place`): tiap benda punya beberapa kandidat tempat; yang pertama muat dipakai. Muat = seluruh area sentuh di dalam layar, di bawah teks OSD atas dan di atas pita OSD bawah, ≥ 8 dp dari benda lain, dan (benda meja) berdiri di atas papan meja. Bila tidak ada yang muat, benda tidak digambar. Urutan: jam → poster → rak piala (dinding), radio → telepon → buku harian (meja).
+- **Jam dinding**: jarum jam bergeser mulus menurut menit, diperbarui tepat saat pergantian menit (tanpa jarum detik, tanpa gambar ulang tiap detik). Ketuk = `SHOW_ALARMS`, tahan = `SHOW_TIMERS`.
+- **Radio**: ketuk = lagu acak dari pemutar bawaan (`RadioPick`: lagu yang baru diputar radio tidak jadi yang pertama lagi bila ada pilihan lain), tahan = nyalakan/batalkan timer tidur yang sudah ada; lampu kecil menyala selama timer berjalan.
+- **Telepon putar** (`RotaryDial`): jari menarik lubang angka searah jarum jam sampai penahan di jam 4; angka 1 menempuh jarak terpendek dan 0 terjauh; lepas sebelum sampai = tidak terhitung. Angka berisi kontak membuka kontak itu di aplikasi kontak; angka kosong memberi pesan; ketuk badan = aplikasi telepon. Untuk TalkBack tersedia aksi *Putar angka 1–9* dan *Buka aplikasi telepon*.
+- **Poster**: cover lagu yang sedang diputar atau satu foto (Photo Picker, disalin ke folder internal, di-decode maks. 512 px, dipotong tengah tanpa melar). Ketuk = pilih foto, tahan = kembali ke cover dan hapus berkas foto. Foto yang rusak atau hilang jatuh ke cover.
+- **Rak piala** (`Achievements`): 12 piala (Ular 10/25/50, Bata 50/150/400, dengar 1/10/50 jam, 10/50/200 lagu berbeda) — murni fungsi dari data yang sudah ada, tidak disimpan; rak memajang maks. 3 yang tertinggi, sisanya siluet.
+- **Buku harian kaset** (`DiaryStore`): mati secara bawaan; bila menyala, mencatat judul, artis, dan waktu setelah lagu benar-benar didengar (aturan *scrobble* yang sama dengan riwayat). Lagu sama dalam 60 dtk dianggap satu. Maks. 500 catatan.
+
+### Token (`Tokens.Era`, `Tokens.Props`) dan kontras
+
+| Token | Pemakaian |
+|---|---|
+| `Era.room(era, dim)` → `EraRoom` | Dinding terang/gelap, lantai, tiga kayu, dua aksen untuk tiap era |
+| `Props.CLOCK_FACE` / `INK` | Muka jam krem `#F1E8D4` dan tintanya `#1B1410` (14,9 : 1) |
+| `Props.DIAL_PLATE` | Pelat angka telepon `#E9E0CC` (13,9 : 1 terhadap tinta) |
+| `Props.NEEDLE` / `SILVER` | Jarum penala radio `#B3261E` di atas perak `#C9C6BD` (3,8 : 1) |
+| `Props.LED_ON` / `LED_OFF` | Lampu timer tidur: menyala `#FFB347`, mati `#4A3A2A` (6,1 : 1) |
+| `Props.CUP_GOLD/SILVER/BRONZE` | Piala; terhadap latar gelap 5,0–11,4 : 1, dan tingkatnya dibedakan juga oleh urutan di rak dan teks *Emas/Perak/Perunggu* |
+| `Props.DIARY_COVER` / `DIARY_PAGES` / `DIARY_REC` | Sampul buku, halaman (8,1 : 1), dan titik merah perekaman |
+
+`EraPaletteTest` dan `PropPaletteTest` menjaga angka-angka ini; kalau token berubah dan kontrasnya turun, build gagal.
+
+### Aksesibilitas, RTL, huruf 200%
+
+- Tiap benda adalah satu elemen dengan nama dan status (*Jam dinding — Pukul 07.05*, *Rak piala — 3 dari 12 piala diraih*, *Buku harian kaset — Perekaman mati, 0 catatan*, *Poster di dinding — Menampilkan cover album*); gambarnya disembunyikan dari semantik agar tidak terbaca dua kali.
+- Aksi yang bergantung gestur (tahan, putar cakram) punya aksi kustom TalkBack setara; dialog piala dan buku harian memakai `AlertDialog` Material sehingga fokus dan tombol Kembali benar.
+- Area sentuh ≥ 48 dp; benda yang tidak muat tidak digambar, jadi tidak pernah menimpa teks OSD pada huruf 200%.
+- Panggung tetap kiri→kanan pada RTL; daftar di dialog dan Pengaturan mengikuti arah bahasa.

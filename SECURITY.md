@@ -56,6 +56,17 @@ Laci kaset film di meja (Tahap 13) tidak menambah izin dan tidak mengirim data p
 | Papan game yang sedang berjalan | Hanya memori | Tidak disimpan; hilang bila proses dimulai ulang |
 | Keadaan daya TV | Memori; satu nilai ya/tidak di `SharedPreferences` privat `tv_power` hanya bila *Ingat tombol daya TV* menyala | Pilihan itu opsional dan **mati** secara bawaan (editor beranda → *TV & kaset*). Nilainya hanya "TV terakhir dimatikan dengan tombol dayanya"; tidak ikut berkas cadangan maupun preset (itu keadaan, bukan pengaturan) dan tidak dikirim ke mana pun. Berkasnya baru dibuat saat TV dimatikan dengan pilihan itu menyala; bila pilihannya dimatikan, yang tersimpan kembali "menyala". Pilihannya sendiri (`rememberTvPower`) adalah kebiasaan perangkat: ikut cadangan, tetapi menerapkan preset tidak mengubahnya |
 
+Benda ruangan (Tahap 16) tidak menambah izin dan tidak mengirim apa pun ke internet:
+
+| Data | Disimpan di | Catatan |
+|---|---|---|
+| Pilihan era, saklar benda, tingkat cahaya & debu, sumber poster | DataStore (bersama pengaturan lain) | Ikut berkas cadangan; field baru berbawaan sehingga cadangan lama tetap terbaca |
+| Foto poster (opsional) | Folder gambar internal aplikasi; path-nya di DataStore | Dipilih lewat Photo Picker sistem (tanpa izin penyimpanan; aplikasi hanya menerima foto yang kamu pilih). **Tidak** ikut berkas cadangan dan **tidak** ditimpa oleh preset atau pemulihan cadangan. Mengganti foto atau memilih cover album menghapus berkas lama. Path divalidasi: harus berkas di folder internal itu |
+| Kontak favorit telepon (angka 1–9: nama dan alamat kontak) | `SharedPreferences` privat `retro_phone` | Dipilih lewat pemilih kontak sistem; yang disimpan hanya nama tampilan dan URI `content://com.android.contacts/…` (nomor telepon tidak disalin). Lokal, **tidak** ikut cadangan atau preset, tidak dikirim. Bisa dihapus per angka atau semua di Pengaturan → Benda ruangan. Menelepon selalu lewat aplikasi telepon sistem, yang meminta kamu menekan tombol panggil |
+| Buku harian kaset (judul, artis, waktu putar) | `SharedPreferences` privat `retro_diary` | Opsional dan **mati** secara bawaan (saklar perekaman di Pengaturan → Benda ruangan atau di buku itu sendiri). Maks 500 catatan (yang terlama dibuang), teks dibersihkan dan dibatasi 120 karakter. Lokal, **tidak** ikut cadangan atau preset, tidak dikirim. Mematikan perekaman tidak menghapus isinya; *Hapus semua catatan* (dengan konfirmasi) dan hapus per baris tersedia |
+| Rak piala | Tidak disimpan | Dihitung saat tampil dari rekor game, total waktu dengar, dan jumlah lagu yang sudah ada; menyetel ulang rekor atau menghapus riwayat otomatis menarik pialanya kembali |
+| Radio dan jam | Tidak disimpan | Lagu acak memakai pustaka pemutar bawaan; timer tidur memakai timer tidur yang sudah ada. Alarm/timer membuka aplikasi jam sistem lewat `SHOW_ALARMS`/`SHOW_TIMERS` (hanya menampilkan; aplikasi ini tidak mendeklarasikan izin `SET_ALARM`, dan bila sistem menolak intent-nya yang muncul hanya pesan) |
+
 Setiap izin dan alasannya tampil di Pengaturan → *Cadangan & privasi*; daftarnya (`PrivacyInfo.kt`) dicocokkan dengan
 `AndroidManifest.xml` oleh tes otomatis, jadi izin baru tanpa alasan akan menggagalkan build.
 
@@ -146,6 +157,7 @@ Itu butuh langkah penandatanganan manual di luar build ini dan tidak diotomatisk
   halaman rekaan; build CI). Layanan streaming berlangganan dengan perlindungan DRM (Widevine L1, dsb.) sering menolak diputar di dalam
   WebView aplikasi lain; kaset bawaan sengaja hanya menunjuk sumber legal. Isi, iklan, dan pelacak halaman film sepenuhnya milik situs
   yang dibuka; aplikasi ini tidak menyaring isi halaman, hanya membatasi apa yang boleh dilakukan halaman terhadap aplikasi dan perangkat.
+- Era, animasi kaset, cahaya proyektor, dan benda ruangan (Tahap 16) belum diuji di perangkat nyata (hanya tes unit, tangkapan layar, build CI, dan uji asap di emulator). Pemilih kontak dan Photo Picker adalah UI sistem: kami tidak mengendalikan apa yang mereka tampilkan. Foto poster dan kontak favorit tidak terenkripsi di penyimpanan internal aplikasi (dilindungi sandbox aplikasi dan enkripsi penyimpanan perangkat), dan hilang bila data aplikasi dihapus.
 - Overlay (layar kunci, taskbar, tombol navigasi) memerlukan izin "tampil di atas aplikasi lain"; ini inheren pada fiturnya.
 
 ## Melapor kerentanan
