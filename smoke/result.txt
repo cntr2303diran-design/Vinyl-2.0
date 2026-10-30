@@ -1,0 +1,69 @@
+PASS
+ok: pemilah jenis ANR lulus uji diri (jejak buatan)
+ok: APK release terpasang
+ok: APK release tidak bisa di-debug
+ok: emulator tenang sebelum aplikasi dibuka
+ok: beranda tampil dan terbaca (Tombol daya TV ada)
+ok: beranda (HomeActivity) tampil
+ok: proses hidup: setelah dibuka
+ok: ProfileInstaller memasang profil (result=1)
+ok: profil dasar terpasang berisi 39395 baris
+ok: proses hidup: setelah diputar mendatar
+ok: proses hidup: setelah diputar tegak
+ok: geser ke kiri membuka Audio Console
+ok: geser ke kanan dari Audio Console kembali ke Ruang TV
+ok: geser ke kanan membuka Perpustakaan kaset
+ok: geser ke kiri dari Perpustakaan kembali ke Ruang TV
+ok: proses hidup: setelah geser halaman
+ok: TV mati (semantik 'TV mati' ada)
+ok: TV menyala lagi (semantik 'TV mati' hilang)
+ok: proses hidup: setelah tombol daya
+ok: lampu ruangan berganti setelah diketuk (checked false -> true)
+ok: ketukan kedua mengembalikan lampu ruangan (checked true -> false)
+ok: proses hidup: setelah lampu ruangan
+ok: 3 benda ruangan terlihat di beranda
+ok: buku harian terbuka dengan saklar perekaman
+ok: perekaman buku harian dinyalakan lewat saklar utama
+ok: saklar per jenis (Musik, Film, Game) muncul setelah perekaman menyala
+ok: proses hidup: setelah benda ruangan
+ok: kaset Ular ada di laci dan diketuk
+ok: TV menampilkan game Ular
+ok: proses hidup: setelah main Ular
+ok: kaset Ular keluar dari deck
+ok: proses hidup: setelah kaset Ular dikeluarkan
+ok: kaset Bata ada di laci dan diketuk
+ok: TV menampilkan game Bata
+ok: tombol deck Bata menawarkan 'Mulai game' sebelum dimainkan
+ok: Bata berjalan: tombol deck berubah menjadi 'Jeda game'
+ok: Bata dijeda lewat tombol deck
+ok: rekor Bata tersimpan dan tampil di label kaset
+ok: proses hidup: setelah main Bata
+ok: kaset Bata keluar dari deck
+ok: proses hidup: setelah kaset Bata dikeluarkan
+ok: kaset film diketuk
+ok: proses hidup: setelah kaset film dimuat
+ok: proses hidup: film saat diputar mendatar
+ok: proses hidup: setelah kaset film
+ok: ikon aplikasi membuka Pengaturan
+ok: halaman Benda ruangan memuat saklar telepon putar
+ok: editor ambang piala terbuka dengan kolom perunggu, perak, dan emas
+ok: proses hidup: setelah Pengaturan
+ok: editor beranda terbuka lewat tekan lama
+ok: proses hidup: setelah editor beranda
+ok: pilihan 'Ingat tombol daya TV' menyala setelah diketuk (checked=true)
+ok: TV dimatikan dengan tombol daya sementara 'Ingat tombol daya TV' dinyalakan
+ok: proses hidup: setelah menyiapkan 'Ingat tombol daya TV'
+ok: proses dimatikan
+ok: beranda terbuka tanpa onboarding: pengaturan bertahan setelah proses dimatikan
+ok: proses hidup: setelah dibuka kembali
+ok: TV tetap mati setelah proses dimatikan (pilihan 'Ingat tombol daya TV')
+ok: catatan game (nama dan skor ronde) ada di buku harian setelah proses dimatikan
+ok: catatan film (nama kaset) ada di buku harian setelah proses dimatikan
+ok: buku harian tidak memuat alamat situs
+ok: catatan buku harian di disk hanya berupa nilai tersegel (entries_sealed), tanpa teks polos
+ok: saklar perekaman buku harian bertahan di disk
+ok: proses hidup: setelah memeriksa buku harian
+ok: proses hidup: setelah paket com.android.egg dihapus
+ok: proses hidup: setelah paket com.android.egg dipasang kembali
+ok: proses hidup: uji kelancaran (release)
+ok: proses hidup: uji kelancaran (debug)
