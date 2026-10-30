@@ -1,5 +1,6 @@
 package com.vinyl.launcher.data
 
+import android.annotation.SuppressLint
 import android.content.Context
 import androidx.core.content.edit
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -86,6 +87,8 @@ class PhoneBook private constructor(private val context: Context) {
     companion object {
         private const val FILE = "retro_phone"
         private const val KEY = "favorites"
+        // Yang disimpan adalah applicationContext (hidup sepanjang proses), bukan Activity: tidak bocor
+        @SuppressLint("StaticFieldLeak")
         @Volatile private var instance: PhoneBook? = null
 
         fun get(context: Context): PhoneBook =

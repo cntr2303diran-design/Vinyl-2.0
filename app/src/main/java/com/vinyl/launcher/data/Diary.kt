@@ -1,5 +1,6 @@
 package com.vinyl.launcher.data
 
+import android.annotation.SuppressLint
 import android.content.Context
 import androidx.core.content.edit
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -105,6 +106,8 @@ class DiaryStore private constructor(private val context: Context) {
         private const val FILE = "retro_diary"
         private const val KEY_ENTRIES = "entries"
         private const val KEY_RECORDING = "recording"
+        // Yang disimpan adalah applicationContext (hidup sepanjang proses), bukan Activity: tidak bocor
+        @SuppressLint("StaticFieldLeak")
         @Volatile private var instance: DiaryStore? = null
 
         fun get(context: Context): DiaryStore =

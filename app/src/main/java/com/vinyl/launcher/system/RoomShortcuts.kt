@@ -3,9 +3,9 @@ package com.vinyl.launcher.system
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.provider.AlarmClock
 import android.widget.Toast
+import androidx.core.net.toUri
 import com.vinyl.launcher.data.PhoneFavorite
 import com.vinyl.launcher.media.RadioPick
 import com.vinyl.launcher.media.SleepTimer
@@ -45,7 +45,7 @@ object RoomShortcuts {
     fun dial(context: Context, digit: Int, favorites: Map<Int, PhoneFavorite>) {
         when (val a = dialAction(digit, favorites)) {
             DialAction.OpenPhone -> openPhone(context)
-            is DialAction.OpenContact -> launch(context, Intent(Intent.ACTION_VIEW, Uri.parse(a.uri)), "Kontak ${a.name} tidak bisa dibuka")
+            is DialAction.OpenContact -> launch(context, Intent(Intent.ACTION_VIEW, a.uri.toUri()), "Kontak ${a.name} tidak bisa dibuka")
             is DialAction.Empty -> notify(context, "Angka ${a.digit} belum diisi. Pilih kontaknya di Pengaturan → Benda ruangan")
         }
     }
