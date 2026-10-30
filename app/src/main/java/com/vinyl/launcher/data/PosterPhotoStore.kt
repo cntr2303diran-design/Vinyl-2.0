@@ -9,6 +9,8 @@ import android.graphics.Color
 import android.graphics.Matrix
 import android.media.ExifInterface
 import android.net.Uri
+import androidx.core.graphics.createBitmap
+import androidx.core.graphics.scale
 import com.vinyl.launcher.data.secure.SystemVault
 import com.vinyl.launcher.data.secure.Vault
 import com.vinyl.launcher.data.secure.VaultPurpose
@@ -120,7 +122,7 @@ class PosterPhotoStore internal constructor(private val context: Context, privat
         }
         val (w, h) = PosterPhotoRules.scaledSize(upright.width, upright.height)
         val scaled = if (w == upright.width && h == upright.height) upright else {
-            Bitmap.createScaledBitmap(upright, w, h, true).also { if (it !== upright) upright.recycle() }
+            upright.scale(w, h, true).also { if (it !== upright) upright.recycle() }
         }
         return flatten(scaled)
     }
@@ -128,7 +130,7 @@ class PosterPhotoStore internal constructor(private val context: Context, privat
     /** JPEG tak punya transparansi: gambar bertransparansi (PNG/WebP) dialasi putih supaya tidak jadi hitam. */
     private fun flatten(src: Bitmap): Bitmap {
         if (!src.hasAlpha()) return src
-        val out = Bitmap.createBitmap(src.width, src.height, Bitmap.Config.ARGB_8888)
+        val out = createBitmap(src.width, src.height, Bitmap.Config.ARGB_8888)
         Canvas(out).apply {
             drawColor(Color.WHITE)
             drawBitmap(src, 0f, 0f, null)
