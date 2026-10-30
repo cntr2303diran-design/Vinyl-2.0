@@ -467,7 +467,7 @@ bila ada tempat bersih di layar; supaya tidak ada fitur yang "hilang" di layar k
 
 ### Perilaku
 
-- **Era** (`RoomEra`): *Bawaan*, *70-an*, *80-an*, *90-an*. Era hanya mengubah dinding, kayu, dan aksen benda; pilihan terang/gelap (dan lampu dinding) tetap bekerja. Dinding pilihan pengguna (warna/gradasi) tidak ditimpa.
+- **Era** (`RoomEra`): *Bawaan*, *70-an*, *80-an*, *90-an*. Era hanya mengubah dinding, kayu, dan aksen benda; pilihan terang/gelap (dan lampu dinding) tetap bekerja. Dinding pilihan pengguna (warna/gradasi) tetap menang: hiasan dinding era tidak digambar di atasnya, sedangkan meja dan lantai tetap mengikuti era.
 - **Kaset masuk-keluar** (`CassetteSlide`): fase EJECT → INSERT → IDLE sudah ada; kini kaset meluncur ke arah deck (skala turun sampai 0,55, alfa memudar), dengan bunyi *klak* saat masuk dan saat terkunci, serta gulungan bergetar `SHAKE_MS`. Disintesis di perangkat; mengikuti *Bunyi tombol kaset & TV* dan *Getar*.
 - **Cahaya proyektor** (`ProjectorLight`): kerucut dari 40 dp di bawah layar TV ke tepi atas proyeksi, 28 butir debu (12 pada *Lembut*) yang posisinya deterministik menurut waktu (tidak ada bilangan acak per bingkai), kilau di kaca TV, dan pantulan di meja. *Cahaya & debu*: Mati / Lembut / Normal.
 - **Penempatan benda** (`StageProps.place`): tiap benda punya beberapa kandidat tempat; yang pertama muat dipakai. Muat = seluruh area sentuh di dalam layar, di bawah teks OSD atas dan di atas pita OSD bawah, ≥ 8 dp dari benda lain, dan (benda meja) berdiri di atas papan meja. Bila tidak ada yang muat, benda tidak digambar. Urutan: jam → poster → rak piala (dinding), radio → telepon → buku harian (meja).
