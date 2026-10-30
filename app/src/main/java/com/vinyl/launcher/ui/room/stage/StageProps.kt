@@ -136,7 +136,7 @@ object StageProps {
         val slabRight = cam.project(V3(standHalfW - 6f, StageLayout.STAND_H, TABLE_Z)).x
 
         fun table(prop: Prop, width: Float, height: Float, order: List<Slot>) {
-            val gap = GAP + 1f
+            val gap = GAP + 0.5f
             val leftNear = tv.left - gap - width
             val rightNear = cassette.right + gap
             for (slot in order) {
@@ -152,9 +152,9 @@ object StageProps {
             }
         }
 
-        val radioW = (RADIO_CM * st).coerceIn(56f, 120f)
+        val radioW = (RADIO_CM * st).coerceIn(50f, 120f)
         table(Prop.RADIO, radioW, radioW * 0.6f, listOf(Slot.LEFT_NEAR, Slot.LEFT_FAR, Slot.RIGHT_NEAR, Slot.RIGHT_FAR))
-        val phoneW = (PHONE_CM * st).coerceIn(60f, 120f)
+        val phoneW = (PHONE_CM * st).coerceIn(50f, 120f)
         table(Prop.PHONE, phoneW, phoneW * 0.8f, listOf(Slot.LEFT_FAR, Slot.LEFT_NEAR, Slot.RIGHT_NEAR, Slot.RIGHT_FAR))
         return placed
     }
