@@ -101,6 +101,14 @@ class SettingsRepository private constructor(private val context: Context) {
         isAllowedImage(path) && runCatching { f.delete() }.getOrDefault(false)
     }
 
+    /**
+     * Sapu foto poster versi lama (polos) yang tertinggal di folder gambar dan tidak dipakai lagi; [keep] = yang masih dipakai
+     * pengaturan (null bila tidak ada). Lihat [PosterPhotoRules.deleteLegacyExcept]. Mengembalikan jumlah yang terhapus.
+     */
+    suspend fun deleteStrayLegacyPosters(keep: String?): Int = withContext(Dispatchers.IO) {
+        PosterPhotoRules.deleteLegacyExcept(imagesDir, keep)
+    }
+
     /** Hapus berkas foto poster: yang tersegel lewat [PosterPhotoStore], yang lama (polos) lewat [deleteImage]. */
     suspend fun deletePoster(path: String): Boolean {
         val photos = PosterPhotoStore.get(context)

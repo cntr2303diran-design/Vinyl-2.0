@@ -13,7 +13,8 @@ import java.io.File
  *    tersegel yang baru dan SESUDAH itu berkas polosnya dihapus. Foto yang tidak terbaca (rusak/hilang) dilepas dari poster.
  *    Bila enkripsi tidak tersedia di perangkat ini, foto lama dibiarkan dan dicoba lagi pada proses berikutnya (tidak
  *    dihapus diam-diam).
- * Selain itu sisa berkas di folder poster yang tidak dipakai pengaturan (impor yang terputus) dibersihkan.
+ * Selain itu sisa berkas di folder poster yang tidak dipakai pengaturan (impor yang terputus) dibersihkan, begitu pula sisa
+ * foto lama yang polos di folder gambar latar (migrasi yang terputus sebelum penghapusan), selama tidak dipakai pengaturan.
  */
 object LocalDataMigration {
     private const val TAG = "LocalDataMigration"
@@ -47,7 +48,10 @@ object LocalDataMigration {
                 Log.w(TAG, "Penyimpanan terenkripsi tidak tersedia; foto poster lama dibiarkan dan dicoba lagi nanti")
             }
         }
-        val keep = repo.current().retro.poster.photoPath?.takeIf { photos.isSealedPath(it) }
-        photos.deleteAllExcept(keep)
+        val now = repo.current().retro.poster.photoPath
+        photos.deleteAllExcept(now?.takeIf { photos.isSealedPath(it) })
+        // Sisa berkas polos yang tidak dipakai lagi (mis. proses mati setelah pengaturan menunjuk yang tersegel, sebelum
+        // berkas polosnya terhapus). Yang masih dipakai pengaturan (enkripsi belum tersedia) dibiarkan.
+        repo.deleteStrayLegacyPosters(keep = now?.takeUnless { photos.isSealedPath(it) })
     }
 }

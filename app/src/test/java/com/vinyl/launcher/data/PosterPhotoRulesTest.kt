@@ -1,12 +1,105 @@
 package com.vinyl.launcher.data
 
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.File
+import java.nio.file.Files
 
 /** Aturan foto poster tersegel: nama berkas, ukuran akhir, pengambilan sampel, dan putaran EXIF. */
 class PosterPhotoRulesTest {
+    private val scratches = mutableListOf<File>()
+
+    @After
+    fun cleanUp() {
+        scratches.forEach { it.deleteRecursively() }
+        scratches.clear()
+    }
+
+    private fun scratchDir(): File = Files.createTempDirectory("poster-rules").toFile().also { scratches += it }
+
+    private fun touch(dir: File, name: String): File = File(dir, name).also { it.writeText("x") }
+
+    private fun names(dir: File): List<String> = dir.list().orEmpty().sorted()
+
+    @Test
+    fun legacyNamesAreOnlyPosterDigitsImg() {
+        for (ok in listOf("poster-0.img", "poster-1.img", "poster-1730000000000.img")) {
+            assertTrue(ok, PosterPhotoRules.isLegacyName(ok))
+            assertFalse("bukan nama tersegel: $ok", PosterPhotoRules.isSealedName(ok))
+        }
+        for (bad in listOf(
+            "", "poster-.img", "poster-abc.img", "poster-12.vault", "poster-12.IMG", "poster-12.img.tmp", "poster-12.jpg",
+            "home-12.img", "cover-12.img", "photo0-12.img", "poster12.img", "Poster-12.img", "../poster-12.img",
+            "poster-12/../x.img", "poster-1 2.img", "poster--12.img", "poster-١٢.img", ".img", "poster-12.img\u0000",
+            "poster-" + "1".repeat(80) + ".img",
+        )) {
+            assertFalse("seharusnya ditolak: '$bad'", PosterPhotoRules.isLegacyName(bad))
+        }
+        assertFalse(PosterPhotoRules.isLegacyName("poster-12.vault"))
+    }
+
+    @Test
+    fun sweepingKeepsTheLegacyPhotoStillInUseAndTouchesNothingElse() {
+        val dir = scratchDir()
+        for (n in listOf("poster-1.img", "poster-2.img", "poster-3.img", "home-9.img", "cover-9.img", "poster-5.vault", "poster-x.img", "notes.txt")) touch(dir, n)
+        File(dir, "poster-7.img").mkdir() // direktori bernama mirip: bukan berkas biasa, tidak boleh disentuh
+        touch(File(dir, "poster-7.img"), "isi.txt")
+
+        val removed = PosterPhotoRules.deleteLegacyExcept(dir, File(dir, "poster-2.img").path)
+
+        assertEquals(2, removed)
+        assertEquals(
+            listOf("cover-9.img", "home-9.img", "notes.txt", "poster-2.img", "poster-5.vault", "poster-7.img", "poster-x.img"),
+            names(dir),
+        )
+        assertTrue(File(dir, "poster-7.img/isi.txt").exists())
+    }
+
+    @Test
+    fun theKeptPathMayBeWrittenInAnotherFormButStillMatches() {
+        val dir = scratchDir()
+        touch(dir, "poster-1.img")
+        touch(dir, "poster-2.img")
+        // "dir/./poster-2.img" dan "dir/sub/../poster-2.img" menunjuk berkas yang sama
+        File(dir, "sub").mkdir()
+        val roundabout = dir.path + File.separator + "sub" + File.separator + ".." + File.separator + "poster-2.img"
+
+        assertEquals(1, PosterPhotoRules.deleteLegacyExcept(dir, roundabout))
+        assertEquals(listOf("poster-2.img", "sub"), names(dir))
+    }
+
+    @Test
+    fun withNothingToKeepEveryLegacyPhotoGoes() {
+        val dir = scratchDir()
+        for (n in listOf("poster-1.img", "poster-2.img", "home-9.img", "poster-3.vault")) touch(dir, n)
+
+        assertEquals(2, PosterPhotoRules.deleteLegacyExcept(dir, null))
+        assertEquals(listOf("home-9.img", "poster-3.vault"), names(dir))
+        // Kedua kali: tidak ada lagi yang dihapus
+        assertEquals(0, PosterPhotoRules.deleteLegacyExcept(dir, null))
+    }
+
+    @Test
+    fun anUnreadablePathToKeepMeansNothingIsDeleted() {
+        val dir = scratchDir()
+        touch(dir, "poster-1.img")
+        touch(dir, "poster-2.img")
+
+        // Path berisi karakter NUL tidak bisa dibakukan: lebih aman tidak menghapus apa pun daripada salah menghapus
+        assertEquals(0, PosterPhotoRules.deleteLegacyExcept(dir, "poster-2.img\u0000"))
+        assertEquals(listOf("poster-1.img", "poster-2.img"), names(dir))
+    }
+
+    @Test
+    fun aMissingFolderIsNotAnError() {
+        val dir = scratchDir()
+        assertEquals(0, PosterPhotoRules.deleteLegacyExcept(File(dir, "tidak-ada"), null))
+        assertEquals(0, PosterPhotoRules.deleteLegacyExcept(File(dir, "tidak-ada"), "poster-1.img"))
+    }
+
     @Test
     fun aFileNameRoundTripsThroughTheValidator() {
         for (t in listOf(0L, 1L, 1_730_000_000_000L, Long.MAX_VALUE)) {
