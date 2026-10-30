@@ -17,8 +17,9 @@ name: Build APK
 on:
   push:
     # main: build + rilis "latest". retro-tv: branch kerja tema TV tabung — build, tes, lint, dan tangkapan layar,
-    # TANPA menerbitkan rilis (APK setengah jadi tidak boleh menimpa unduhan publik).
-    branches: [main, retro-tv]
+    # TANPA menerbitkan rilis (APK setengah jadi tidak boleh menimpa unduhan publik). ruang-hidup: branch kerja fitur
+    # ruangan (tema era, radio, jam, telepon, poster, buku harian, piala), aturannya sama dengan retro-tv.
+    branches: [main, retro-tv, ruang-hidup]
   workflow_dispatch:
 
 permissions:
