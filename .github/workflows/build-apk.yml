@@ -105,6 +105,12 @@ jobs:
             if [ -f "$f" ]; then { echo; echo "===== LAPORAN LINT ($f) ====="; cat "$f"; } >> build.log; fi
           done
 
+      # Build ini hanya mencatat tes yang GAGAL. Langkah ini membaca laporan XML dan mencetak jumlah tes yang sungguh
+      # berjalan (per kelas) ke build.log, supaya "tes lulus" punya angka sebagai bukti. Tidak pernah menggagalkan build.
+      - name: Ringkas hasil tes unit
+        if: always()
+        run: python3 .github/scripts/test_summary.py app/build/test-results 2>&1 | tee -a build.log
+
       - name: Build debug APK
         run: |
           set -o pipefail
