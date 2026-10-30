@@ -159,4 +159,6 @@ data class RetroSettings(
     /** Benda tambahan di ruangan (lihat [RoomPropSettings]). */
     val props: RoomPropSettings = RoomPropSettings(),
     val poster: PosterSettings = PosterSettings(),
+    /** Ambang piala di rak, diatur pengguna (lihat [TrophyGoals]). Field baru: dokumen lama terbaca dengan ambang bawaan. */
+    val trophyGoals: TrophyGoals = TrophyGoals(),
 )

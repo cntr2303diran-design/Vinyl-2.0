@@ -1,5 +1,7 @@
 package com.vinyl.launcher.ui.theme
 
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.ui.graphics.toArgb
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -48,6 +50,12 @@ class ContrastTest {
         assertAtLeast("primaryContainer", ColorMath.contrast(Tokens.Argb.ON_PRIMARY_CONTAINER, Tokens.Argb.PRIMARY_CONTAINER))
         assertAtLeast("errorContainer", ColorMath.contrast(Tokens.Argb.ON_ERROR_CONTAINER, Tokens.Argb.ERROR_CONTAINER))
         assertAtLeast("secondary di card", ColorMath.contrast(Tokens.Argb.SECONDARY, Tokens.Argb.INK_CARD))
+    }
+
+    @Test fun `teks galat memakai warna error skema gelap dan terbaca di semua permukaan`() {
+        // Pesan "tidak disimpan" dan alasan isian yang salah memakai colorScheme.error; skema aplikasi tidak menimpanya
+        val error = darkColorScheme().error.toArgb().toLong() and 0xFFFFFFFFL
+        surfaces.forEach { (sn, s) -> assertAtLeast("error di $sn", ColorMath.contrast(error, s)) }
     }
 
     @Test fun `panel hampir buram tetap membuat teks terbaca di atas latar putih`() {

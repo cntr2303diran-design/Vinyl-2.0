@@ -30,34 +30,37 @@ data class AchievementInput(
 
 /**
  * Rak piala (murni, teruji). Semua piala diturunkan dari rekor game, total waktu dengar, dan jumlah lagu di koleksi, jadi
- * menghapus riwayat atau menyetel ulang rekor otomatis menarik pialanya kembali. Piala tidak disimpan terpisah.
+ * menghapus riwayat atau menyetel ulang rekor otomatis menarik pialanya kembali. Piala tidak disimpan terpisah. Ambangnya
+ * ([TrophyGoals]) diatur sendiri oleh pengguna; tanpa pengaturan, ambang bawaan dipakai.
  */
 object Achievements {
     const val HOUR_MS = 3_600_000L
 
-    private class Rule(val id: String, val title: String, val hint: String, val tier: TrophyTier, val goal: Long, val unit: String, val value: (AchievementInput) -> Long)
-
-    private val rules: List<Rule> = listOf(
-        Rule("snake_1", "Ular Pemula", "Raih 10 poin di game Ular", TrophyTier.BRONZE, 10, "poin") { it.snakeBest.toLong() },
-        Rule("snake_2", "Ular Lincah", "Raih 25 poin di game Ular", TrophyTier.SILVER, 25, "poin") { it.snakeBest.toLong() },
-        Rule("snake_3", "Ular Legenda", "Raih 50 poin di game Ular", TrophyTier.GOLD, 50, "poin") { it.snakeBest.toLong() },
-        Rule("breakout_1", "Pemecah Bata", "Raih 50 poin di game Bata", TrophyTier.BRONZE, 50, "poin") { it.breakoutBest.toLong() },
-        Rule("breakout_2", "Penghancur Dinding", "Raih 150 poin di game Bata", TrophyTier.SILVER, 150, "poin") { it.breakoutBest.toLong() },
-        Rule("breakout_3", "Raja Bata", "Raih 400 poin di game Bata", TrophyTier.GOLD, 400, "poin") { it.breakoutBest.toLong() },
-        Rule("listen_1", "Telinga Baru", "Dengarkan musik total 1 jam", TrophyTier.BRONZE, 1, "jam") { it.listenedMs / HOUR_MS },
-        Rule("listen_2", "Pendengar Setia", "Dengarkan musik total 10 jam", TrophyTier.SILVER, 10, "jam") { it.listenedMs / HOUR_MS },
-        Rule("listen_3", "Maraton Kaset", "Dengarkan musik total 50 jam", TrophyTier.GOLD, 50, "jam") { it.listenedMs / HOUR_MS },
-        Rule("songs_1", "Rak Mulai Terisi", "Putar 10 lagu berbeda", TrophyTier.BRONZE, 10, "lagu") { it.songs.toLong() },
-        Rule("songs_2", "Kolektor Kaset", "Putar 50 lagu berbeda", TrophyTier.SILVER, 50, "lagu") { it.songs.toLong() },
-        Rule("songs_3", "Perpustakaan Pita", "Putar 200 lagu berbeda", TrophyTier.GOLD, 200, "lagu") { it.songs.toLong() },
-    )
-
-    val count: Int get() = rules.size
+    /** Jumlah piala: empat jalur × tiga tingkat. */
+    val count: Int = TrophyLine.entries.size * TrophyTier.entries.size
 
     /** Semua piala (diperoleh maupun belum) menurut urutan rak; nilai negatif dianggap nol. */
-    fun compute(input: AchievementInput): List<Trophy> = rules.map { r ->
-        val v = r.value(input).coerceAtLeast(0L)
-        Trophy(r.id, r.title, r.hint, r.tier, progress = minOf(v, r.goal), goal = r.goal, unit = r.unit)
+    fun compute(input: AchievementInput, goals: TrophyGoals = TrophyGoals()): List<Trophy> {
+        val out = ArrayList<Trophy>(count)
+        fun line(
+            id: String,
+            titles: List<String>,
+            goal: TrophyGoal,
+            unit: String,
+            value: Long,
+            hint: (Int) -> String,
+        ) {
+            val v = value.coerceAtLeast(0L)
+            for ((i, tier) in TrophyTier.entries.withIndex()) {
+                val g = goal.forTier(tier)
+                out += Trophy("${id}_${i + 1}", titles[i], hint(g), tier, progress = minOf(v, g.toLong()), goal = g.toLong(), unit = unit)
+            }
+        }
+        line("snake", listOf("Ular Pemula", "Ular Lincah", "Ular Legenda"), goals.snake, "poin", input.snakeBest.toLong()) { "Raih $it poin di game Ular" }
+        line("breakout", listOf("Pemecah Bata", "Penghancur Dinding", "Raja Bata"), goals.breakout, "poin", input.breakoutBest.toLong()) { "Raih $it poin di game Bata" }
+        line("listen", listOf("Telinga Baru", "Pendengar Setia", "Maraton Kaset"), goals.listen, "jam", input.listenedMs / HOUR_MS) { "Dengarkan musik total $it jam" }
+        line("songs", listOf("Rak Mulai Terisi", "Kolektor Kaset", "Perpustakaan Pita"), goals.songs, "lagu", input.songs.toLong()) { "Putar $it lagu berbeda" }
+        return out
     }
 
     fun earned(trophies: List<Trophy>): List<Trophy> = trophies.filter { it.earned }

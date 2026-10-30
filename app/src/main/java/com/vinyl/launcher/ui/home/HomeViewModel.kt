@@ -11,6 +11,7 @@ import com.vinyl.launcher.data.AppsRepository
 import com.vinyl.launcher.data.BadgeRepository
 import com.vinyl.launcher.data.ContactHit
 import com.vinyl.launcher.data.ContactsRepository
+import com.vinyl.launcher.data.DiaryStore
 import com.vinyl.launcher.data.FilmCassette
 import com.vinyl.launcher.data.FilmResume
 import com.vinyl.launcher.data.FilmResumeData
@@ -53,6 +54,7 @@ import com.vinyl.launcher.ui.game.Breakout
 import com.vinyl.launcher.ui.game.BreakoutEvent
 import com.vinyl.launcher.ui.game.BreakoutState
 import com.vinyl.launcher.ui.game.Dir
+import com.vinyl.launcher.ui.game.GameDiary
 import com.vinyl.launcher.ui.game.GameHud
 import com.vinyl.launcher.ui.game.GamePhase
 import com.vinyl.launcher.ui.game.Games
@@ -185,14 +187,14 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     fun setPoster(path: String) = viewModelScope.launch {
         val old = settings.value.retro.poster.photoPath
         settingsRepo.update { it.copy(retro = it.retro.copy(poster = PosterSettings(PosterSource.PHOTO, path))) }
-        if (old != null && old != path) settingsRepo.deleteImage(old)
+        if (old != null && old != path) settingsRepo.deletePoster(old)
     }
 
     /** Kembali ke cover album dan hapus foto poster yang tersimpan. */
     fun clearPoster() = viewModelScope.launch {
         val old = settings.value.retro.poster.photoPath
         settingsRepo.update { it.copy(retro = it.retro.copy(poster = PosterSettings())) }
-        if (old != null) settingsRepo.deleteImage(old)
+        if (old != null) settingsRepo.deletePoster(old)
     }
 
     /** Pengaturan non-gaya (mis. gestur) disimpan langsung tanpa draft. */
@@ -518,8 +520,8 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         val fx = settings.value.effects
         when (step.event) {
             SnakeEvent.ATE -> SoundFx.gameEat(getApplication(), fx)
-            SnakeEvent.DIED -> { SoundFx.gameOver(getApplication(), fx); persistSnakeBest(step.state) }
-            SnakeEvent.WON -> { SoundFx.gameWin(getApplication(), fx); persistSnakeBest(step.state) }
+            SnakeEvent.DIED -> { SoundFx.gameOver(getApplication(), fx); persistSnakeBest(step.state); diarySnake(step.state) }
+            SnakeEvent.WON -> { SoundFx.gameWin(getApplication(), fx); persistSnakeBest(step.state); diarySnake(step.state) }
             SnakeEvent.NONE -> Unit
         }
     }
@@ -589,7 +591,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
                 BreakoutEvent.BRICK -> SoundFx.gameBrick(context, fx)
                 BreakoutEvent.LOST_BALL -> SoundFx.gameMiss(context, fx)
                 BreakoutEvent.LEVEL_UP -> { SoundFx.gameWin(context, fx); persistBreakoutBest(step.state) }
-                BreakoutEvent.GAME_OVER -> { SoundFx.gameOver(context, fx); persistBreakoutBest(step.state) }
+                BreakoutEvent.GAME_OVER -> { SoundFx.gameOver(context, fx); persistBreakoutBest(step.state); diaryBreakout(step.state) }
             }
         }
     }
@@ -601,6 +603,13 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
             updateSettings { cur -> cur.copy(film = FilmRules.withBreakoutScore(cur.film, best)) }
         }
     }
+
+    /** Catatan buku harian satu ronde (hanya bila perekaman game menyala; lihat [GameDiary]). Hanya nama game dan skor. */
+    private fun diarySnake(s: SnakeState) =
+        DiaryStore.recordGameIfOn(Games.title(Games.SNAKE), GameDiary.detail(s.score, s.newBest))
+
+    private fun diaryBreakout(s: BreakoutState) =
+        DiaryStore.recordGameIfOn(Games.title(Games.BREAKOUT), GameDiary.detail(s.score, s.newBest))
 
     /** Jeda game apa pun yang sedang berjalan di deck. */
     fun gamePause() {
@@ -634,10 +643,20 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         val after = step.state.tape
         // Kaset game keluar dari deck: rekor disimpan; kaset game masuk: papan baru dengan rekor tersimpan
         if (before is Tape.Game) {
-            _snake.value?.let { persistSnakeBest(it) }
-            _breakout.value?.let { persistBreakoutBest(it) }
+            _snake.value?.let {
+                persistSnakeBest(it)
+                if (GameDiary.worthRecordingOnEject(it.phase)) diarySnake(it)
+            }
+            _breakout.value?.let {
+                persistBreakoutBest(it)
+                if (GameDiary.worthRecordingOnEject(it.phase)) diaryBreakout(it)
+            }
         }
         val film = settings.value.film
+        // Kaset film masuk ke deck: dicatat dengan nama kaset saja (tanpa alamat situs atau halaman) bila perekaman film menyala
+        if (after is Tape.Film && before != after) {
+            film.cassettes.firstOrNull { it.id == after.id }?.let { DiaryStore.recordFilmIfOn(it.name) }
+        }
         _snake.value = if (after is Tape.Game && after.id == Games.SNAKE) Snake.newGame(film.snakeBest, snakeRandom) else null
         _breakout.value = if (after is Tape.Game && after.id == Games.BREAKOUT) Breakout.newGame(film.breakoutBest) else null
         wakeTv()

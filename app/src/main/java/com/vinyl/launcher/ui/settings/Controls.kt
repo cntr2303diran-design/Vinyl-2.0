@@ -1,5 +1,6 @@
 package com.vinyl.launcher.ui.settings
 
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -88,6 +89,7 @@ import com.vinyl.launcher.data.RoomEra
 import com.vinyl.launcher.data.RoomTone
 import com.vinyl.launcher.data.OsdSettings
 import com.vinyl.launcher.data.LightLevel
+import com.vinyl.launcher.data.PosterPhotoStore
 import com.vinyl.launcher.data.ProjectorSettings
 import com.vinyl.launcher.data.ProjectorSource
 import com.vinyl.launcher.data.TvBody
@@ -349,6 +351,25 @@ fun rememberImagePicker(name: String, onPicked: (String) -> Unit): () -> Unit {
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) scope.launch {
             SettingsRepository.get(context).importImage(uri, name)?.let(onPicked)
+        }
+    }
+    return { launcher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }
+}
+
+/**
+ * Pemilih foto poster (Photo Picker sistem, tanpa izin penyimpanan). Fotonya diputar tegak, dikecilkan, dibuang metadatanya
+ * (lokasi GPS dll.), lalu disimpan TERENKRIPSI ([PosterPhotoStore]). Bila gagal (foto tak terbaca, atau enkripsi tidak
+ * tersedia di perangkat ini) tidak ada yang disimpan dan pengguna diberi tahu; foto tidak pernah disimpan polos.
+ */
+@Composable
+fun rememberPosterPicker(onPicked: (String) -> Unit): () -> Unit {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) scope.launch {
+            val path = PosterPhotoStore.get(context).importPhoto(uri)
+            if (path != null) onPicked(path)
+            else Toast.makeText(context, "Foto tidak disimpan: fotonya tidak terbaca, atau penyimpanan terenkripsi tidak tersedia di perangkat ini.", Toast.LENGTH_LONG).show()
         }
     }
     return { launcher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }

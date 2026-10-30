@@ -7,6 +7,7 @@ import com.vinyl.launcher.audio.BluetoothBattery
 import com.vinyl.launcher.data.AppsRepository
 import com.vinyl.launcher.data.DiaryStore
 import com.vinyl.launcher.data.HistoryRepository
+import com.vinyl.launcher.data.LocalDataMigration
 import com.vinyl.launcher.data.SettingsRepository
 import com.vinyl.launcher.media.MediaRepository
 import com.vinyl.launcher.media.SleepTimer
@@ -29,6 +30,8 @@ class VinylApp : Application() {
         super.onCreate()
         HistoryRepository.init(this)
         DiaryStore.get(this)
+        // Data pribadi versi lama yang masih polos (kontak, buku harian, foto poster) disegel di thread latar
+        appScope.launch(Dispatchers.IO) { LocalDataMigration.run(this@VinylApp) }
         MediaRepository.init(this)
         MediaRepository.connect()
         AppsRepository.get(this) // muat daftar aplikasi lebih awal

@@ -145,7 +145,7 @@ import com.vinyl.launcher.data.DiaryStore
 import com.vinyl.launcher.data.HistoryRepository
 import com.vinyl.launcher.ui.settings.DiaryDialog
 import com.vinyl.launcher.ui.settings.TrophyDialog
-import com.vinyl.launcher.ui.settings.rememberImagePicker
+import com.vinyl.launcher.ui.settings.rememberPosterPicker
 import com.vinyl.launcher.ui.room.stage.PropActions
 import com.vinyl.launcher.ui.room.stage.RoomStage
 import com.vinyl.launcher.player.HiFi
@@ -992,21 +992,25 @@ private fun HomeContent(
     val phoneBook = remember(context) { PhoneBook.get(context) }
     val phoneFavorites by phoneBook.favorites.collectAsStateWithLifecycle()
     val sleepRunning = sleepState is SleepTimer.State.Running
-    val pickPoster = rememberImagePicker("poster") { vm.setPoster(it) }
+    val pickPoster = rememberPosterPicker { vm.setPoster(it) }
     // Rak piala dan buku harian: dihitung dari data lokal yang sudah ada (rekor game, riwayat putar) dan buku harian opsional
     val playRecords by HistoryRepository.records.collectAsStateWithLifecycle()
     val diaryStore = remember(context) { DiaryStore.get(context) }
     val diaryEntries by diaryStore.entries.collectAsStateWithLifecycle()
-    val diaryRecording by diaryStore.recording.collectAsStateWithLifecycle()
+    val diaryFlags by diaryStore.flags.collectAsStateWithLifecycle()
+    val diaryRecording = diaryFlags.on
     var showTrophies by rememberSaveable { mutableStateOf(false) }
     var showDiary by rememberSaveable { mutableStateOf(false) }
-    val filmSettings = vm.settings.collectAsStateWithLifecycle().value.film
-    val trophies = remember(filmSettings.snakeBest, filmSettings.breakoutBest, playRecords) {
+    val settingsNow = vm.settings.collectAsStateWithLifecycle().value
+    val filmSettings = settingsNow.film
+    val trophyGoals = settingsNow.retro.trophyGoals
+    val trophies = remember(filmSettings.snakeBest, filmSettings.breakoutBest, playRecords, trophyGoals) {
         Achievements.compute(
             AchievementInput(
                 snakeBest = Games.best(filmSettings, Games.SNAKE), breakoutBest = Games.best(filmSettings, Games.BREAKOUT),
                 listenedMs = playRecords.sumOf { it.listenedMs }, songs = playRecords.size,
             ),
+            trophyGoals,
         )
     }
     val propActions = remember(vm, sleepRunning, phoneFavorites, trophies, diaryRecording, diaryEntries.size) {

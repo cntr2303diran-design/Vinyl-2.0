@@ -50,7 +50,7 @@ object SettingsMigration {
      * menggantinya.
      */
     fun retroToApply(preset: ThemePreset, current: RetroSettings): RetroSettings =
-        retroFor(preset).copy(rememberTvPower = current.rememberTvPower, poster = current.poster)
+        retroFor(preset).copy(rememberTvPower = current.rememberTvPower, poster = current.poster, trophyGoals = current.trophyGoals)
 
     /**
      * Terjemahkan [raw] menjadi [AppSettings] dengan [json]. Melempar exception yang sama dengan decodeFromString bila

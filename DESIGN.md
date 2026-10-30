@@ -498,3 +498,36 @@ bila ada tempat bersih di layar; supaya tidak ada fitur yang "hilang" di layar k
 - Aksi yang bergantung gestur (tahan, putar cakram) punya aksi kustom TalkBack setara; dialog piala dan buku harian memakai `AlertDialog` Material sehingga fokus dan tombol Kembali benar.
 - Area sentuh ≥ 48 dp; benda yang tidak muat tidak digambar, jadi tidak pernah menimpa teks OSD pada huruf 200%.
 - Panggung tetap kiri→kanan pada RTL; daftar di dialog dan Pengaturan mengikuti arah bahasa.
+
+## Putaran 4: data pribadi yang terkunci (Tahap 17)
+
+Tiga permintaan, satu aturan: **data pribadi tersimpan terenkripsi, tetap lokal, dan pilihan ada di tangan pengguna**. Tidak ada layar baru, tidak ada izin baru, dan ruangan di dinding tidak
+berubah rupa; semua kontrol baru ada di halaman Pengaturan → Benda ruangan yang sudah ada dan di dialog buku harian.
+
+### Prinsip yang dipakai
+
+| Prinsip | Sumber | Dipakai untuk |
+|---|---|---|
+| Pilihan sadar, bukan jebakan bawaan | Apple HIG (privasi) | Buku harian tetap **mati** secara bawaan; satu kalimat di bawah saklar menyebut apa yang disimpan, di mana, dan bahwa itu tidak keluar dari perangkat. Saklar per jenis (musik, film, game) baru muncul setelah saklar utama menyala |
+| Warna semantik yang tetap terbaca, bukan hanya warna | Google Material 3 | Pesan "tidak disimpan" dan pesan isian salah memakai `colorScheme.error` **dan** kalimat jelas; tombol *Simpan* mati selama isian tidak sah, dengan alasannya tertulis |
+| Aksi di jangkauan jempol, target ≥ 48 dp | Samsung One UI | Tombol *Ubah*, *Pakai bawaan*, *Simpan*, *Batal* adalah `TextButton` Material (≥ 48 dp); dialog pendek, tindakan utama di kanan bawah, isian angka memakai papan ketik angka |
+| Kedalaman lewat lapisan yang sudah ada | Microsoft Fluent | Tidak ada elemen baru di dinding: dialog memakai lapisan `AlertDialog` Material yang sama dengan rak piala dan buku harian |
+
+### Perilaku
+
+- **Foto poster.** Dari Photo Picker: diputar tegak menurut EXIF, dikecilkan ke sisi terpanjang 640 px, disimpan ulang sebagai JPEG (kualitas 88, jadi GPS dan metadata kamera tidak ikut), lalu disegel. Poster di dinding membukanya di thread latar dan menampilkan cover lagu selama belum siap atau bila foto tidak terbaca (tidak pernah kotak rusak). Bila foto tidak bisa disimpan (tak terbaca, atau enkripsi tidak tersedia) muncul satu pesan singkat dan poster tidak berubah.
+- **Kontak favorit.** Tampilan telepon tidak berubah. Pilihan baru muncul setelah tersimpan terenkripsi; bila enkripsi tidak tersedia, pilihan tidak disimpan dan Pengaturan → Benda ruangan memberi tahu.
+- **Buku harian.** Satu saklar utama dan tiga saklar jenis. Baris catatan: judul, lalu "waktu · jenis · keterangan"; jenis tidak ditulis untuk musik (catatan lama tampil persis seperti dulu). Film hanya nama kaset; game "Game Ular — Skor 24". Catatan yang persis sama tidak pernah tampil dua kali.
+- **Ambang piala.** Satu baris per jalur (Ular, Bata, jam dengar, lagu berbeda) menampilkan tiga angka "10 · 25 · 50 poin" dan tombol *Ubah*. Dialog berisi tiga isian (Perunggu, Perak, Emas), pesan alasan bila isiannya tidak sah, angka bawaan, dan *Pakai bawaan*. *Kembalikan semua ke bawaan* hanya muncul bila ada yang diubah. Rak piala di dinding dan daftar lengkapnya langsung memakai angka baru; piala yang tadinya diraih bisa menjadi belum diraih bila ambangnya dinaikkan (pialanya dihitung, bukan disimpan).
+- **Migrasi.** Tidak terlihat: data lama disegel di latar saat aplikasi dimulai; tidak ada dialog, tidak ada kehilangan data.
+
+### Token dan kontras
+
+Tidak ada token baru. Semua warna datang dari `MaterialTheme.colorScheme` aplikasi (skema gelap): teks isi `onSurface` dan keterangan `onSurfaceVariant` dijaga ≥ 4,5 : 1 oleh `ContrastTest` di semua permukaan, dan tes yang sama kini juga memeriksa warna `error` yang dipakai pesan "tidak disimpan" dan alasan isian salah. Tingkat piala tetap memakai `Tokens.Props.CUP_*` dan dibedakan juga oleh teks.
+
+### Aksesibilitas, RTL, huruf 200%
+
+- Saklar adalah `toggleable` berperan Switch (TalkBack membaca nama, subjudul, dan status sekaligus). Tombol *Ubah* diberi nama lengkap: *Ubah ambang piala Game Ular*. Tombol hapus per catatan: *Hapus catatan <judul>*.
+- Isian angka menyaring selain angka dan membatasi 5 digit; alasan penolakan tertulis di dialog, bukan hanya warna.
+- Dialog yang memuat isian menggulir bila tidak muat (huruf 200%, layar kecil); *Pakai bawaan* disusun di bawah isian, tidak sejajar tombol *Simpan*/*Batal*, supaya tidak melebar.
+- Tangkapan layar otomatis `privasi_*`: ponsel (penuh), keadaan bawaan/kosong, ponsel kecil + huruf 200%, dan tablet + RTL. Layar Pengaturan memakai skema warna gelap saja (terang/gelap hanya berlaku pada nada ruangan di dinding), jadi tidak ada varian terang.

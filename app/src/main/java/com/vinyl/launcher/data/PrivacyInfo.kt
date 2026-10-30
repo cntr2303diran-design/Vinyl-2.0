@@ -22,15 +22,25 @@ object PrivacyInfo {
         "Semua pengaturan, riwayat lagu, dan kebiasaan memakai aplikasi disimpan hanya di perangkat ini. " +
             "Riwayat aplikasi yang sering dibuka (untuk baris Sering dipakai) bisa dihapus kapan saja di Pengaturan → App drawer, " +
             "dan tidak ikut dalam berkas cadangan.",
+        "Data pribadi di ruangan (favorit kontak, buku harian, foto poster) disimpan terenkripsi (AES-256-GCM) di penyimpanan " +
+            "internal aplikasi ini saja. Kuncinya dibuat dan disimpan di Android Keystore perangkat ini, tanpa kata sandi, dan tidak " +
+            "bisa dibawa ke perangkat lain. Bila enkripsi tidak tersedia, data itu tidak disimpan sama sekali (tidak pernah jatuh " +
+            "ke salinan polos) dan aplikasi memberi tahu Anda. Data lama yang masih polos dienkripsi otomatis saat aplikasi dibuka " +
+            "pertama kali setelah pembaruan, lalu salinan polosnya dihapus.",
         "Telepon putar di ruangan (opsional): kontak favorit dipilih lewat pemilih kontak sistem. Yang disimpan hanya nama dan " +
-            "alamat kontak (angka 1–9) di perangkat ini; nomornya tidak disalin, tidak ikut berkas cadangan, dan bisa dihapus di " +
-            "Pengaturan → Benda ruangan. Menelepon selalu lewat aplikasi telepon, yang meminta Anda menekan tombol panggil.",
-        "Buku harian kaset (opsional, mati secara bawaan): bila Anda menyalakannya, judul, artis, dan waktu putar tiap lagu yang " +
-            "didengarkan dicatat di perangkat ini (maksimal 500 catatan; yang terlama dibuang). Tidak ikut berkas cadangan atau " +
-            "preset, tidak dikirim ke mana pun, dan bisa dihapus kapan saja di Pengaturan → Benda ruangan. Rak piala hanya menghitung " +
-            "dari rekor game, total waktu dengar, dan jumlah lagu yang sudah ada; tidak ada data tambahan yang dikumpulkan.",
-        "Poster di dinding (opsional): foto dipilih lewat pemilih foto sistem tanpa izin penyimpanan, disalin ke penyimpanan aplikasi " +
-            "ini saja, dan tidak ikut berkas cadangan. Menggantinya atau memilih cover album menghapus berkas foto lama.",
+            "alamat kontak (angka 1–9) di perangkat ini, terenkripsi; nomornya tidak disalin, tidak ikut berkas cadangan, dan bisa " +
+            "dihapus di Pengaturan → Benda ruangan. Menelepon selalu lewat aplikasi telepon, yang meminta Anda menekan tombol panggil.",
+        "Buku harian kaset (opsional, mati secara bawaan): bila Anda menyalakannya, yang dicatat di perangkat ini hanya waktu dan " +
+            "judul lagu yang diputar (beserta artis), nama kaset film yang dimuat (tanpa alamat atau halaman situsnya), serta nama " +
+            "game dan skor tiap ronde Ular atau Bata. Musik, film, dan game masing-masing punya saklar sendiri. Maksimal 500 catatan " +
+            "(yang terlama dibuang), terenkripsi, tidak ikut berkas cadangan atau preset, tidak dikirim ke mana pun, dan bisa dihapus " +
+            "kapan saja di Pengaturan → Benda ruangan. Rak piala hanya menghitung dari rekor game, total waktu dengar, dan jumlah lagu " +
+            "yang sudah ada; ambang tiap piala Anda atur sendiri (tiga angka per jalur, ikut berkas cadangan pengaturan). Tidak ada " +
+            "data tambahan yang dikumpulkan.",
+        "Poster di dinding (opsional): foto dipilih lewat pemilih foto sistem tanpa izin penyimpanan. Fotonya dikecilkan lalu disimpan " +
+            "ulang sebagai JPEG, jadi lokasi (GPS) dan metadata kamera tidak ikut tersimpan, kemudian dienkripsi dan disimpan di " +
+            "penyimpanan aplikasi ini saja; berkas asli di galeri tidak disentuh dan tidak ada salinan polos. Foto tidak ikut berkas " +
+            "cadangan. Menggantinya atau memilih cover album menghapus berkas foto lama.",
         "Tidak ada akun, iklan, analitik, atau pelacak. Tidak ada data yang dikirim ke server milik pengembang.",
         "Aplikasi hanya terhubung ke internet untuk empat hal: lirik (judul dan artis lagu dikirim ke lrclib.net; " +
             "bisa dimatikan di Pengaturan → Musik → Cari lirik online), " +

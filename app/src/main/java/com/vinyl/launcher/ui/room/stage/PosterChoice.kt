@@ -1,5 +1,6 @@
 package com.vinyl.launcher.ui.room.stage
 
+import com.vinyl.launcher.data.PosterPhotoRules
 import com.vinyl.launcher.data.PosterSettings
 import com.vinyl.launcher.data.PosterSource
 
@@ -25,14 +26,6 @@ object PosterChoice {
         return if (srcAspect > dstAspect) (dstAspect / srcAspect) to 1f else 1f to (srcAspect / dstAspect)
     }
 
-    /**
-     * Putaran searah jarum jam (derajat) yang dibutuhkan agar foto tegak menurut tag EXIF orientasi
-     * (nilai `ExifInterface.ORIENTATION_*`: 3 = 180°, 6 = 90°, 8 = 270°). Nilai lain (normal, tak dikenal, cermin) = 0.
-     */
-    fun exifRotation(orientation: Int): Int = when (orientation) {
-        3 -> 180
-        6 -> 90
-        8 -> 270
-        else -> 0
-    }
+    /** Putaran (derajat) agar foto tegak menurut tag EXIF; aturannya di [PosterPhotoRules.exifRotation]. */
+    fun exifRotation(orientation: Int): Int = PosterPhotoRules.exifRotation(orientation)
 }

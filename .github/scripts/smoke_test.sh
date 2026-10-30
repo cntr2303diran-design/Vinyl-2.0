@@ -9,7 +9,10 @@
 #   - beranda benar-benar tampil (tangkapan layar + simpul aksesibilitas), rotasi layar, geser halaman (Audio Console,
 #     Perpustakaan kaset, kembali ke Ruang TV), TV dimatikan/dinyalakan, laci kaset, game Ular (usap di layar TV), game Bata
 #     (geser palet; tombol deck berubah Mulai/Jeda; rekor tampil di label kaset), kaset film
-#   - layar Pengaturan terbuka dan teksnya terbaca (tangkapan layar)
+#   - layar Pengaturan terbuka dan teksnya terbaca (tangkapan layar); editor ambang piala terbuka
+#   - buku harian (Keystore sungguhan di emulator): perekaman dinyalakan, ronde Ular/Bata dan kaset film dicatat, catatannya
+#     masih terbaca sesudah proses dimatikan, tanpa alamat situs, dan di disk (retro_diary.xml, dibaca lewat root) hanya ada
+#     nilai tersegel tanpa teks polos
 #   - proses dimatikan sistem saat di latar lalu launcher dibuka lagi lewat tombol Home: pengaturan HARUS bertahan
 #     (onboarding tidak muncul lagi); ini menguji pembacaan/penulisan JSON kotlinx.serialization + DataStore setelah R8
 #   - paket dipasang/dihapus saat launcher berjalan (receiver perubahan paket)
@@ -52,6 +55,9 @@ SETTLED=0
 # pernah ditulis, sehingga "pengaturan bertahan setelah proses dimatikan" bisa dinilai
 FIRST_TAP=0
 ONBOARDED=0
+# 1 bila saklar perekaman buku harian benar-benar menyala (langkah "Benda ruangan"): hanya dengan begitu catatan game dan film
+# bisa diperiksa di langkah 7b
+DIARY_ON=0
 NPROC=2
 ANR_SEEN=" "
 W=1080
@@ -172,6 +178,17 @@ swipe_up()    { adb shell input swipe $((W / 2)) $((H * 75 / 100)) $((W / 2)) $(
 scroll_tap() {
   local i
   for i in 1 2 3 4 5; do
+    if tap_node "$1_$i" "$2"; then return 0; fi
+    swipe_up
+    sleep 1
+  done
+  return 1
+}
+
+# scroll_tap_n <nama> <regex> <kali>: seperti scroll_tap, dengan jumlah gulir sendiri (halaman yang panjang)
+scroll_tap_n() {
+  local i
+  for ((i = 1; i <= $3; i++)); do
     if tap_node "$1_$i" "$2"; then return 0; fi
     swipe_up
     sleep 1
@@ -637,7 +654,28 @@ if find_node benda_piala_buka '^Rak piala$'; then
 fi
 if find_node benda_buku_buka '^Buku harian kaset$'; then
   adb shell input tap "$NX" "$NY"; sleep 2; shot "benda_buku_dialog"
-  if find_node benda_buku_saklar '^Catat lagu yang diputar'; then ok "buku harian terbuka dengan saklar perekaman"; else warn "saklar perekaman tidak tampak di buku harian"; fi
+  if find_node benda_buku_saklar '^Catat buku harian'; then
+    ok "buku harian terbuka dengan saklar perekaman"
+    # Saklar utama mati secara bawaan. Dinyalakan di sini supaya ronde Ular/Bata dan kaset film di langkah berikutnya tercatat;
+    # isinya diperiksa di langkah 7b, sesudah proses dimatikan, dengan kunci Keystore sungguhan.
+    diary_state=$(node_checked benda_buku_saklar '^Catat buku harian')
+    if [ "$diary_state" = "true" ]; then
+      DIARY_ON=1; say "perekaman buku harian sudah menyala"
+    elif [ "$diary_state" = "false" ]; then
+      adb shell input tap "$NX" "$NY"; sleep 2
+      if find_node benda_buku_nyala '^Catat buku harian' && [ "$(node_checked benda_buku_nyala '^Catat buku harian')" = "true" ]; then
+        DIARY_ON=1; ok "perekaman buku harian dinyalakan lewat saklar utama"
+        shot "benda_buku_nyala"
+        expect_node benda_buku_jenis '^Musik$' "saklar per jenis (Musik, Film, Game) muncul setelah perekaman menyala" "saklar per jenis tidak muncul setelah perekaman dinyalakan"
+      else
+        warn "saklar perekaman buku harian tidak berubah menjadi menyala setelah diketuk"
+      fi
+    else
+      warn "keadaan saklar perekaman buku harian tidak terbaca"
+    fi
+  else
+    warn "saklar perekaman tidak tampak di buku harian"
+  fi
   tap_node benda_buku_tutup '^Tutup$' > /dev/null || adb shell input keyevent KEYCODE_BACK
   sleep 1
 fi
@@ -791,6 +829,15 @@ if top_is SettingsActivity; then
   if scroll_tap set_benda '^Benda ruangan' ; then
     sleep 2; shot "pengaturan_benda_ruangan"
     if wait_node set_benda_telepon '^Telepon putar' 10; then ok "halaman Benda ruangan memuat saklar telepon putar"; else warn "saklar 'Telepon putar' tidak tampak di Benda ruangan"; fi
+    # Ambang piala diatur sendiri (bagian di bawah halaman): tombol Ubah membuka isian perunggu/perak/emas
+    if scroll_tap_n set_benda_ambang '^Ubah ambang piala Game Ular' 10; then
+      sleep 2; shot "pengaturan_ambang_dialog"
+      expect_node set_ambang_kolom 'Perunggu \(poin\)' "editor ambang piala terbuka dengan kolom perunggu, perak, dan emas" "editor ambang piala tidak tampak setelah tombol Ubah diketuk"
+      tap_node set_ambang_batal '^Batal$' > /dev/null || adb shell input keyevent KEYCODE_BACK
+      sleep 1.5
+    else
+      warn "tombol 'Ubah ambang piala Game Ular' tidak ditemukan di Benda ruangan"
+    fi
     adb shell input keyevent KEYCODE_BACK; sleep 1.5
   else
     warn "baris 'Benda ruangan' tidak ditemukan di Pengaturan"
@@ -955,6 +1002,89 @@ if alive; then warn "proses tidak bisa dimatikan; uji kematian proses dilewati";
   fi
 fi
 scan_log kill
+
+# ---------- 7b. buku harian terenkripsi ----------
+# Catatan ronde Ular/Bata dan kaset film direkam saat langkah-langkah di atas (saklar dinyalakan di "Benda ruangan"), lalu proses
+# dimatikan di langkah 7. Di sini bukunya dibuka di proses yang baru: baris yang tampil dibaca dari disk dan dibuka dengan kunci
+# Android Keystore sungguhan (kunci dicari ulang lewat alias). Lalu berkas SharedPreferences dibaca lewat root: hanya boleh ada
+# nilai tersegel, tanpa teks polos catatan. Elemen yang tidak ditemukan hanya PERINGATAN (ronde game bisa saja tak sempat dimulai);
+# alamat situs di buku, kunci polos lama, teks polos di disk, dan pesan "tidak disimpan" adalah GAGAL.
+step "Buku harian: catatan game dan film terbaca setelah proses dimatikan, dan di disk hanya ada nilai tersegel (Keystore sungguhan)"
+DIARY_SEEN=0
+if [ "$DIARY_ON" -ne 1 ]; then
+  warn "perekaman buku harian tidak sempat dinyalakan (bukunya tidak tampak di beranda); catatan game dan film tidak diperiksa"
+elif ! ensure_front buku_harian_isi > /dev/null; then
+  warn "beranda tidak di depan; buku harian tidak diperiksa: $(top_desc)"
+else
+  goto_room buku_harian_isi > /dev/null
+  if find_node buku2_buka '^Buku harian kaset$'; then
+    adb shell input tap "$NX" "$NY"; sleep 3; shot "buku_harian_isi"
+    if find_node buku2_game 'Game.{1,5}Skor [0-9]+'; then
+      DIARY_SEEN=1; ok "catatan game (nama dan skor ronde) ada di buku harian setelah proses dimatikan"
+    else
+      warn "tidak ada catatan game di buku harian (ronde Ular/Bata mungkin tidak sempat dimulai)"
+    fi
+    if find_node buku2_film '.{1,3}Film$'; then
+      DIARY_SEEN=1; ok "catatan film (nama kaset) ada di buku harian setelah proses dimatikan"
+    else
+      warn "tidak ada catatan film di buku harian (kaset film mungkin tidak termuat)"
+    fi
+    find_node buku2_url 'https?://'
+    case $? in
+      0) fail "buku harian memuat alamat situs; film hanya boleh dicatat dengan nama kaset" ;;
+      1) ok "buku harian tidak memuat alamat situs" ;;
+      *) warn "layar tidak terbaca saat memeriksa buku harian dari alamat situs" ;;
+    esac
+    if find_node buku2_gagal 'Catatan tidak disimpan'; then
+      fail "buku harian melaporkan penyimpanan terenkripsi tidak tersedia di emulator (Keystore)"
+    fi
+    tap_node buku2_tutup '^Tutup$' > /dev/null || adb shell input keyevent KEYCODE_BACK
+    sleep 1
+  else
+    warn "buku harian tidak tampak di beranda setelah proses dimatikan; isinya tidak diperiksa"
+  fi
+  # Berkasnya di disk (emulator google_apis mengizinkan adb root)
+  adb root > /dev/null 2>&1
+  adb wait-for-device
+  prefs_xml=$(adbs cat "/data/data/$PKG/shared_prefs/retro_diary.xml")
+  case "$prefs_xml" in
+    ""|*"No such file"*|*"Permission denied"*)
+      warn "retro_diary.xml tidak terbaca lewat root; isi di disk tidak diperiksa (${prefs_xml:-kosong})" ;;
+    *)
+      printf '%s\n' "$prefs_xml" | sed -E 's/>[A-Za-z0-9+\/=]{40,}</>[nilai tersegel, disingkat]</' > "$OUT/retro_diary_disk.xml"
+      say "retro_diary.xml di disk (nilai tersegel disingkat):"; sed 's/^/  /' "$OUT/retro_diary_disk.xml" | tee -a "$OUT/log.txt" > /dev/null
+      if printf '%s' "$prefs_xml" | grep -q 'name="entries"'; then
+        fail "kunci polos lama 'entries' ada di retro_diary.xml"
+      fi
+      if printf '%s' "$prefs_xml" | grep -q 'Skor \|Kaset '; then
+        fail "retro_diary.xml di disk memuat teks polos catatan (Skor/Kaset)"
+      elif printf '%s' "$prefs_xml" | grep -q 'name="entries_sealed"'; then
+        ok "catatan buku harian di disk hanya berupa nilai tersegel (entries_sealed), tanpa teks polos"
+      elif [ "$DIARY_SEEN" -eq 1 ]; then
+        fail "catatan terbaca di buku harian tetapi retro_diary.xml tidak memuat entries_sealed"
+      else
+        warn "belum ada catatan yang tersimpan; isi tersegel di disk tidak dapat dinilai"
+      fi
+      if printf '%s' "$prefs_xml" | grep -q 'name="recording" value="true"'; then
+        ok "saklar perekaman buku harian bertahan di disk"
+      else
+        warn "saklar perekaman buku harian tidak tampak menyala di retro_diary.xml"
+      fi ;;
+  esac
+  # Favorit kontak tidak diisi oleh uji ini; bila berkasnya ada, tidak boleh memuat kunci polos lama
+  phone_xml=$(adbs cat "/data/data/$PKG/shared_prefs/retro_phone.xml")
+  case "$phone_xml" in
+    ""|*"No such file"*|*"Permission denied"*) say "retro_phone.xml belum ada (tidak ada favorit kontak yang diisi)" ;;
+    *) if printf '%s' "$phone_xml" | grep -q 'name="favorites"'; then fail "kunci polos lama 'favorites' ada di retro_phone.xml"; else ok "retro_phone.xml tidak memuat kunci polos"; fi ;;
+  esac
+  ls_poster=$(adbs ls "/data/data/$PKG/files/poster")
+  case "$ls_poster" in
+    *"No such file"*|"") say "folder poster belum ada (tidak ada foto poster yang dipilih)" ;;
+    *) say "isi folder poster: $ls_poster" ;;
+  esac
+  check_alive "setelah memeriksa buku harian"
+fi
+scan_log buku_harian
 
 # ---------- 8. paket dipasang/dihapus saat launcher berjalan ----------
 step "Aplikasi dihapus dan dipasang kembali saat launcher berjalan"

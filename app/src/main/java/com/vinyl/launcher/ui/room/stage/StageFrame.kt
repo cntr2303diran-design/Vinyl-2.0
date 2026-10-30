@@ -1,9 +1,5 @@
 package com.vinyl.launcher.ui.room.stage
 
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.graphics.Matrix
-import android.media.ExifInterface
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
@@ -23,6 +19,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -32,6 +29,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import com.vinyl.launcher.data.PosterPhotoStore
 import com.vinyl.launcher.data.PosterSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -39,25 +37,16 @@ import kotlinx.coroutines.withContext
 /** Sisi terpanjang foto poster setelah di-decode: poster kecil di dinding, jadi 512 px cukup dan hemat memori. */
 private const val PHOTO_MAX_PX = 512
 
-/** Muat foto poster dari folder internal dengan downsampling; null bila path kosong atau berkas rusak/hilang. */
+/**
+ * Muat foto poster dari penyimpanan terenkripsi ([PosterPhotoStore]; dibuka dan di-decode di thread latar). null bila path
+ * kosong, berkas hilang/rusak, atau kuncinya tidak bisa dipakai; poster lalu jatuh ke cover album.
+ */
 @Composable
 internal fun rememberPosterPhoto(path: String?): ImageBitmap? {
+    val context = LocalContext.current
     val img by produceState<ImageBitmap?>(null, path) {
         value = if (path == null) null else withContext(Dispatchers.IO) {
-            runCatching {
-                val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-                BitmapFactory.decodeFile(path, bounds)
-                var sample = 1
-                while (maxOf(bounds.outWidth, bounds.outHeight) / (sample * 2) >= PHOTO_MAX_PX) sample *= 2
-                val raw = BitmapFactory.decodeFile(path, BitmapFactory.Options().apply { inSampleSize = sample }) ?: return@runCatching null
-                // Foto kamera sering disimpan miring dengan tag EXIF; putar supaya tegak
-                val turn = PosterChoice.exifRotation(ExifInterface(path).getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL))
-                val upright = if (turn == 0) raw else {
-                    Bitmap.createBitmap(raw, 0, 0, raw.width, raw.height, Matrix().apply { postRotate(turn.toFloat()) }, true)
-                        .also { if (it !== raw) raw.recycle() }
-                }
-                upright.asImageBitmap()
-            }.getOrNull()
+            runCatching { PosterPhotoStore.get(context).load(path, PHOTO_MAX_PX)?.asImageBitmap() }.getOrNull()
         }
     }
     return img
@@ -65,7 +54,7 @@ internal fun rememberPosterPhoto(path: String?): ImageBitmap? {
 
 /**
  * Poster berbingkai di dinding. Isinya foto pilihan sendiri atau cover lagu yang sedang diputar ([PosterChoice]). Ketuk =
- * pilih foto (Photo Picker sistem), tahan = kembali ke cover album dan hapus foto yang tersimpan.
+ * pilih foto (Photo Picker sistem; fotonya disimpan terenkripsi), tahan = kembali ke cover album dan hapus foto yang tersimpan.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable

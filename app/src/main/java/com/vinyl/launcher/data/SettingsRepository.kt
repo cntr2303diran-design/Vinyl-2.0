@@ -45,7 +45,7 @@ class SettingsRepository private constructor(private val context: Context) {
 
     private fun decode(raw: String): AppSettings =
         runCatching { SettingsMigration.decode(json, raw) }
-            .map { SettingsSanitizer.sanitize(it, ::isAllowedImage) }
+            .map { SettingsSanitizer.sanitize(it, ::isAllowedImage, ::isAllowedPoster) }
             .getOrDefault(AppSettings())
 
     /** Gambar hanya boleh berupa file biasa yang ada di folder internal aplikasi. */
@@ -53,6 +53,12 @@ class SettingsRepository private constructor(private val context: Context) {
         val f = File(path)
         f.isFile && f.canonicalFile.parentFile == imagesDir.canonicalFile
     }.getOrDefault(false)
+
+    /**
+     * Foto poster boleh berupa berkas tersegel di folder poster ([PosterPhotoStore]), atau gambar polos versi lama di folder
+     * gambar (hanya agar bisa dimigrasi lalu dihapus oleh [LocalDataMigration]).
+     */
+    private fun isAllowedPoster(path: String): Boolean = PosterPhotoStore.get(context).isSealedPath(path) || isAllowedImage(path)
 
     /** Ambil nilai yang benar-benar tersimpan (menunggu DataStore selesai dibaca). */
     suspend fun current(): AppSettings = withContext(Dispatchers.IO) {
@@ -93,6 +99,12 @@ class SettingsRepository private constructor(private val context: Context) {
     suspend fun deleteImage(path: String): Boolean = withContext(Dispatchers.IO) {
         val f = File(path)
         isAllowedImage(path) && runCatching { f.delete() }.getOrDefault(false)
+    }
+
+    /** Hapus berkas foto poster: yang tersegel lewat [PosterPhotoStore], yang lama (polos) lewat [deleteImage]. */
+    suspend fun deletePoster(path: String): Boolean {
+        val photos = PosterPhotoStore.get(context)
+        return if (photos.isSealedPath(path)) photos.delete(path) else deleteImage(path)
     }
 
     suspend fun importImage(uri: Uri, name: String): String? = withContext(Dispatchers.IO) {

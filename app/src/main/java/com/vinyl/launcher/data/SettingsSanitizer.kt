@@ -37,9 +37,21 @@ object SettingsSanitizer {
 
     /**
      * @param isAllowedImage menjawab apakah sebuah path gambar boleh dipakai (di Android: file ada dan
-     * berada di folder internal aplikasi). Default menolak semua gambar.
+     * berada di folder internal aplikasi). Default menolak semua gambar. Foto poster memakai aturan yang sama.
      */
-    fun sanitize(s: AppSettings, isAllowedImage: (String) -> Boolean = { false }): AppSettings = s.copy(
+    fun sanitize(s: AppSettings, isAllowedImage: (String) -> Boolean = { false }): AppSettings =
+        sanitize(s, isAllowedImage, isAllowedImage)
+
+    /**
+     * Seperti di atas, tetapi foto poster punya aturan path sendiri: [isAllowedPoster] menjawab apakah path itu berkas poster
+     * yang sah (disimpan terenkripsi di folder sendiri, lihat [PosterPhotoStore]). Sengaja fungsi tumpang-tindih, bukan
+     * parameter ketiga berbawaan, supaya panggilan dengan lambda penutup tetap mengikat ke [isAllowedImage].
+     */
+    fun sanitize(
+        s: AppSettings,
+        isAllowedImage: (String) -> Boolean,
+        isAllowedPoster: (String) -> Boolean,
+    ): AppSettings = s.copy(
         home = home(s.home, isAllowedImage),
         cover = cover(s.cover, isAllowedImage),
         gestures = s.gestures.copy(
@@ -55,7 +67,7 @@ object SettingsSanitizer {
             favorites = s.music.favorites.map { it.text(MAX_SONG_KEY) }.filter { it.isNotEmpty() }.take(MAX_FAVORITES).toSet(),
         ),
         visual = s.visual.copy(parallaxStrength = s.visual.parallaxStrength.fix(MIN_PARALLAX, 1f, 0.6f)),
-        retro = retro(s.retro, isAllowedImage),
+        retro = retro(s.retro, isAllowedPoster),
         audio = AudioConsoleRules.sanitize(s.audio),
         video = VideoRules.sanitize(s.video),
         film = FilmRules.sanitize(s.film),
@@ -84,7 +96,7 @@ object SettingsSanitizer {
                     name = it.name.text(MAX_NAME),
                     home = home(it.home, isAllowedImage),
                     cover = cover(it.cover, isAllowedImage),
-                    retro = it.retro?.let { r -> retro(r, isAllowedImage) },
+                    retro = it.retro?.let { r -> retro(r, isAllowedPoster) },
                 )
             },
     )
@@ -143,8 +155,9 @@ object SettingsSanitizer {
         return PosterSettings(source = if (path == null) PosterSource.ALBUM else p.source, photoPath = path)
     }
 
-    private fun retro(r: RetroSettings, ok: (String) -> Boolean) = r.copy(
-        poster = poster(r.poster, ok),
+    private fun retro(r: RetroSettings, okPoster: (String) -> Boolean) = r.copy(
+        poster = poster(r.poster, okPoster),
+        trophyGoals = TrophyGoalRules.sanitize(r.trophyGoals),
         crtStrength = r.crtStrength.fix(0f, 1f, 0.6f),
         glowIntensity = r.glowIntensity.fix(0f, 1f, 0.7f),
         projector = r.projector.copy(

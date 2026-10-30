@@ -30,7 +30,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.vinyl.launcher.data.AchievementInput
 import com.vinyl.launcher.data.Achievements
-import com.vinyl.launcher.data.DiaryRules
 import com.vinyl.launcher.data.DiaryStore
 import com.vinyl.launcher.data.FilmSettings
 import com.vinyl.launcher.data.HistoryRepository
@@ -65,27 +64,28 @@ fun RoomPropsControls(
     val scope = rememberCoroutineScope()
     val book = remember { PhoneBook.get(context.applicationContext) }
     val favorites by book.favorites.collectAsState()
+    val phoneSaveFailed by book.saveFailed.collectAsState()
     val props = retro.props
     fun setProps(p: RoomPropSettings) = onRetro(retro.copy(props = p))
 
-    val pickPoster = rememberImagePicker("poster") { path ->
+    val pickPoster = rememberPosterPicker { path ->
         val old = retro.poster.photoPath
         onRetro(retro.copy(poster = PosterSettings(PosterSource.PHOTO, path)))
-        if (old != null && old != path) scope.launch { SettingsRepository.get(context).deleteImage(old) }
+        if (old != null && old != path) scope.launch { SettingsRepository.get(context).deletePoster(old) }
     }
 
     val playRecords by HistoryRepository.records.collectAsState()
-    val trophies = remember(film.snakeBest, film.breakoutBest, playRecords) {
+    val trophies = remember(film.snakeBest, film.breakoutBest, playRecords, retro.trophyGoals) {
         Achievements.compute(
             AchievementInput(
                 snakeBest = Games.best(film, Games.SNAKE), breakoutBest = Games.best(film, Games.BREAKOUT),
                 listenedMs = playRecords.sumOf { it.listenedMs }, songs = playRecords.size,
             ),
+            retro.trophyGoals,
         )
     }
     val diary = remember { DiaryStore.get(context.applicationContext) }
     val diaryEntries by diary.entries.collectAsState()
-    val diaryRecording by diary.recording.collectAsState()
     var showDiary by remember { mutableStateOf(false) }
     var confirmClearDiary by remember { mutableStateOf(false) }
 
@@ -115,7 +115,7 @@ fun RoomPropsControls(
         )
         SwitchRow(
             "Buku harian kaset", props.diary, { on -> setProps(props.copy(diary = on)) },
-            subtitle = "Buku yang digantung di dinding; ketuk untuk membuka. Perekaman lagu punya saklar sendiri di bawah",
+            subtitle = "Buku yang digantung di dinding; ketuk untuk membuka. Perekaman (musik, film, game) punya saklar sendiri di bawah",
         )
         SwitchRow(
             "Radio kecil", props.radio, { on -> setProps(props.copy(radio = on)) },
@@ -135,7 +135,7 @@ fun RoomPropsControls(
             style = MaterialTheme.typography.bodyMedium,
         )
         Text(
-            "Foto dipilih lewat pemilih foto sistem (tanpa izin penyimpanan), disalin ke penyimpanan aplikasi ini saja, dan tidak ikut cadangan.",
+            "Foto dipilih lewat pemilih foto sistem (tanpa izin penyimpanan), dikecilkan, dibuang metadatanya (termasuk lokasi), lalu disimpan terenkripsi di perangkat ini saja; tidak ikut cadangan dan tidak dikirim ke mana pun.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -144,7 +144,7 @@ fun RoomPropsControls(
             if (poster.photoPath != null) {
                 OutlinedButton(onClick = {
                     onRetro(retro.copy(poster = PosterSettings()))
-                    poster.photoPath?.let { old -> scope.launch { SettingsRepository.get(context).deleteImage(old) } }
+                    poster.photoPath?.let { old -> scope.launch { SettingsRepository.get(context).deletePoster(old) } }
                 }) { Text("Pakai cover album, hapus foto") }
             }
         }
@@ -152,13 +152,12 @@ fun RoomPropsControls(
 
     SectionTitle("Rak piala")
     ControlCard { TrophyList(trophies) }
+    SectionTitle("Ambang piala")
+    ControlCard { TrophyGoalsEditor(retro.trophyGoals) { onRetro(retro.copy(trophyGoals = it)) } }
 
     SectionTitle("Buku harian kaset")
     ControlCard {
-        SwitchRow(
-            "Catat lagu yang diputar", diaryRecording, diary::setRecording,
-            subtitle = "Mati secara bawaan. Hanya judul, artis, dan waktu putar; disimpan di perangkat ini (maks ${DiaryRules.MAX_ENTRIES} catatan), tidak ikut cadangan.",
-        )
+        DiaryRecordingControls(diary)
         Text("${diaryEntries.size} catatan", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
             OutlinedButton(onClick = { showDiary = true }) { Text("Lihat isi") }
@@ -195,10 +194,18 @@ fun RoomPropsControls(
     SectionTitle("Kontak favorit telepon")
     ControlCard {
         Text(
-            "Pilih lewat pemilih kontak sistem. Hanya nama dan alamat kontak disimpan di perangkat ini; tidak masuk cadangan dan tidak dikirim ke mana pun.",
+            "Pilih lewat pemilih kontak sistem. Hanya nama dan alamat kontak yang disimpan, terenkripsi di perangkat ini; nomornya tidak disalin, tidak masuk cadangan, dan tidak dikirim ke mana pun.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        if (phoneSaveFailed) {
+            Text(
+                "Pintasan tidak disimpan: penyimpanan terenkripsi tidak tersedia di perangkat ini.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
         for (d in PhoneBookRules.MIN_DIGIT..PhoneBookRules.MAX_DIGIT) {
             val fav = favorites[d]
             Row(
