@@ -227,9 +227,15 @@ private fun DrawScope.drawEraDecor(pal: StagePalette, f: StageLayout.Frame) {
             drawRect(Color.Black.copy(alpha = 0.40f), Offset(0f, band), Size(w, 2.2f * d))
             drawRect(Color.White.copy(alpha = 0.07f), Offset(0f, band + 2.2f * d), Size(w, 1f * d))
             drawRect(
-                Brush.radialGradient(listOf(pal.accent.copy(alpha = 0.16f), Color.Transparent), center = Offset(w * 0.5f, 0f), radius = w * 0.55f),
+                Brush.radialGradient(listOf(pal.accent.copy(alpha = 0.30f), Color.Transparent), center = Offset(w * 0.5f, 0f), radius = w * 0.62f),
                 Offset.Zero, Size(w, baseY),
             )
+            // Bohlam telanjang yang tergantung dari kabel di tengah atas, dengan lingkar cahaya
+            val bulb = Offset(w * 0.5f, baseY * 0.07f)
+            drawLine(Color.Black.copy(alpha = 0.7f), Offset(bulb.x, 0f), Offset(bulb.x, bulb.y - 5f * d), strokeWidth = 1.4f * d)
+            drawCircle(pal.accent.copy(alpha = 0.28f), 24f * d, bulb)
+            drawCircle(pal.accent.copy(alpha = 0.55f), 12f * d, bulb)
+            drawCircle(Color(0xFFFFF3C4), 6.5f * d, bulb)
         }
     }
 }

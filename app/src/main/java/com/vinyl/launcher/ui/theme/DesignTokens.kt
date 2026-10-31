@@ -219,7 +219,7 @@ object Tokens {
         val NINETIES_LIGHT = EraRoom(0xFFDADCE2L, 0xFFA9ACB6L, 0xFF9396A0L, 0xFFA7AAB3L, 0xFF858892L, 0xFF555861L, 0xFF6FA8A0L, 0xFFC98BA6L)
 
         // Menara pengawas: papan hijau pudar dan abu-abu kusam, kayu lapuk, bohlam kuning redup, pos hutan yang sepi
-        val LOOKOUT_DIM = EraRoom(0xFF55604AL, 0xFF0F130EL, 0xFF241A12L, 0xFF7A573AL, 0xFF53392AL, 0xFF2B1D14L, 0xFFF2C94CL, 0xFF8FB07AL)
+        val LOOKOUT_DIM = EraRoom(0xFF3F4A39L, 0xFF090C08L, 0xFF1E150EL, 0xFF6E4E34L, 0xFF47301FL, 0xFF24180FL, 0xFFF2C94CL, 0xFF8FB07AL)
         val LOOKOUT_LIGHT = EraRoom(0xFFB5BCA3L, 0xFF7C8470L, 0xFF6B5A47L, 0xFF8F6A47L, 0xFF6A4A32L, 0xFF3B281BL, 0xFF8A6A12L, 0xFF3F5A38L)
 
         /** Palet era untuk [era] pada ruang gelap ([dim] true) atau terang; null untuk DEFAULT. */
