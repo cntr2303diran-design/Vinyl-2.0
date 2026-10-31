@@ -1014,7 +1014,7 @@ private fun HomeContent(
             trophyGoals,
         )
     }
-    val radioStations by remember { RadioStationBook.get(context.applicationContext).stations }.collectAsState()
+    val radioStations by remember { RadioStationBook.get(context.applicationContext).stations }.collectAsStateWithLifecycle()
     val propActions = remember(vm, sleepRunning, phoneFavorites, trophies, diaryRecording, diaryEntries.size, radioStations.size) {
         PropActions(
             onClockAlarms = vm::openAlarms, onClockTimers = vm::openTimers,
