@@ -8,6 +8,7 @@ import com.vinyl.launcher.data.AchievementInput
 import com.vinyl.launcher.data.Achievements
 import com.vinyl.launcher.data.RetroSettings
 import com.vinyl.launcher.data.RoomEra
+import com.vinyl.launcher.data.RoomTone
 import com.vinyl.launcher.media.NowPlaying
 import com.vinyl.launcher.ui.room.stage.PropActions
 import org.junit.Rule
@@ -39,6 +40,14 @@ class PropShots {
     @Test
     @Config(qualifiers = "w1312dp-h816dp-land-mdpi")
     fun tablet90s() { compose.setContent { StagePreview(playing(fakeCover()), RetroSettings(era = RoomEra.NINETIES), props = props) }; shot("ruanghidup_benda_tablet_era90") }
+
+    @Test
+    @Config(qualifiers = "w1312dp-h816dp-land-mdpi")
+    fun tabletLookout() { compose.setContent { StagePreview(playing(fakeCover()), RetroSettings(era = RoomEra.LOOKOUT), props = props) }; shot("ruanghidup_benda_tablet_menara") }
+
+    @Test
+    @Config(qualifiers = "w1312dp-h816dp-land-mdpi")
+    fun tabletLookoutLight() { compose.setContent { StagePreview(playing(fakeCover()), RetroSettings(era = RoomEra.LOOKOUT, room = RoomTone.LIGHT), props = props) }; shot("ruanghidup_benda_tablet_menara_terang") }
 
     @Test
     @Config(qualifiers = "w1312dp-h816dp-land-mdpi")

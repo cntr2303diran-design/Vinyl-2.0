@@ -30,12 +30,12 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import com.vinyl.launcher.ui.theme.Tokens
 import kotlinx.coroutines.launch
-import kotlin.random.Random
+import com.vinyl.launcher.data.RadioRules
 
 /**
- * Radio kecil di meja. Ketuk = putar lagu acak dari koleksi pemutar bawaan (jarum penala pindah ke tempat acak); tahan =
- * mulai atau batalkan timer tidur (timer tidur yang sama dengan di Pengaturan → Musik). Lampu kecil menyala selama timer
- * tidur berjalan. Untuk pembaca layar kedua aksi tersedia sebagai aksi khusus.
+ * Radio kecil di meja. Ketuk = putar stasiun radio internet berikutnya dari daftar pengguna (jarum penala pindah ke
+ * letak stasiun itu di skala); tahan = mulai atau batalkan timer tidur (timer tidur yang sama dengan di Pengaturan →
+ * Musik). Lampu kecil menyala selama timer tidur berjalan. Untuk pembaca layar kedua aksi tersedia sebagai aksi khusus.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -45,15 +45,17 @@ internal fun StageRadio(
     enabled: Boolean,
     sleepActive: Boolean,
     motionAllowed: Boolean,
-    onPlayRandom: () -> Unit,
+    stationCount: Int,
+    onPlay: () -> Int,
     onSleep: () -> Unit,
 ) {
     val needle = remember { Animatable(0.42f) }
     val scope = rememberCoroutineScope()
     fun play() {
-        val target = 0.1f + Random.nextFloat() * 0.8f
+        val at = onPlay()
+        if (at < 0) return
+        val target = RadioRules.needleAt(at, stationCount)
         scope.launch { if (motionAllowed) needle.animateTo(target, spring(dampingRatio = 0.55f, stiffness = 120f)) else needle.snapTo(target) }
-        onPlayRandom()
     }
     val b = spot.bounds
     Canvas(
@@ -61,22 +63,25 @@ internal fun StageRadio(
             .offset(b.left.dp, b.top.dp)
             .size(b.width.dp, b.height.dp)
             .clearAndSetSemantics { },
-    ) { drawRadio(look, needle.value, sleepActive) }
+    ) {
+        drawRadio(look, needle.value, sleepActive)
+        if (look.aged) drawWear(seed = 11)
+    }
     val h = spot.hit
     Box(
         Modifier
             .offset(h.left.dp, h.top.dp)
             .size(h.width.dp, h.height.dp)
             .semantics {
-                contentDescription = "Radio kecil"
+                contentDescription = "Radio pos"
                 stateDescription = if (sleepActive) "Timer tidur menyala" else "Timer tidur mati"
                 customActions = listOf(
-                    CustomAccessibilityAction("Putar lagu acak") { play(); true },
+                    CustomAccessibilityAction("Putar stasiun berikutnya") { play(); true },
                     CustomAccessibilityAction(if (sleepActive) "Batalkan timer tidur" else "Mulai timer tidur") { onSleep(); true },
                 )
             }
             .combinedClickable(
-                enabled = enabled, onClickLabel = "Putar lagu acak", role = Role.Button, onClick = { play() },
+                enabled = enabled, onClickLabel = "Putar stasiun berikutnya", role = Role.Button, onClick = { play() },
                 onLongClickLabel = if (sleepActive) "Batalkan timer tidur" else "Mulai timer tidur", onLongClick = onSleep,
             ),
     )

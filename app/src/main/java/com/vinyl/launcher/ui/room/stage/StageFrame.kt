@@ -71,7 +71,10 @@ internal fun StageFrame(
     val shown = PosterChoice.shown(poster, photoLoaded = photo != null, hasArt = art != null)
     val image = when (shown) { PosterShown.PHOTO -> photo; PosterShown.ALBUM -> art; PosterShown.EMPTY -> null }
     val b = spot.bounds
-    Canvas(Modifier.offset(b.left.dp, b.top.dp).size(b.width.dp, b.height.dp)) { drawPoster(look, image) }
+    Canvas(Modifier.offset(b.left.dp, b.top.dp).size(b.width.dp, b.height.dp)) {
+        drawPoster(look, image)
+        if (look.aged) drawWear(seed = 7)
+    }
     val h = spot.hit
     val hasPhoto = poster.photoPath != null
     Box(
@@ -102,12 +105,12 @@ private fun DrawScope.drawPoster(look: PropLook, image: ImageBitmap?) {
     val d = density
     val w = size.width
     val h = size.height
-    val rim = 3.2f * d
+    val rim = 3.2f * d * look.frameScale
     // Bayangan, lalu bingkai berkilau
     drawRect(Color.Black.copy(alpha = 0.28f), topLeft = Offset(0f, 1.5f * d), size = Size(w, h))
-    drawRect(Brush.linearGradient(listOf(look.rim, look.rimDark), start = Offset.Zero, end = Offset(w, h)), size = Size(w, h))
+    drawRect(Brush.linearGradient(listOf(look.frame, look.frameDark), start = Offset.Zero, end = Offset(w, h)), size = Size(w, h))
     // Passe-partout krem, lalu isi
-    val mat = Color(0xFFEFE6D2)
+    val mat = look.mat
     val mx = rim + 2.2f * d
     drawRect(mat, topLeft = Offset(mx, mx), size = Size(w - 2 * mx, h - 2 * mx))
     val px = mx + 3f * d

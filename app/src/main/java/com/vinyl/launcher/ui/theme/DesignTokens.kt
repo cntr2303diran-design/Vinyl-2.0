@@ -218,12 +218,17 @@ object Tokens {
         val NINETIES_DIM = EraRoom(0xFF4A4D55L, 0xFF22242AL, 0xFF1D1E22L, 0xFF8E919AL, 0xFF6C6F78L, 0xFF40424AL, 0xFF9EC5C0L, 0xFFE2B6C8L)
         val NINETIES_LIGHT = EraRoom(0xFFDADCE2L, 0xFFA9ACB6L, 0xFF9396A0L, 0xFFA7AAB3L, 0xFF858892L, 0xFF555861L, 0xFF6FA8A0L, 0xFFC98BA6L)
 
+        // Menara pengawas: papan hijau pudar dan abu-abu kusam, kayu lapuk, bohlam kuning redup, pos hutan yang sepi
+        val LOOKOUT_DIM = EraRoom(0xFF55604AL, 0xFF0F130EL, 0xFF241A12L, 0xFF7A573AL, 0xFF53392AL, 0xFF2B1D14L, 0xFFF2C94CL, 0xFF8FB07AL)
+        val LOOKOUT_LIGHT = EraRoom(0xFFB5BCA3L, 0xFF7C8470L, 0xFF6B5A47L, 0xFF8F6A47L, 0xFF6A4A32L, 0xFF3B281BL, 0xFF8A6A12L, 0xFF3F5A38L)
+
         /** Palet era untuk [era] pada ruang gelap ([dim] true) atau terang; null untuk DEFAULT. */
         fun room(era: RoomEra, dim: Boolean): EraRoom? = when (era) {
             RoomEra.DEFAULT -> null
             RoomEra.SEVENTIES -> if (dim) SEVENTIES_DIM else SEVENTIES_LIGHT
             RoomEra.EIGHTIES -> if (dim) EIGHTIES_DIM else EIGHTIES_LIGHT
             RoomEra.NINETIES -> if (dim) NINETIES_DIM else NINETIES_LIGHT
+            RoomEra.LOOKOUT -> if (dim) LOOKOUT_DIM else LOOKOUT_LIGHT
         }
     }
 

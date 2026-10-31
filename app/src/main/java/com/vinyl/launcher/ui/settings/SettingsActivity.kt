@@ -309,7 +309,7 @@ private fun SettingsScreen(vm: SettingsViewModel, onBack: () -> Unit) {
             }
             Page.FILM -> Group("Laci kaset") { FilmControls(s.film) { f -> vm.update { it.copy(film = f) } } }
             Page.PROPS -> RoomPropsControls(
-                s.retro, s.music.sleepMinutes, s.player.folderUri, s.film,
+                s.retro, s.music.sleepMinutes, s.film,
                 onRetro = { r -> vm.update { it.copy(retro = r) } },
             )
             Page.FX -> ControlCard {

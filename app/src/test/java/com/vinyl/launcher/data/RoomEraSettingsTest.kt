@@ -61,6 +61,6 @@ class RoomEraSettingsTest {
     @Test
     fun theStoredNamesAreStable() {
         // Nama konstanta ditulis ke berkas pengaturan dan cadangan: mengganti nama akan merusak data pengguna
-        assertEquals(listOf("DEFAULT", "SEVENTIES", "EIGHTIES", "NINETIES"), RoomEra.entries.map { it.name })
+        assertEquals(listOf("DEFAULT", "SEVENTIES", "EIGHTIES", "NINETIES", "LOOKOUT"), RoomEra.entries.map { it.name })
     }
 }

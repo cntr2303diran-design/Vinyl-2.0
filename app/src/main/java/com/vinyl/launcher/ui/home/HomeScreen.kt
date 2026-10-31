@@ -139,6 +139,7 @@ import androidx.compose.ui.unit.sp
 import com.vinyl.launcher.ui.library.LibraryCatalog
 import com.vinyl.launcher.ui.library.rememberLibraryState
 import com.vinyl.launcher.data.PhoneBook
+import com.vinyl.launcher.data.RadioStationBook
 import com.vinyl.launcher.data.AchievementInput
 import com.vinyl.launcher.data.Achievements
 import com.vinyl.launcher.data.DiaryStore
@@ -1013,10 +1014,11 @@ private fun HomeContent(
             trophyGoals,
         )
     }
-    val propActions = remember(vm, sleepRunning, phoneFavorites, trophies, diaryRecording, diaryEntries.size) {
+    val radioStations by remember { RadioStationBook.get(context.applicationContext).stations }.collectAsState()
+    val propActions = remember(vm, sleepRunning, phoneFavorites, trophies, diaryRecording, diaryEntries.size, radioStations.size) {
         PropActions(
             onClockAlarms = vm::openAlarms, onClockTimers = vm::openTimers,
-            onRadioPlay = vm::radioPlay, onRadioSleep = vm::radioSleep, radioSleepActive = sleepRunning,
+            onRadioPlay = vm::radioPlay, radioStationCount = radioStations.size, onRadioSleep = vm::radioSleep, radioSleepActive = sleepRunning,
             onDial = vm::dial, onOpenPhone = vm::openPhone,
             phoneFavorites = phoneFavorites.mapValues { it.value.name },
             onFramePick = pickPoster, onFrameClear = { vm.clearPoster() },

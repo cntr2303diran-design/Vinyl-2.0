@@ -50,7 +50,10 @@ internal fun StageTrophy(
     onOpen: () -> Unit,
 ) {
     val b = spot.bounds
-    Canvas(Modifier.offset(b.left.dp, b.top.dp).size(b.width.dp, b.height.dp)) { drawTrophyShelf(look, shown) }
+    Canvas(Modifier.offset(b.left.dp, b.top.dp).size(b.width.dp, b.height.dp)) {
+        drawTrophyShelf(look, shown)
+        if (look.aged) drawWear(seed = 5)
+    }
     val h = spot.hit
     Box(
         Modifier
@@ -83,7 +86,8 @@ private fun DrawScope.drawTrophyShelf(look: PropLook, shown: List<Trophy>) {
     for (i in 0 until TROPHY_SLOTS) {
         val cx = slotW * (i + 0.5f)
         val t = shown.getOrNull(i)
-        drawCup(cx, plankTop, cupH, slotW * 0.72f, if (t != null) t.tier.color() else Color.White.copy(alpha = 0.16f), lit = t != null)
+        val cupColor = if (t != null) androidx.compose.ui.graphics.lerp(t.tier.color(), Color(0xFF6E6A58), look.tarnish) else Color.White.copy(alpha = 0.16f)
+        drawCup(cx, plankTop, cupH, slotW * 0.72f, cupColor, lit = t != null)
     }
 }
 

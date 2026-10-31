@@ -21,6 +21,7 @@ import com.vinyl.launcher.data.FilmStart
 import com.vinyl.launcher.data.HistoryRepository
 import com.vinyl.launcher.data.HomeSettings
 import com.vinyl.launcher.data.PlayRecord
+import com.vinyl.launcher.data.RadioStationBook
 import com.vinyl.launcher.data.RoomTone
 import com.vinyl.launcher.data.SettingsMigration
 import com.vinyl.launcher.util.SoundFx
@@ -404,7 +405,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     // ---------- Benda di ruangan: jam dinding, radio, telepon putar ----------
-    private var lastRadioId: String? = null
+    private var lastRadioUrl: String? = null
 
     fun openAlarms() = RoomShortcuts.openAlarms(getApplication())
     fun openTimers() = RoomShortcuts.openTimers(getApplication())
@@ -416,12 +417,15 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         RoomShortcuts.dial(getApplication(), digit, PhoneBook.get(getApplication()).favorites.value)
     }
 
-    /** Radio diketuk: lagu acak dari koleksi pemutar bawaan (pesan jelas bila kosong); TV dibangunkan bila sedang mati. */
-    fun radioPlay() {
-        viewModelScope.launch {
-            val id = RoomShortcuts.playRandom(getApplication(), settings.value.player.folderUri, lastRadioId)
-            if (id != null) { lastRadioId = id; wakeTv() }
-        }
+    /**
+     * Radio diketuk: stasiun internet berikutnya dari daftar pengguna (pesan jelas bila daftar kosong); TV dibangunkan
+     * bila sedang mati. Mengembalikan letak stasiun di daftar (untuk jarum penala), atau -1.
+     */
+    fun radioPlay(): Int {
+        val stations = RadioStationBook.get(getApplication()).stations.value
+        val at = RoomShortcuts.playNextStation(getApplication(), stations, lastRadioUrl)
+        if (at >= 0) { lastRadioUrl = stations[at].url; wakeTv() }
+        return at
     }
 
     /** Radio ditahan: timer tidur (lama menurut Pengaturan → Musik) dimulai atau dibatalkan. */

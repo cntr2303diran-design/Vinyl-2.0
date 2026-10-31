@@ -23,7 +23,7 @@ object HistoryRecorder {
     private var last: NowPlaying = NowPlaying()
 
     fun onState(np: NowPlaying) {
-        val key = if (np.hasTrack) "${np.title.trim().lowercase()}|${np.artist.trim().lowercase()}" else null
+        val key = np.historyKey
         val now = System.currentTimeMillis()
 
         if (key != currentKey) {

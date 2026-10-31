@@ -49,6 +49,8 @@ internal data class StagePalette(
     val accent: Color = Color.Transparent, val accent2: Color = Color.Transparent,
     /** Era yang menentukan hiasan dinding (DEFAULT bila dinding dipilih pengguna: hiasan tidak menimpa pilihannya). */
     val era: RoomEra = RoomEra.DEFAULT,
+    /** Era benda-benda (jam, piala, bingkai, …): tetap era pilihan walau dinding Warna pilihan pengguna menimpa hiasan dinding. */
+    val propEra: RoomEra = RoomEra.DEFAULT,
 )
 
 /**
@@ -61,7 +63,7 @@ internal fun stagePalette(tone: RoomTone, wallColor: Color?, era: RoomEra = Room
     val base = when {
         e != null -> StagePalette(
             Color(e.wallLit), Color(e.wallDark), Color(e.floor), Color(e.woodLight), Color(e.woodMid), Color(e.woodDark),
-            Color(e.accent), Color(e.accent2), if (userWall) RoomEra.DEFAULT else era,
+            Color(e.accent), Color(e.accent2), if (userWall) RoomEra.DEFAULT else era, era,
         )
         tone == RoomTone.LIGHT ->
             StagePalette(Color(0xFFE9E5DD), Color(0xFFBDB7AC), Color(0xFFB4ADA1), Color(0xFF8A6446), Color(0xFF6C4C33), Color(0xFF3F2B1C))
@@ -111,7 +113,7 @@ internal fun DrawScope.drawStageBackdrop(
     // (70-an selalu berpanel kayu; 80-an dan 90-an berdinding polos dengan hiasannya sendiri)
     val panels = when (pal.era) {
         RoomEra.DEFAULT -> paneling
-        RoomEra.SEVENTIES -> true
+        RoomEra.SEVENTIES, RoomEra.LOOKOUT -> true
         RoomEra.EIGHTIES, RoomEra.NINETIES -> false
     }
     if (panels) {
@@ -199,6 +201,35 @@ private fun DrawScope.drawEraDecor(pal: StagePalette, f: StageLayout.Frame) {
             val y = baseY * 0.58f
             drawRect(pal.accent.copy(alpha = 0.9f), Offset(0f, y), Size(w, 7f * d))
             drawRect(pal.accent2.copy(alpha = 0.9f), Offset(0f, y + 11f * d), Size(w, 3f * d))
+        }
+        RoomEra.LOOKOUT -> {
+            // Papan tegak yang catnya mengelupas: sebagian papan masih hijau pudar, sebagian abu-abu kusam dengan bercak terkelupas
+            // (acak tetap menurut nomor papan, jadi tidak berkedip), lalu pita bawah hijau tua dengan lis, dan cahaya bohlam di atas
+            val s = f.camera.scaleAt(StageLayout.WALL_Z) * d
+            val step = StageLayout.PANEL_W * s
+            if (step > 6f) {
+                val x0 = f.camera.project(V3(0f, 0f, StageLayout.WALL_Z)).x * d
+                var i = kotlin.math.floor((0f - x0) / step).toInt() - 1
+                while (true) {
+                    val x = x0 + i * step
+                    if (x > w) break
+                    val r = ((i * 73856093) xor (i * 19349663)) and 0xFF
+                    if (r % 3 == 0) drawRect(pal.accent2.copy(alpha = 0.20f), Offset(x, 0f), Size(step, baseY))
+                    if (r % 4 == 1) {
+                        val top = baseY * (0.08f + (r % 7) * 0.09f)
+                        drawRect(Color.White.copy(alpha = 0.07f), Offset(x + step * 0.15f, top), Size(step * 0.55f, baseY * 0.16f))
+                    }
+                    i++
+                }
+            }
+            val band = baseY * 0.64f
+            drawRect(pal.accent2.copy(alpha = 0.16f), Offset(0f, band), Size(w, baseY - band))
+            drawRect(Color.Black.copy(alpha = 0.40f), Offset(0f, band), Size(w, 2.2f * d))
+            drawRect(Color.White.copy(alpha = 0.07f), Offset(0f, band + 2.2f * d), Size(w, 1f * d))
+            drawRect(
+                Brush.radialGradient(listOf(pal.accent.copy(alpha = 0.16f), Color.Transparent), center = Offset(w * 0.5f, 0f), radius = w * 0.55f),
+                Offset.Zero, Size(w, baseY),
+            )
         }
     }
 }

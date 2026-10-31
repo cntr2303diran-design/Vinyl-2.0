@@ -46,7 +46,7 @@ enum class RoomTone { LIGHT, DIM }
  * Nama konstanta disimpan apa adanya di berkas pengaturan dan cadangan: jangan diganti nama.
  */
 @Serializable
-enum class RoomEra { DEFAULT, SEVENTIES, EIGHTIES, NINETIES }
+enum class RoomEra { DEFAULT, SEVENTIES, EIGHTIES, NINETIES, LOOKOUT }
 
 /** Warna karakter VFD. */
 @Serializable

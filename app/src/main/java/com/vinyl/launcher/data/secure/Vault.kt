@@ -12,6 +12,7 @@ enum class VaultPurpose(val label: String) {
     POSTER("vinyl.vault.poster.v1"),
     PHONE("vinyl.vault.phone.v1"),
     DIARY("vinyl.vault.diary.v1"),
+    RADIO("vinyl.vault.radio.v1"),
 }
 
 /**

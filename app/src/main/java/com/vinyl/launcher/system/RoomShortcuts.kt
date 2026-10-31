@@ -7,11 +7,10 @@ import android.provider.AlarmClock
 import android.widget.Toast
 import androidx.core.net.toUri
 import com.vinyl.launcher.data.PhoneFavorite
-import com.vinyl.launcher.media.RadioPick
+import com.vinyl.launcher.data.RadioRules
+import com.vinyl.launcher.data.RadioStation
 import com.vinyl.launcher.media.SleepTimer
-import com.vinyl.launcher.player.LocalLibrary
 import com.vinyl.launcher.player.LocalPlayer
-import kotlin.random.Random
 
 /** Apa yang terjadi saat angka diputar di telepon putar. */
 sealed interface DialAction {
@@ -24,7 +23,7 @@ sealed interface DialAction {
 }
 
 /**
- * Pintasan benda-benda di ruangan: alarm/timer (jam dinding), lagu acak dan timer tidur (radio), telepon putar. Dipakai
+ * Pintasan benda-benda di ruangan: alarm/timer (jam dinding), stasiun radio internet dan timer tidur (radio), telepon putar. Dipakai
  * beranda dan halaman Pengaturan → Benda ruangan, jadi fungsi yang sama tetap ada walau bendanya tidak muat di layar.
  * Tidak ada izin yang dipakai: semuanya membuka aplikasi sistem lewat Intent atau memakai pemutar dan timer bawaan.
  */
@@ -51,22 +50,18 @@ object RoomShortcuts {
     }
 
     /**
-     * Putar lagu acak dari koleksi pemutar bawaan (folder musik yang Anda pilih di Pengaturan → Musik). Mengembalikan id lagu
-     * pertama yang diputar, atau null bila koleksi kosong (dengan pesan). [lastId] = lagu pilihan radio sebelumnya.
+     * Putar stasiun radio berikutnya dari [stations] (melingkar, dimulai sesudah stasiun beralamat [lastUrl]) lewat pemutar
+     * bawaan. Mengembalikan letak stasiun itu di daftar, atau -1 (dengan pesan) bila daftar kosong.
      */
-    suspend fun playRandom(context: Context, folderUri: String?, lastId: String?, rnd: Random = Random.Default): String? {
-        var lib = LocalLibrary.state.value
-        if (!lib.loaded && folderUri != null) {
-            LocalLibrary.load(context.applicationContext, folderUri)
-            lib = LocalLibrary.state.value
+    fun playNextStation(context: Context, stations: List<RadioStation>, lastUrl: String?): Int {
+        val next = RadioRules.next(stations, lastUrl)
+        if (next == null) {
+            notify(context, "Belum ada stasiun radio. Tambahkan di Pengaturan → Benda ruangan")
+            return -1
         }
-        val ids = RadioPick.order(lib.tracks.map { it.id }, lastId, rnd)
-        if (ids.isEmpty()) {
-            notify(context, "Belum ada lagu di pemutar bawaan. Pilih folder musik di Pengaturan → Musik")
-            return null
-        }
-        LocalPlayer.play(context.applicationContext, ids, 0)
-        return ids.first()
+        LocalPlayer.playStation(context.applicationContext, next)
+        notify(context, "Radio: ${next.name}")
+        return stations.indexOf(next)
     }
 
     /** Timer tidur dari radio: mulai [minutes] menit, atau batalkan bila sedang berjalan. Mengembalikan true bila sekarang berjalan. */

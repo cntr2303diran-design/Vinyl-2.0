@@ -25,6 +25,8 @@ import androidx.media3.session.MediaSessionService
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.SettableFuture
+import com.vinyl.launcher.data.RadioRules
+import com.vinyl.launcher.data.RadioStationBook
 import com.vinyl.launcher.data.SettingsRepository
 import com.vinyl.launcher.ui.home.HomeActivity
 import java.util.concurrent.Executors
@@ -117,8 +119,13 @@ class PlayerService : MediaSessionService() {
             mediaItems: MutableList<MediaItem>,
         ): ListenableFuture<MutableList<MediaItem>> {
             val folder = LocalLibrary.state.value.folderUri
-                ?: return Futures.immediateFailedFuture(IllegalStateException("folder musik belum dipilih"))
-            val resolved = mediaItems.mapNotNull { item -> LocalLibrary.track(item.mediaId)?.let { item(folder, it) } }
+            val stations = RadioStationBook.get(this@PlayerService).stations.value
+            val hasRadio = mediaItems.any { RadioRules.isRadioId(it.mediaId) }
+            if (folder == null && !hasRadio) return Futures.immediateFailedFuture(IllegalStateException("folder musik belum dipilih"))
+            val resolved = mediaItems.mapNotNull { item ->
+                if (RadioRules.isRadioId(item.mediaId)) radioItem(item.mediaId, stations)
+                else folder?.let { f -> LocalLibrary.track(item.mediaId)?.let { item(f, it) } }
+            }
             return Futures.immediateFuture(resolved.toMutableList())
         }
 
@@ -193,6 +200,8 @@ class PlayerService : MediaSessionService() {
         private fun saveQueue() {
             val folder = LocalLibrary.state.value.folderUri ?: return
             val ids = List(player.mediaItemCount) { player.getMediaItemAt(it).mediaId }
+            // Siaran langsung tidak bisa dilanjutkan dan tidak boleh menimpa antrean lagu yang tersimpan
+            if (ids.any(RadioRules::isRadioId)) return
             val previous = lastIds
             if (ids == previous) return
             // Pemutar baru menyala dengan antrean kosong: jangan menghapus antrean tersimpan sebelum sempat dilanjutkan
@@ -207,8 +216,24 @@ class PlayerService : MediaSessionService() {
         private fun savePosition() {
             val folder = LocalLibrary.state.value.folderUri ?: return
             val current = player.currentMediaItem?.mediaId ?: return
+            if (RadioRules.isRadioId(current)) return
             QueueStore.savePosition(applicationContext, folder, current, player.currentPosition)
         }
+    }
+
+    /**
+     * Item siaran radio. Alamatnya diambil dari daftar stasiun tersimpan (bukan dari pengendali), jadi pengendali lain tidak
+     * bisa menyuruh pemutar membuka alamat sembarang; id yang tidak ada di daftar menghasilkan null.
+     */
+    private fun radioItem(id: String, stations: List<com.vinyl.launcher.data.RadioStation>): MediaItem? {
+        val station = stations.firstOrNull { RadioRules.idOf(it) == id } ?: return null
+        return MediaItem.Builder()
+            .setMediaId(id)
+            .setUri(station.url)
+            .setMediaMetadata(
+                MediaMetadata.Builder().setTitle(station.name).setArtist("Radio").setIsPlayable(true).setIsBrowsable(false).build(),
+            )
+            .build()
     }
 
     private fun item(folder: String, t: LocalTrack): MediaItem = MediaItem.Builder()

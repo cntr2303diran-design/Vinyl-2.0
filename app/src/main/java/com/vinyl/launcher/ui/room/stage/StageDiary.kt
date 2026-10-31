@@ -35,7 +35,10 @@ internal fun StageDiary(
     onOpen: () -> Unit,
 ) {
     val b = spot.bounds
-    Canvas(Modifier.offset(b.left.dp, b.top.dp).size(b.width.dp, b.height.dp)) { drawDiary(look, recording) }
+    Canvas(Modifier.offset(b.left.dp, b.top.dp).size(b.width.dp, b.height.dp)) {
+        drawDiary(look, recording)
+        if (look.aged) drawWear(seed = 9)
+    }
     val h = spot.hit
     Box(
         Modifier
@@ -53,7 +56,7 @@ private fun DrawScope.drawDiary(look: PropLook, recording: Boolean) {
     val d = density
     val w = size.width
     val h = size.height
-    val cover = Color(Tokens.Props.DIARY_COVER)
+    val cover = look.diaryCover ?: Color(Tokens.Props.DIARY_COVER)
     val pages = Color(Tokens.Props.DIARY_PAGES)
     val r = CornerRadius(2f * d, 2f * d)
     // Buku digantung di dinding dengan tali dari sebuah paku di atasnya
@@ -81,6 +84,12 @@ private fun DrawScope.drawDiary(look: PropLook, recording: Boolean) {
     drawRoundRect(pages, Offset(lx, ly), Size(lw, lh), CornerRadius(1.5f * d, 1.5f * d))
     drawCircle(cover, lh * 0.20f, Offset(lx + lw * 0.28f, ly + lh * 0.5f))
     drawCircle(cover, lh * 0.20f, Offset(lx + lw * 0.72f, ly + lh * 0.5f))
+    // Sampul retak (benda usang): satu retakan bergerigi menyilang sampul
+    if (look.aged) {
+        val c = Color.Black.copy(alpha = 0.45f)
+        val pts = listOf(Offset(w * 0.62f, top), Offset(w * 0.55f, top + bh * 0.22f), Offset(w * 0.66f, top + bh * 0.40f), Offset(w * 0.52f, top + bh * 0.62f), Offset(w * 0.60f, top + bh * 0.93f))
+        for (k in 0 until pts.lastIndex) drawLine(c, pts[k], pts[k + 1], strokeWidth = 0.9f * d)
+    }
     // Titik perekaman
     if (recording) drawCircle(Color(Tokens.Props.DIARY_REC), 2.8f * d, Offset(w * 0.88f, top + bh * 0.09f))
 }

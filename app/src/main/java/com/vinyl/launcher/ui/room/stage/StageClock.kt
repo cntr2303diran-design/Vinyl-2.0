@@ -55,7 +55,10 @@ internal fun StageClock(
             .offset(b.left.dp, b.top.dp)
             .size(b.width.dp, b.height.dp)
             .clearAndSetSemantics { },
-    ) { drawWallClock(look, time.hour, time.minute) }
+    ) {
+        drawWallClock(look, time.hour, time.minute)
+        if (look.aged) drawWear(seed = 3, round = true)
+    }
     val h = spot.hit
     Box(
         Modifier
@@ -83,6 +86,15 @@ private fun DrawScope.drawWallClock(look: PropLook, hour: Int, minute: Int) {
     drawCircle(ink, r)
     drawCircle(Brush.linearGradient(listOf(look.rim, look.rimDark), start = Offset(c.x - r, c.y - r), end = Offset(c.x + r, c.y + r)), r - 1.2f * d, c)
     drawCircle(Color(Tokens.Props.CLOCK_FACE), r * 0.80f, c)
+    if (look.aged) {
+        // Muka menguning dari tepi, dan retak rambut di kaca
+        drawCircle(
+            Brush.radialGradient(listOf(Color.Transparent, Color(0xFF6B4F2A).copy(alpha = 0.34f)), center = c, radius = r * 0.80f),
+            r * 0.80f, c,
+        )
+        drawLine(Color.Black.copy(alpha = 0.35f), c + Offset(r * 0.22f, -r * 0.74f), c + Offset(r * 0.04f, -r * 0.18f), strokeWidth = 0.8f * d)
+        drawLine(Color.Black.copy(alpha = 0.35f), c + Offset(r * 0.04f, -r * 0.18f), c + Offset(r * 0.30f, r * 0.10f), strokeWidth = 0.8f * d)
+    }
     drawCircle(ink.copy(alpha = 0.35f), r * 0.80f, c, style = androidx.compose.ui.graphics.drawscope.Stroke(width = 0.8f * d))
     // Penanda jam: tebal di 12, 3, 6, 9
     for (i in 0 until 12) {

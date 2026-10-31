@@ -624,6 +624,7 @@ fun RoomEra.label() = when (this) {
     RoomEra.SEVENTIES -> "70-an"
     RoomEra.EIGHTIES -> "80-an"
     RoomEra.NINETIES -> "90-an"
+    RoomEra.LOOKOUT -> "Menara pengawas"
 }
 
 fun VfdColor.label() = when (this) {

@@ -84,7 +84,10 @@ class StageActions(
 class PropActions(
     val onClockAlarms: () -> Unit = {},
     val onClockTimers: () -> Unit = {},
-    val onRadioPlay: () -> Unit = {},
+    /** Radio diketuk: memutar stasiun berikutnya; mengembalikan letaknya di daftar (jarum penala) atau -1 bila daftar kosong. */
+    val onRadioPlay: () -> Int = { -1 },
+    /** Jumlah stasiun radio di daftar pengguna (menentukan letak jarum penala). */
+    val radioStationCount: Int = 0,
     val onRadioSleep: () -> Unit = {},
     /** Timer tidur sedang berjalan (lampu radio menyala). */
     val radioSleepActive: Boolean = false,
@@ -361,7 +364,7 @@ fun RoomStage(
             f.props[Prop.RADIO]?.takeIf { retro.props.radio }?.let {
                 StageRadio(
                     it, look, enabled = !editing, sleepActive = propActions.radioSleepActive, motionAllowed = motionAllowed && !editing,
-                    onPlayRandom = propActions.onRadioPlay, onSleep = propActions.onRadioSleep,
+                    stationCount = propActions.radioStationCount, onPlay = propActions.onRadioPlay, onSleep = propActions.onRadioSleep,
                 )
             }
             f.props[Prop.PHONE]?.takeIf { retro.props.phone }?.let {

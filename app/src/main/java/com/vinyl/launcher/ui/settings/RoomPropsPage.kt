@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -26,7 +27,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.vinyl.launcher.data.AchievementInput
 import com.vinyl.launcher.data.Achievements
@@ -38,6 +41,9 @@ import com.vinyl.launcher.data.PhoneBookRules
 import com.vinyl.launcher.data.PhoneFavorite
 import com.vinyl.launcher.data.PosterSettings
 import com.vinyl.launcher.data.PosterSource
+import com.vinyl.launcher.data.RadioRules
+import com.vinyl.launcher.data.RadioStation
+import com.vinyl.launcher.data.RadioStationBook
 import com.vinyl.launcher.data.SettingsRepository
 import com.vinyl.launcher.data.RetroSettings
 import com.vinyl.launcher.data.RoomPropSettings
@@ -56,7 +62,6 @@ import kotlinx.coroutines.withContext
 fun RoomPropsControls(
     retro: RetroSettings,
     sleepMinutes: Int,
-    musicFolderUri: String?,
     film: FilmSettings,
     onRetro: (RetroSettings) -> Unit,
 ) {
@@ -65,6 +70,10 @@ fun RoomPropsControls(
     val book = remember { PhoneBook.get(context.applicationContext) }
     val favorites by book.favorites.collectAsState()
     val phoneSaveFailed by book.saveFailed.collectAsState()
+    val radioBook = remember { RadioStationBook.get(context.applicationContext) }
+    val stations by radioBook.stations.collectAsState()
+    val radioSaveFailed by radioBook.saveFailed.collectAsState()
+    var addingStation by remember { mutableStateOf(false) }
     val props = retro.props
     fun setProps(p: RoomPropSettings) = onRetro(retro.copy(props = p))
 
@@ -119,7 +128,7 @@ fun RoomPropsControls(
         )
         SwitchRow(
             "Radio kecil", props.radio, { on -> setProps(props.copy(radio = on)) },
-            subtitle = "Ketuk memutar lagu acak dari musik lokal, tahan untuk menyalakan timer tidur",
+            subtitle = "Ketuk memutar stasiun radio internet berikutnya dari daftar Anda, tahan untuk timer tidur",
         )
         SwitchRow(
             "Telepon putar", props.phone, { on -> setProps(props.copy(phone = on)) },
@@ -175,6 +184,53 @@ fun RoomPropsControls(
         )
     }
 
+    SectionTitle("Stasiun radio")
+    ControlCard {
+        Text(
+            "Radio memutar aliran internet milik Anda sendiri (alamat https dari stasiun yang Anda pilih; aliran mp3/aac/ogg langsung, bukan daftar putar .m3u atau HLS). Tidak ada stasiun bawaan. Alamat dihubungi hanya saat radio dinyalakan; daftar disimpan terenkripsi di perangkat ini, tidak ikut cadangan, dan tidak dikirim ke mana pun.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        if (radioSaveFailed) {
+            Text(
+                "Stasiun tidak disimpan: penyimpanan terenkripsi tidak tersedia di perangkat ini.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
+        if (stations.isEmpty()) {
+            Text("Belum ada stasiun.", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 8.dp))
+        }
+        for (st in stations) {
+            Row(
+                Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(st.name, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                    Text(
+                        st.url,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    )
+                }
+                TextButton(onClick = { radioBook.remove(st.url) }) { Text("Hapus") }
+            }
+        }
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+            OutlinedButton(onClick = { addingStation = true }, enabled = stations.size < RadioRules.MAX_STATIONS) { Text("Tambah stasiun…") }
+            if (stations.isNotEmpty()) OutlinedButton(onClick = { radioBook.clearAll() }) { Text("Hapus semua stasiun") }
+        }
+        if (stations.size >= RadioRules.MAX_STATIONS) {
+            Text("Daftar penuh (${RadioRules.MAX_STATIONS} stasiun).", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+    if (addingStation) AddStationDialog(onDismiss = { addingStation = false }, onAdd = { s -> radioBook.add(s) })
+
     SectionTitle("Pintasan langsung")
     ControlCard {
         Text(
@@ -186,7 +242,7 @@ fun RoomPropsControls(
             OutlinedButton(onClick = { RoomShortcuts.openAlarms(context) }) { Text("Buka alarm") }
             OutlinedButton(onClick = { RoomShortcuts.openTimers(context) }) { Text("Buka timer") }
             OutlinedButton(onClick = { RoomShortcuts.openPhone(context) }) { Text("Aplikasi telepon") }
-            OutlinedButton(onClick = { scope.launch { RoomShortcuts.playRandom(context, musicFolderUri, null) } }) { Text("Lagu acak") }
+            OutlinedButton(onClick = { RoomShortcuts.playNextStation(context, stations, null) }) { Text("Putar radio") }
             OutlinedButton(onClick = { RoomShortcuts.toggleSleep(context, sleepMinutes) }) { Text("Timer tidur $sleepMinutes mnt") }
         }
     }
@@ -231,6 +287,37 @@ fun RoomPropsControls(
             OutlinedButton(onClick = { book.clearAll() }, modifier = Modifier.padding(top = 8.dp)) { Text("Hapus semua pintasan") }
         }
     }
+}
+
+/** Dialog tambah stasiun: nama dan alamat https; tombol Simpan baru aktif bila keduanya sah. */
+@Composable
+private fun AddStationDialog(onDismiss: () -> Unit, onAdd: (RadioStation) -> Boolean) {
+    var name by remember { mutableStateOf("") }
+    var url by remember { mutableStateOf("") }
+    val candidate = RadioStation(name, url)
+    val valid = RadioRules.clean(candidate) != null
+    val urlBad = url.isNotBlank() && !RadioRules.isStreamUrl(url.trim())
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Tambah stasiun") },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = name, onValueChange = { name = it.take(RadioRules.MAX_NAME) }, singleLine = true,
+                    label = { Text("Nama stasiun") }, modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = url, onValueChange = { url = it.take(RadioRules.MAX_URL) }, singleLine = true,
+                    label = { Text("Alamat aliran (https://…)") }, isError = urlBad,
+                    supportingText = { if (urlBad) Text("Harus alamat https yang lengkap, tanpa spasi") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                )
+            }
+        },
+        confirmButton = { TextButton(enabled = valid, onClick = { if (onAdd(candidate)) onDismiss() }) { Text("Simpan") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Batal") } },
+    )
 }
 
 private fun contactName(context: Context, uri: Uri): String? = runCatching {

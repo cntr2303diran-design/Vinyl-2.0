@@ -24,6 +24,7 @@ import com.vinyl.launcher.service.MediaListenerService
 import com.vinyl.launcher.util.Http
 import com.vinyl.launcher.util.Images
 import com.vinyl.launcher.util.readAtMost
+import com.vinyl.launcher.data.RadioRules
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -59,9 +60,17 @@ data class NowPlaying(
     val positionUpdateTime: Long = 0L,
     val speed: Float = 1f,
     val canSeek: Boolean = false,
+    /** Siaran radio internet (bukan lagu): tidak masuk riwayat, piala, atau buku harian. */
+    val live: Boolean = false,
 ) {
     /** True jika ada metadata yang layak ditampilkan. */
     val hasTrack: Boolean get() = hasSession && title.isNotBlank()
+
+    /**
+     * Kunci lagu untuk riwayat, atau null bila tidak ada yang dicatat. Siaran radio ([live]) bukan lagu: tidak dihitung ke
+     * riwayat, piala, atau buku harian.
+     */
+    val historyKey: String? get() = if (hasTrack && !live) "${title.trim().lowercase()}|${artist.trim().lowercase()}" else null
 
     /** Posisi pemutaran terkini (ms), diekstrapolasi dari snapshot terakhir. */
     fun positionAt(now: Long = SystemClock.elapsedRealtime()): Long {
@@ -234,6 +243,7 @@ object MediaRepository {
                     ?: SystemClock.elapsedRealtime(),
                 speed = ps?.playbackSpeed?.takeIf { s -> s > 0f } ?: 1f,
                 canSeek = (actions and PlaybackState.ACTION_SEEK_TO) != 0L,
+                live = RadioRules.isRadioId(md?.getString(MediaMetadata.METADATA_KEY_MEDIA_ID)),
             )
         }
         if (key != artKey) loadArt(key, md)
