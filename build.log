@@ -1,0 +1,1087 @@
+Downloading https://services.gradle.org/distributions/gradle-8.13-bin.zip
+.............10%.............20%.............30%.............40%.............50%.............60%.............70%.............80%.............90%.............100%
+
+Welcome to Gradle 8.13!
+
+Here are the highlights of this release:
+ - Daemon JVM auto-provisioning
+ - Enhancements for Scala plugin and JUnit testing
+ - Improvements for build authors and plugin developers
+
+For more details see https://docs.gradle.org/8.13/release-notes.html
+
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.13/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+
+> Task :app:fetchFonts
+Mengunduh font inter.ttf
+Mengunduh font instrument_serif.ttf
+Mengunduh font jetbrains_mono.ttf
+Mengunduh font vt323.ttf
+Mengunduh font permanent_marker.ttf
+
+> Task :app:preBuild
+> Task :app:preReleaseBuild
+> Task :app:mergeReleaseJniLibFolders
+> Task :app:mergeReleaseNativeLibs
+> Task :app:buildKotlinToolingMetadata
+
+> Task :app:stripReleaseDebugSymbols
+Unable to strip the following libraries, packaging them as they are: libandroidx.graphics.path.so, libdatastore_shared_counter.so. Run with --info option to learn more.
+
+> Task :app:extractReleaseNativeSymbolTables
+> Task :app:checkReleaseDuplicateClasses
+> Task :app:mergeReleaseNativeDebugMetadata NO-SOURCE
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:generateReleaseResValues
+> Task :app:checkReleaseAarMetadata
+> Task :app:mapReleaseSourceSetPaths
+> Task :app:generateReleaseResources
+> Task :app:compileReleaseAidl
+> Task :app:packageReleaseResources
+> Task :app:mergeReleaseResources
+> Task :app:createReleaseCompatibleScreenManifests
+> Task :app:extractDeepLinksRelease
+> Task :app:parseReleaseLocalResources
+> Task :app:processReleaseMainManifest
+> Task :app:processReleaseManifest
+> Task :app:processReleaseManifestForPackage
+> Task :app:javaPreCompileRelease
+> Task :app:mergeReleaseArtProfile
+> Task :app:extractProguardFiles
+> Task :app:mergeReleaseStartupProfile
+> Task :app:mergeReleaseShaders
+> Task :app:compileReleaseShaders NO-SOURCE
+> Task :app:generateReleaseAssets UP-TO-DATE
+> Task :app:mergeReleaseAssets
+> Task :app:compressReleaseAssets
+> Task :app:extractReleaseVersionControlInfo
+> Task :app:collectReleaseDependencies
+> Task :app:sdkReleaseDependencyData
+> Task :app:validateSigningRelease
+> Task :app:writeReleaseAppMetadata
+> Task :app:writeReleaseSigningConfigVersions
+> Task :app:processReleaseResources
+> Task :app:compileReleaseKotlin
+> Task :app:compileReleaseJavaWithJavac
+> Task :app:mergeReleaseGeneratedProguardFiles
+> Task :app:processReleaseJavaRes
+> Task :app:expandReleaseArtProfileWildcards
+> Task :app:mergeReleaseJavaResource
+> Task :app:generateReleaseLintVitalReportModel
+
+> Task :app:minifyReleaseWithR8
+WARNING: /home/runner/.gradle/caches/8.13/transforms/fedb109bd11551ddb4226fc17d53d3e8/transformed/rules/lib/META-INF/com.android.tools/r8/kotlinx-serialization-common.pro:5:12-27: R8: The type "<1>$*" is used in a field rule. The characters in this type are legal for the JVM, but unlikely to originate from a source language. Maybe this is not the rule you are looking for.
+
+> Task :app:lintVitalAnalyzeRelease
+> Task :app:lintVitalReportRelease
+> Task :app:lintVitalRelease
+> Task :app:convertShrunkResourcesToBinaryRelease
+> Task :app:compileReleaseArtProfile
+> Task :app:optimizeReleaseResources
+> Task :app:packageRelease
+> Task :app:createReleaseApkListingFileRedirect
+> Task :app:assembleRelease
+
+BUILD SUCCESSFUL in 4m 45s
+50 actionable tasks: 50 executed
+
+===== FAKTA APK (release): app/build/outputs/apk/release/app-release.apk =====
+ukuran: 6316894 bita
+package: name='com.vinyl.launcher' versionCode='212' versionName='1.0.112' platformBuildVersionName='16' platformBuildVersionCode='36' compileSdkVersion='36' compileSdkVersionCodename='16'
+minSdkVersion:'29'
+targetSdkVersion:'36'
+bisa di-debug: tidak
+--- izin di APK (aapt2 dump permissions) ---
+android.permission.ACCESS_NETWORK_STATE
+android.permission.BLUETOOTH (hanya s.d. API 30)
+android.permission.BLUETOOTH_CONNECT
+android.permission.DUMP
+android.permission.EXPAND_STATUS_BAR
+android.permission.FOREGROUND_SERVICE
+android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK
+android.permission.FOREGROUND_SERVICE_SPECIAL_USE
+android.permission.INTERNET
+android.permission.MODIFY_AUDIO_SETTINGS
+android.permission.PACKAGE_USAGE_STATS
+android.permission.POST_NOTIFICATIONS
+android.permission.READ_CALENDAR
+android.permission.READ_CONTACTS
+android.permission.RECEIVE_BOOT_COMPLETED
+android.permission.RECORD_AUDIO
+android.permission.REQUEST_DELETE_PACKAGES
+android.permission.SYSTEM_ALERT_WINDOW
+android.permission.VIBRATE
+android.permission.WAKE_LOCK
+com.vinyl.launcher.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
+moe.shizuku.manager.permission.API_V23
+sertifikat SHA-256: 65:1D:FE:22:03:E6:E6:DE:75:17:0F:A1:2F:86:E4:85:3A:E2:D8:A1:88:1A:33:66:D0:99:AE:8A:50:CA:61:9F
+Verifies
+Verified using v1 scheme (JAR signing): false
+Verified using v2 scheme (APK Signature Scheme v2): true
+Verified using v3 scheme (APK Signature Scheme v3): false
+Verified using v3.1 scheme (APK Signature Scheme v3.1): false
+Verified using v3.2 scheme (APK Signature Scheme v3.2): false
+Verified using v4 scheme (APK Signature Scheme v4): false
+--- isi APK ---
+berkas classes*.dex: 1
+       57  1981-01-01 01:01   META-INF/com/android/build/gradle/app-metadata.properties
+     4682  1981-01-01 01:01   assets/dexopt/baseline.prof
+      793  1981-01-01 01:01   assets/dexopt/baseline.profm
+pustaka native (.so): 8
+--- profil dasar (berkas teks antara di app/build/intermediates) ---
+app/build/intermediates/combined_art_profile/release/compileReleaseArtProfile/baseline-prof.txt: 15467 baris, di antaranya aturan com/vinyl/launcher: 1103
+app/build/intermediates/merged_art_profile/release/mergeReleaseArtProfile/baseline-prof.txt: 2016 baris, di antaranya aturan com/vinyl/launcher: 1
+app/build/intermediates/r8_art_profile/release/expandReleaseArtProfileWildcards/baseline-prof.txt: 47846 baris, di antaranya aturan com/vinyl/launcher: 12816
+app/build/intermediates/r8_art_profile/release/minifyReleaseWithR8/baseline-prof.txt: 15467 baris, di antaranya aturan com/vinyl/launcher: 1103
+total 69720
+-rw-r--r-- 1 runner runner    58223 Oct 31 15:10 configuration.txt
+-rw-r--r-- 1 runner runner 65364106 Oct 31 15:10 mapping.txt
+-rw-r--r-- 1 runner runner   173310 Oct 31 15:10 resources.txt
+-rw-r--r-- 1 runner runner   188394 Oct 31 15:09 seeds.txt
+-rw-r--r-- 1 runner runner  5596794 Oct 31 15:10 usage.txt
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.13/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+> Task :app:fetchFonts UP-TO-DATE
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:compileDebugAidl FROM-CACHE
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:generateDebugResValues FROM-CACHE
+> Task :app:checkDebugAarMetadata
+> Task :app:mapDebugSourceSetPaths
+> Task :app:generateDebugResources
+> Task :app:packageDebugResources
+> Task :app:parseDebugLocalResources FROM-CACHE
+> Task :app:createDebugCompatibleScreenManifests
+> Task :app:extractDeepLinksDebug FROM-CACHE
+> Task :app:processDebugMainManifest
+> Task :app:processDebugManifest
+> Task :app:javaPreCompileDebug FROM-CACHE
+> Task :app:preDebugUnitTestBuild UP-TO-DATE
+> Task :app:javaPreCompileDebugUnitTest FROM-CACHE
+> Task :app:mergeDebugResources
+> Task :app:mergeDebugShaders
+> Task :app:compileDebugShaders NO-SOURCE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :app:processDebugManifestForPackage
+> Task :app:mergeDebugAssets
+> Task :app:processDebugResources
+> Task :app:packageDebugUnitTestForUnitTest
+> Task :app:generateDebugUnitTestConfig
+> Task :app:compileDebugKotlin
+> Task :app:compileDebugJavaWithJavac
+> Task :app:processDebugJavaRes
+> Task :app:bundleDebugClassesToRuntimeJar
+> Task :app:bundleDebugClassesToCompileJar
+> Task :app:compileDebugUnitTestKotlin
+> Task :app:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :app:processDebugUnitTestJavaRes
+--- Failed to create image decoder with message 'unimplemented'
+> Task :app:testDebugUnitTest
+> Task :app:finalizeTestRoborazziDebug SKIPPED
+
+BUILD SUCCESSFUL in 1m 46s
+29 actionable tasks: 22 executed, 6 from cache, 1 up-to-date
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.13/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+> Task :app:fetchFonts UP-TO-DATE
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:compileDebugAidl UP-TO-DATE
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:checkDebugAarMetadata UP-TO-DATE
+> Task :app:generateDebugResValues UP-TO-DATE
+> Task :app:mapDebugSourceSetPaths UP-TO-DATE
+> Task :app:generateDebugResources UP-TO-DATE
+> Task :app:mergeDebugResources UP-TO-DATE
+> Task :app:packageDebugResources UP-TO-DATE
+> Task :app:parseDebugLocalResources UP-TO-DATE
+> Task :app:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksDebug UP-TO-DATE
+> Task :app:processDebugMainManifest UP-TO-DATE
+> Task :app:processDebugManifest UP-TO-DATE
+> Task :app:processDebugManifestForPackage UP-TO-DATE
+> Task :app:processDebugResources UP-TO-DATE
+> Task :app:compileDebugKotlin UP-TO-DATE
+> Task :app:javaPreCompileDebug UP-TO-DATE
+> Task :app:compileDebugJavaWithJavac UP-TO-DATE
+> Task :app:bundleDebugClassesToRuntimeJar UP-TO-DATE
+> Task :app:bundleDebugClassesToCompileJar UP-TO-DATE
+> Task :app:compileDebugUnitTestKotlin UP-TO-DATE
+> Task :app:preDebugUnitTestBuild UP-TO-DATE
+> Task :app:javaPreCompileDebugUnitTest UP-TO-DATE
+> Task :app:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :app:mergeDebugShaders UP-TO-DATE
+> Task :app:compileDebugShaders NO-SOURCE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :app:mergeDebugAssets UP-TO-DATE
+> Task :app:packageDebugUnitTestForUnitTest UP-TO-DATE
+> Task :app:generateDebugUnitTestConfig UP-TO-DATE
+> Task :app:processDebugJavaRes UP-TO-DATE
+> Task :app:processDebugUnitTestJavaRes UP-TO-DATE
+--- Failed to create image decoder with message 'unimplemented'
+> Task :app:testDebugUnitTest
+> Task :app:finalizeTestRoborazziDebug
+> Task :app:recordRoborazziDebug
+
+BUILD SUCCESSFUL in 59s
+30 actionable tasks: 2 executed, 28 up-to-date
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.13/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+> Task :app:fetchFonts UP-TO-DATE
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:compileDebugAidl UP-TO-DATE
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:checkDebugAarMetadata UP-TO-DATE
+> Task :app:generateDebugResValues UP-TO-DATE
+> Task :app:mapDebugSourceSetPaths UP-TO-DATE
+> Task :app:generateDebugResources UP-TO-DATE
+> Task :app:mergeDebugResources UP-TO-DATE
+> Task :app:packageDebugResources UP-TO-DATE
+> Task :app:parseDebugLocalResources UP-TO-DATE
+> Task :app:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksDebug UP-TO-DATE
+> Task :app:processDebugMainManifest UP-TO-DATE
+> Task :app:processDebugManifest UP-TO-DATE
+> Task :app:processDebugManifestForPackage UP-TO-DATE
+> Task :app:processDebugResources UP-TO-DATE
+> Task :app:compileDebugKotlin UP-TO-DATE
+> Task :app:javaPreCompileDebug UP-TO-DATE
+> Task :app:compileDebugJavaWithJavac UP-TO-DATE
+> Task :app:bundleDebugClassesToCompileJar UP-TO-DATE
+> Task :app:preDebugAndroidTestBuild SKIPPED
+> Task :app:generateDebugAndroidTestResValues FROM-CACHE
+> Task :app:generateDebugAndroidTestLintModel
+> Task :app:extractProguardFiles UP-TO-DATE
+> Task :app:generateDebugLintReportModel
+> Task :app:preDebugUnitTestBuild UP-TO-DATE
+> Task :app:generateDebugUnitTestLintModel
+> Task :app:lintAnalyzeDebugAndroidTest
+> Task :app:lintAnalyzeDebug
+> Task :app:lintAnalyzeDebugUnitTest
+
+> Task :app:lintReportDebug
+Wrote HTML report to file:///home/runner/work/Vinyl-2.0/Vinyl-2.0/app/build/reports/lint-results-debug.html
+
+> Task :app:lintDebug
+/home/runner/work/Vinyl-2.0/Vinyl-2.0/app/src/main/java/com/vinyl/launcher/data/PosterPhotoStore.kt:10: Warning: Avoid using android.media.ExifInterface; use androidx.exifinterface.media.ExifInterface instead [ExifInterface]
+import android.media.ExifInterface
+       ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/Vinyl-2.0/Vinyl-2.0/app/src/main/java/com/vinyl/launcher/data/PosterPhotoStore.kt:116: Warning: Avoid using android.media.ExifInterface; use androidx.exifinterface.media.ExifInterface instead [ExifInterface]
+            open()?.use { ExifInterface(BufferedInputStream(it)).getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL) }
+                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "ExifInterface":
+   The android.media.ExifInterface implementation has some known security bugs
+   in older versions of Android. There is a new implementation available of
+   this library in the support library, which is preferable.
+
+/home/runner/work/Vinyl-2.0/Vinyl-2.0/gradle/wrapper/gradle-wrapper.properties:4: Warning: A newer version of Gradle than 8.13 is available: 8.14.6 [AndroidGradlePluginVersion]
+distributionUrl=https\://services.gradle.org/distributions/gradle-8.13-bin.zip
+                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/Vinyl-2.0/Vinyl-2.0/gradle/libs.versions.toml:2: Warning: A newer version of com.android.application than 8.11.1 is available: 9.5.0. (There is also a newer version of 8.11.𝑥 available, if upgrading to 9.5.0 is difficult: 8.11.2) [AndroidGradlePluginVersion]
+agp = "8.11.1"
+      ~~~~~~~~
+
+   Explanation for issues of type "AndroidGradlePluginVersion":
+   This detector looks for usage of the Android Gradle Plugin where the
+   version you are using is not the current stable release. Using older
+   versions is fine, and there are cases where you deliberately want to stick
+   with an older version. However, you may simply not be aware that a more
+   recent version is available, and that is what this lint check helps find.
+
+/home/runner/work/Vinyl-2.0/Vinyl-2.0/gradle/libs.versions.toml:4: Warning: A newer version of androidx.core:core-ktx than 1.16.0 is available: 1.19.1 [GradleDependency]
+coreKtx = "1.16.0"
+          ~~~~~~~~
+/home/runner/work/Vinyl-2.0/Vinyl-2.0/gradle/libs.versions.toml:5: Warning: A newer version of androidx.lifecycle:lifecycle-runtime-compose than 2.9.2 is available: 2.11.0 [GradleDependency]
+lifecycle = "2.9.2"
+            ~~~~~~~
+/home/runner/work/Vinyl-2.0/Vinyl-2.0/gradle/libs.versions.toml:5: Warning: A newer version of androidx.lifecycle:lifecycle-runtime-ktx than 2.9.2 is available: 2.11.0 [GradleDependency]
+lifecycle = "2.9.2"
+            ~~~~~~~
+/home/runner/work/Vinyl-2.0/Vinyl-2.0/gradle/libs.versions.toml:5: Warning: A newer version of androidx.lifecycle:lifecycle-service than 2.9.2 is available: 2.11.0 [GradleDependency]
+lifecycle = "2.9.2"
+            ~~~~~~~
+/home/runner/work/Vinyl-2.0/Vinyl-2.0/gradle/libs.versions.toml:5: Warning: A newer version of androidx.lifecycle:lifecycle-viewmodel-compose than 2.9.2 is available: 2.11.0 [GradleDependency]
+lifecycle = "2.9.2"
+            ~~~~~~~
+/home/runner/work/Vinyl-2.0/Vinyl-2.0/gradle/libs.versions.toml:6: Warning: A newer version of androidx.activity:activity-compose than 1.10.1 is available: 1.13.0 [GradleDependency]
+activityCompose = "1.10.1"
+                  ~~~~~~~~
+/home/runner/work/Vinyl-2.0/Vinyl-2.0/gradle/libs.versions.toml:7: Warning: A newer version of androidx.compose:compose-bom than 2025.07.00 is available: 2026.09.00 [GradleDependency]
+composeBom = "2025.07.00"
+             ~~~~~~~~~~~~
+/home/runner/work/Vinyl-2.0/Vinyl-2.0/gradle/libs.versions.toml:8: Warning: A newer version of androidx.datastore:datastore-preferences than 1.1.7 is available: 1.3.0 [GradleDependency]
+datastore = "1.1.7"
+            ~~~~~~~
+/home/runner/work/Vinyl-2.0/Vinyl-2.0/gradle/libs.versions.toml:9: Warning: A newer version of androidx.palette:palette-ktx than 1.0.0 is available: 1.1.0 [GradleDependency]
+palette = "1.0.0"
+          ~~~~~~~
+/home/runner/work/Vinyl-2.0/Vinyl-2.0/gradle/libs.versions.toml:16: Warning: A newer version of androidx.media3:media3-exoplayer than 1.8.0 is available: 1.11.1 [GradleDependency]
+media3 = "1.8.0"
+         ~~~~~~~
+/home/runner/work/Vinyl-2.0/Vinyl-2.0/gradle/libs.versions.toml:16: Warning: A newer version of androidx.media3:media3-session than 1.8.0 is available: 1.11.1 [GradleDependency]
+media3 = "1.8.0"
+         ~~~~~~~
+/home/runner/work/Vinyl-2.0/Vinyl-2.0/gradle/libs.versions.toml:20: Warning: A newer version of androidx.test.ext:junit than 1.2.1 is available: 1.3.0 [GradleDependency]
+androidxTestJunit = "1.2.1"
+                    ~~~~~~~
+
+   Explanation for issues of type "GradleDependency":
+   This detector looks for usages of libraries where the version you are using
+   is not the current stable release. Using older versions is fine, and there
+   are cases where you deliberately want to stick with an older version.
+   However, you may simply not be aware that a more recent version is
+   available, and that is what this lint check helps find.
+
+/home/runner/work/Vinyl-2.0/Vinyl-2.0/gradle/libs.versions.toml:3: Warning: A newer version of org.jetbrains.kotlin.android than 2.2.0 is available: 2.4.21 [NewerVersionAvailable]
+kotlin = "2.2.0"
+         ~~~~~~~
+/home/runner/work/Vinyl-2.0/Vinyl-2.0/gradle/libs.versions.toml:3: Warning: A newer version of org.jetbrains.kotlin.plugin.compose than 2.2.0 is available: 2.4.21 [NewerVersionAvailable]
+kotlin = "2.2.0"
+         ~~~~~~~
+/home/runner/work/Vinyl-2.0/Vinyl-2.0/gradle/libs.versions.toml:3: Warning: A newer version of org.jetbrains.kotlin.plugin.serialization than 2.2.0 is available: 2.4.21 [NewerVersionAvailable]
+kotlin = "2.2.0"
+         ~~~~~~~
+/home/runner/work/Vinyl-2.0/Vinyl-2.0/gradle/libs.versions.toml:10: Warning: A newer version of org.jetbrains.kotlinx:kotlinx-serialization-json than 1.9.0 is available: 1.12.0 [NewerVersionAvailable]
+serialization = "1.9.0"
+                ~~~~~~~
+/home/runner/work/Vinyl-2.0/Vinyl-2.0/gradle/libs.versions.toml:11: Warning: A newer version of org.jetbrains.kotlinx:kotlinx-coroutines-android than 1.10.2 is available: 1.11.0 [NewerVersionAvailable]
+coroutines = "1.10.2"
+             ~~~~~~~~
+/home/runner/work/Vinyl-2.0/Vinyl-2.0/gradle/libs.versions.toml:18: Warning: A newer version of io.github.takahirom.roborazzi than 1.74.0 is available: 1.77.0 [NewerVersionAvailable]
+roborazzi = "1.74.0"
+            ~~~~~~~~
+/home/runner/work/Vinyl-2.0/Vinyl-2.0/gradle/libs.versions.toml:18: Warning: A newer version of io.github.takahirom.roborazzi:roborazzi than 1.74.0 is available: 1.77.0 [NewerVersionAvailable]
+roborazzi = "1.74.0"
+            ~~~~~~~~
+/home/runner/work/Vinyl-2.0/Vinyl-2.0/gradle/libs.versions.toml:18: Warning: A newer version of io.github.takahirom.roborazzi:roborazzi-compose than 1.74.0 is available: 1.77.0 [NewerVersionAvailable]
+roborazzi = "1.74.0"
+            ~~~~~~~~
+/home/runner/work/Vinyl-2.0/Vinyl-2.0/gradle/libs.versions.toml:18: Warning: A newer version of io.github.takahirom.roborazzi:roborazzi-junit-rule than 1.74.0 is available: 1.77.0 [NewerVersionAvailable]
+roborazzi = "1.74.0"
+            ~~~~~~~~
+
+   Explanation for issues of type "NewerVersionAvailable":
+   This detector checks with a central repository to see if there are newer
+   versions available for the dependencies used by this project. This is
+   similar to the GradleDependency check, which checks for newer versions
+   available in the Android SDK tools and libraries, but this works with any
+   MavenCentral dependency, and connects to the library every time, which
+   makes it more flexible but also much slower.
+
+/home/runner/work/Vinyl-2.0/Vinyl-2.0/app/src/main/java/com/vinyl/launcher/ui/library/CassetteRack.kt:105: Hint: Prefer mutableIntStateOf instead of mutableStateOf [AutoboxingStateCreation from androidx.compose.runtime]
+    val tab = rememberSaveable { mutableStateOf(0) }
+                                 ~~~~~~~~~~~~~~
+
+   Explanation for issues of type "AutoboxingStateCreation":
+   Calling mutableStateOf<T>() when T is either backed by a primitive type on
+   the JVM or is a value class results in a state implementation that requires
+   all state values to be boxed. This usually causes an additional allocation
+   for each state write, and adds some additional work to auto-unbox values
+   when reading the value of the state. Instead, prefer to use a specialized
+   primitive state implementation for Int, Long, Float, and Double when the
+   state does not need to track null values and does not override the default
+   SnapshotMutationPolicy. See mutableIntStateOf(), mutableLongStateOf(),
+   mutableFloatStateOf(), and mutableDoubleStateOf() for more information.
+
+   Vendor: Jetpack Compose
+   Identifier: androidx.compose.runtime
+   Feedback: https://issuetracker.google.com/issues/new?component=612128
+
+0 errors, 25 warnings, 1 hint
+
+
+BUILD SUCCESSFUL in 1m 46s
+29 actionable tasks: 8 executed, 1 from cache, 20 up-to-date
+
+===== LAPORAN LINT (app/build/reports/lint-results-debug.txt) =====
+/home/runner/work/Vinyl-2.0/Vinyl-2.0/app/src/main/java/com/vinyl/launcher/data/PosterPhotoStore.kt:10: Warning: Avoid using android.media.ExifInterface; use androidx.exifinterface.media.ExifInterface instead [ExifInterface]
+import android.media.ExifInterface
+       ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/Vinyl-2.0/Vinyl-2.0/app/src/main/java/com/vinyl/launcher/data/PosterPhotoStore.kt:116: Warning: Avoid using android.media.ExifInterface; use androidx.exifinterface.media.ExifInterface instead [ExifInterface]
+            open()?.use { ExifInterface(BufferedInputStream(it)).getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL) }
+                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "ExifInterface":
+   The android.media.ExifInterface implementation has some known security bugs
+   in older versions of Android. There is a new implementation available of
+   this library in the support library, which is preferable.
+
+/home/runner/work/Vinyl-2.0/Vinyl-2.0/gradle/wrapper/gradle-wrapper.properties:4: Warning: A newer version of Gradle than 8.13 is available: 8.14.6 [AndroidGradlePluginVersion]
+distributionUrl=https\://services.gradle.org/distributions/gradle-8.13-bin.zip
+                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/Vinyl-2.0/Vinyl-2.0/gradle/libs.versions.toml:2: Warning: A newer version of com.android.application than 8.11.1 is available: 9.5.0. (There is also a newer version of 8.11.𝑥 available, if upgrading to 9.5.0 is difficult: 8.11.2) [AndroidGradlePluginVersion]
+agp = "8.11.1"
+      ~~~~~~~~
+
+   Explanation for issues of type "AndroidGradlePluginVersion":
+   This detector looks for usage of the Android Gradle Plugin where the
+   version you are using is not the current stable release. Using older
+   versions is fine, and there are cases where you deliberately want to stick
+   with an older version. However, you may simply not be aware that a more
+   recent version is available, and that is what this lint check helps find.
+
+/home/runner/work/Vinyl-2.0/Vinyl-2.0/gradle/libs.versions.toml:4: Warning: A newer version of androidx.core:core-ktx than 1.16.0 is available: 1.19.1 [GradleDependency]
+coreKtx = "1.16.0"
+          ~~~~~~~~
+/home/runner/work/Vinyl-2.0/Vinyl-2.0/gradle/libs.versions.toml:5: Warning: A newer version of androidx.lifecycle:lifecycle-runtime-compose than 2.9.2 is available: 2.11.0 [GradleDependency]
+lifecycle = "2.9.2"
+            ~~~~~~~
+/home/runner/work/Vinyl-2.0/Vinyl-2.0/gradle/libs.versions.toml:5: Warning: A newer version of androidx.lifecycle:lifecycle-runtime-ktx than 2.9.2 is available: 2.11.0 [GradleDependency]
+lifecycle = "2.9.2"
+            ~~~~~~~
+/home/runner/work/Vinyl-2.0/Vinyl-2.0/gradle/libs.versions.toml:5: Warning: A newer version of androidx.lifecycle:lifecycle-service than 2.9.2 is available: 2.11.0 [GradleDependency]
+lifecycle = "2.9.2"
+            ~~~~~~~
+/home/runner/work/Vinyl-2.0/Vinyl-2.0/gradle/libs.versions.toml:5: Warning: A newer version of androidx.lifecycle:lifecycle-viewmodel-compose than 2.9.2 is available: 2.11.0 [GradleDependency]
+lifecycle = "2.9.2"
+            ~~~~~~~
+/home/runner/work/Vinyl-2.0/Vinyl-2.0/gradle/libs.versions.toml:6: Warning: A newer version of androidx.activity:activity-compose than 1.10.1 is available: 1.13.0 [GradleDependency]
+activityCompose = "1.10.1"
+                  ~~~~~~~~
+/home/runner/work/Vinyl-2.0/Vinyl-2.0/gradle/libs.versions.toml:7: Warning: A newer version of androidx.compose:compose-bom than 2025.07.00 is available: 2026.09.00 [GradleDependency]
+composeBom = "2025.07.00"
+             ~~~~~~~~~~~~
+/home/runner/work/Vinyl-2.0/Vinyl-2.0/gradle/libs.versions.toml:8: Warning: A newer version of androidx.datastore:datastore-preferences than 1.1.7 is available: 1.3.0 [GradleDependency]
+datastore = "1.1.7"
+            ~~~~~~~
+/home/runner/work/Vinyl-2.0/Vinyl-2.0/gradle/libs.versions.toml:9: Warning: A newer version of androidx.palette:palette-ktx than 1.0.0 is available: 1.1.0 [GradleDependency]
+palette = "1.0.0"
+          ~~~~~~~
+/home/runner/work/Vinyl-2.0/Vinyl-2.0/gradle/libs.versions.toml:16: Warning: A newer version of androidx.media3:media3-exoplayer than 1.8.0 is available: 1.11.1 [GradleDependency]
+media3 = "1.8.0"
+         ~~~~~~~
+/home/runner/work/Vinyl-2.0/Vinyl-2.0/gradle/libs.versions.toml:16: Warning: A newer version of androidx.media3:media3-session than 1.8.0 is available: 1.11.1 [GradleDependency]
+media3 = "1.8.0"
+         ~~~~~~~
+/home/runner/work/Vinyl-2.0/Vinyl-2.0/gradle/libs.versions.toml:20: Warning: A newer version of androidx.test.ext:junit than 1.2.1 is available: 1.3.0 [GradleDependency]
+androidxTestJunit = "1.2.1"
+                    ~~~~~~~
+
+   Explanation for issues of type "GradleDependency":
+   This detector looks for usages of libraries where the version you are using
+   is not the current stable release. Using older versions is fine, and there
+   are cases where you deliberately want to stick with an older version.
+   However, you may simply not be aware that a more recent version is
+   available, and that is what this lint check helps find.
+
+/home/runner/work/Vinyl-2.0/Vinyl-2.0/gradle/libs.versions.toml:3: Warning: A newer version of org.jetbrains.kotlin.android than 2.2.0 is available: 2.4.21 [NewerVersionAvailable]
+kotlin = "2.2.0"
+         ~~~~~~~
+/home/runner/work/Vinyl-2.0/Vinyl-2.0/gradle/libs.versions.toml:3: Warning: A newer version of org.jetbrains.kotlin.plugin.compose than 2.2.0 is available: 2.4.21 [NewerVersionAvailable]
+kotlin = "2.2.0"
+         ~~~~~~~
+/home/runner/work/Vinyl-2.0/Vinyl-2.0/gradle/libs.versions.toml:3: Warning: A newer version of org.jetbrains.kotlin.plugin.serialization than 2.2.0 is available: 2.4.21 [NewerVersionAvailable]
+kotlin = "2.2.0"
+         ~~~~~~~
+/home/runner/work/Vinyl-2.0/Vinyl-2.0/gradle/libs.versions.toml:10: Warning: A newer version of org.jetbrains.kotlinx:kotlinx-serialization-json than 1.9.0 is available: 1.12.0 [NewerVersionAvailable]
+serialization = "1.9.0"
+                ~~~~~~~
+/home/runner/work/Vinyl-2.0/Vinyl-2.0/gradle/libs.versions.toml:11: Warning: A newer version of org.jetbrains.kotlinx:kotlinx-coroutines-android than 1.10.2 is available: 1.11.0 [NewerVersionAvailable]
+coroutines = "1.10.2"
+             ~~~~~~~~
+/home/runner/work/Vinyl-2.0/Vinyl-2.0/gradle/libs.versions.toml:18: Warning: A newer version of io.github.takahirom.roborazzi than 1.74.0 is available: 1.77.0 [NewerVersionAvailable]
+roborazzi = "1.74.0"
+            ~~~~~~~~
+/home/runner/work/Vinyl-2.0/Vinyl-2.0/gradle/libs.versions.toml:18: Warning: A newer version of io.github.takahirom.roborazzi:roborazzi than 1.74.0 is available: 1.77.0 [NewerVersionAvailable]
+roborazzi = "1.74.0"
+            ~~~~~~~~
+/home/runner/work/Vinyl-2.0/Vinyl-2.0/gradle/libs.versions.toml:18: Warning: A newer version of io.github.takahirom.roborazzi:roborazzi-compose than 1.74.0 is available: 1.77.0 [NewerVersionAvailable]
+roborazzi = "1.74.0"
+            ~~~~~~~~
+/home/runner/work/Vinyl-2.0/Vinyl-2.0/gradle/libs.versions.toml:18: Warning: A newer version of io.github.takahirom.roborazzi:roborazzi-junit-rule than 1.74.0 is available: 1.77.0 [NewerVersionAvailable]
+roborazzi = "1.74.0"
+            ~~~~~~~~
+
+   Explanation for issues of type "NewerVersionAvailable":
+   This detector checks with a central repository to see if there are newer
+   versions available for the dependencies used by this project. This is
+   similar to the GradleDependency check, which checks for newer versions
+   available in the Android SDK tools and libraries, but this works with any
+   MavenCentral dependency, and connects to the library every time, which
+   makes it more flexible but also much slower.
+
+/home/runner/work/Vinyl-2.0/Vinyl-2.0/app/src/main/java/com/vinyl/launcher/ui/library/CassetteRack.kt:105: Hint: Prefer mutableIntStateOf instead of mutableStateOf [AutoboxingStateCreation from androidx.compose.runtime]
+    val tab = rememberSaveable { mutableStateOf(0) }
+                                 ~~~~~~~~~~~~~~
+
+   Explanation for issues of type "AutoboxingStateCreation":
+   Calling mutableStateOf<T>() when T is either backed by a primitive type on
+   the JVM or is a value class results in a state implementation that requires
+   all state values to be boxed. This usually causes an additional allocation
+   for each state write, and adds some additional work to auto-unbox values
+   when reading the value of the state. Instead, prefer to use a specialized
+   primitive state implementation for Int, Long, Float, and Double when the
+   state does not need to track null values and does not override the default
+   SnapshotMutationPolicy. See mutableIntStateOf(), mutableLongStateOf(),
+   mutableFloatStateOf(), and mutableDoubleStateOf() for more information.
+
+   Vendor: Jetpack Compose
+   Identifier: androidx.compose.runtime
+   Feedback: https://issuetracker.google.com/issues/new?component=612128
+
+0 errors, 25 warnings, 1 hint
+===== RINGKASAN TES UNIT (app/build/test-results) =====
+[testDebugUnitTest] 1165 tes, 0 gagal, 0 galat, 0 dilewati, 119 kelas
+    15  com.vinyl.launcher.audio.AudioModelTest
+     8  com.vinyl.launcher.audio.ConsoleModelTest
+     8  com.vinyl.launcher.audio.DumpParsersTest
+     5  com.vinyl.launcher.audio.EqCurveTest
+     3  com.vinyl.launcher.audio.ToneSynthTest
+    15  com.vinyl.launcher.audio.dsp.DspTest
+     8  com.vinyl.launcher.data.AchievementsTest
+     6  com.vinyl.launcher.data.AudioConsoleSettingsTest
+    13  com.vinyl.launcher.data.DiaryKindsTest
+     7  com.vinyl.launcher.data.DiaryRulesTest
+    10  com.vinyl.launcher.data.DiaryStoreTest
+     7  com.vinyl.launcher.data.DrawerSettingsTest
+    32  com.vinyl.launcher.data.FilmResumeTest
+     3  com.vinyl.launcher.data.FilmResumeWriteSavingTest
+    22  com.vinyl.launcher.data.FilmRulesTest
+     4  com.vinyl.launcher.data.LightLevelSettingsTest
+    15  com.vinyl.launcher.data.LyricsServiceTest
+     8  com.vinyl.launcher.data.MusicSettingsTest
+     6  com.vinyl.launcher.data.PhoneBookRulesTest
+     9  com.vinyl.launcher.data.PhoneBookStoreTest
+    16  com.vinyl.launcher.data.PosterPhotoRulesTest
+    18  com.vinyl.launcher.data.PosterPhotoStoreTest
+     4  com.vinyl.launcher.data.PosterSettingsTest
+     7  com.vinyl.launcher.data.PrefsStorageTest
+     8  com.vinyl.launcher.data.PrivacyInfoTest
+     8  com.vinyl.launcher.data.RadioRulesTest
+     8  com.vinyl.launcher.data.RadioStationBookTest
+     5  com.vinyl.launcher.data.RoomEraSettingsTest
+     3  com.vinyl.launcher.data.RoomPropSettingsTest
+     4  com.vinyl.launcher.data.SanitizerImageRulesTest
+    12  com.vinyl.launcher.data.SettingsBackupTest
+    15  com.vinyl.launcher.data.SettingsMigrationTest
+    19  com.vinyl.launcher.data.TrophyGoalsTest
+     8  com.vinyl.launcher.data.TvPowerTest
+    11  com.vinyl.launcher.data.VisualSettingsTest
+    12  com.vinyl.launcher.data.secure.SealedTextTest
+     6  com.vinyl.launcher.data.secure.SerialWorkerTest
+    12  com.vinyl.launcher.data.secure.VaultTest
+    12  com.vinyl.launcher.drawer.AlphaIndexTest
+    11  com.vinyl.launcher.drawer.AppCategorizerTest
+     5  com.vinyl.launcher.drawer.BadgeCounterTest
+    17  com.vinyl.launcher.drawer.DrawerLayoutTest
+     4  com.vinyl.launcher.drawer.SearchIndexTest
+    14  com.vinyl.launcher.drawer.SearchRankingTest
+    11  com.vinyl.launcher.drawer.UsageRankingTest
+    12  com.vinyl.launcher.fx.FxPlanTest
+    32  com.vinyl.launcher.fx.ParallaxTest
+    12  com.vinyl.launcher.fx.ParticleFieldTest
+    23  com.vinyl.launcher.fx.SpectrumAnalyzerTest
+     3  com.vinyl.launcher.media.HistoryKeyTest
+     5  com.vinyl.launcher.media.VideoMatchTest
+    21  com.vinyl.launcher.music.LrcTest
+    27  com.vinyl.launcher.music.LrclibTest
+    11  com.vinyl.launcher.music.LyricsCacheTest
+    16  com.vinyl.launcher.music.LyricsFocusTest
+    20  com.vinyl.launcher.music.SleepTimerPlanTest
+    17  com.vinyl.launcher.music.StackNavigationTest
+     8  com.vinyl.launcher.music.StackTransformTest
+     6  com.vinyl.launcher.player.AiffHeaderTest
+    11  com.vinyl.launcher.player.LocalModelTest
+     7  com.vinyl.launcher.player.QueueRulesTest
+    12  com.vinyl.launcher.robo.AiffExtractorTest
+    14  com.vinyl.launcher.screenshot.ConsoleShots
+     1  com.vinyl.launcher.screenshot.DrawerShots
+    11  com.vinyl.launcher.screenshot.EraShots
+     7  com.vinyl.launcher.screenshot.FilmShots
+    16  com.vinyl.launcher.screenshot.GameShots
+     5  com.vinyl.launcher.screenshot.LibraryShots
+     6  com.vinyl.launcher.screenshot.LightShots
+     2  com.vinyl.launcher.screenshot.LyricsShots
+     4  com.vinyl.launcher.screenshot.PrivacyShots
+     7  com.vinyl.launcher.screenshot.PropShots
+     1  com.vinyl.launcher.screenshot.RetroPaletteShot
+    11  com.vinyl.launcher.screenshot.RoomShots
+     1  com.vinyl.launcher.screenshot.SettingsShots
+     1  com.vinyl.launcher.screenshot.TaskbarShots
+     1  com.vinyl.launcher.screenshot.WidgetShots
+     3  com.vinyl.launcher.system.RoomShortcutsTest
+     8  com.vinyl.launcher.system.StatusModelTest
+    12  com.vinyl.launcher.ui.cassette.CassetteModelTest
+     3  com.vinyl.launcher.ui.film.FilmNoticeTest
+    12  com.vinyl.launcher.ui.film.FilmProbeTest
+    10  com.vinyl.launcher.ui.film.FilmResumeSeekTest
+     5  com.vinyl.launcher.ui.film.FilmRetryTest
+     7  com.vinyl.launcher.ui.film.FilmSnapshotsTest
+    16  com.vinyl.launcher.ui.film.TapeFlowTest
+     5  com.vinyl.launcher.ui.film.TrayTextTest
+    39  com.vinyl.launcher.ui.game.BreakoutGameTest
+     4  com.vinyl.launcher.ui.game.GameDiaryTest
+     5  com.vinyl.launcher.ui.game.GameLayoutTest
+     7  com.vinyl.launcher.ui.game.GamesTest
+    28  com.vinyl.launcher.ui.game.SnakeGameTest
+    17  com.vinyl.launcher.ui.home.PageNavTest
+     8  com.vinyl.launcher.ui.home.PagePagerTest
+    10  com.vinyl.launcher.ui.library.LibraryCatalogTest
+    10  com.vinyl.launcher.ui.room.RoomModelTest
+     5  com.vinyl.launcher.ui.room.VfdTickerTest
+     4  com.vinyl.launcher.ui.room.stage.CassetteSlideTest
+     4  com.vinyl.launcher.ui.room.stage.ClockMathTest
+     4  com.vinyl.launcher.ui.room.stage.LookoutPropLookTest
+     6  com.vinyl.launcher.ui.room.stage.PosterChoiceTest
+     4  com.vinyl.launcher.ui.room.stage.ProjectorLightTest
+     8  com.vinyl.launcher.ui.room.stage.RotaryDialTest
+    21  com.vinyl.launcher.ui.room.stage.StageLayoutTest
+     4  com.vinyl.launcher.ui.room.stage.StagePaletteEraTest
+     4  com.vinyl.launcher.ui.room.stage.StagePropsTest
+     3  com.vinyl.launcher.ui.room.vhs.OsdGlyphsTest
+    11  com.vinyl.launcher.ui.taskbar.TaskbarPlannerTest
+    22  com.vinyl.launcher.ui.theme.BackdropDimTest
+     7  com.vinyl.launcher.ui.theme.BackdropLiftTest
+    12  com.vinyl.launcher.ui.theme.ContrastTest
+     7  com.vinyl.launcher.ui.theme.EraPaletteTest
+     5  com.vinyl.launcher.ui.theme.FilmPaletteTest
+     7  com.vinyl.launcher.ui.theme.GamePaletteTest
+     5  com.vinyl.launcher.ui.theme.LampPaletteTest
+     6  com.vinyl.launcher.ui.theme.PropPaletteTest
+     6  com.vinyl.launcher.ui.theme.RetroPaletteTest
+     4  com.vinyl.launcher.ui.theme.VhsPaletteTest
+    12  com.vinyl.launcher.util.BoundedReadTest
+TOTAL SEMUA: 1165 tes, 0 gagal, 0 galat, 0 dilewati, 119 kelas
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.13/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+> Task :app:fetchFonts UP-TO-DATE
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
+> Task :app:compileDebugAidl UP-TO-DATE
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:checkDebugAarMetadata UP-TO-DATE
+> Task :app:generateDebugResValues UP-TO-DATE
+> Task :app:mapDebugSourceSetPaths UP-TO-DATE
+> Task :app:generateDebugResources UP-TO-DATE
+> Task :app:mergeDebugResources UP-TO-DATE
+> Task :app:packageDebugResources UP-TO-DATE
+> Task :app:parseDebugLocalResources UP-TO-DATE
+> Task :app:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksDebug UP-TO-DATE
+> Task :app:processDebugMainManifest UP-TO-DATE
+> Task :app:processDebugManifest UP-TO-DATE
+> Task :app:processDebugManifestForPackage UP-TO-DATE
+> Task :app:processDebugResources UP-TO-DATE
+> Task :app:compileDebugKotlin UP-TO-DATE
+> Task :app:javaPreCompileDebug UP-TO-DATE
+> Task :app:compileDebugJavaWithJavac UP-TO-DATE
+> Task :app:mergeDebugShaders UP-TO-DATE
+> Task :app:compileDebugShaders NO-SOURCE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :app:mergeDebugAssets UP-TO-DATE
+> Task :app:compressDebugAssets
+> Task :app:desugarDebugFileDependencies
+> Task :app:dexBuilderDebug
+> Task :app:mergeDebugGlobalSynthetics
+> Task :app:processDebugJavaRes UP-TO-DATE
+> Task :app:checkDebugDuplicateClasses
+> Task :app:mergeDebugJniLibFolders
+> Task :app:mergeLibDexDebug
+> Task :app:mergeDebugJavaResource
+> Task :app:validateSigningDebug
+> Task :app:writeDebugAppMetadata
+> Task :app:writeDebugSigningConfigVersions
+> Task :app:mergeDebugNativeLibs
+
+> Task :app:stripDebugDebugSymbols
+Unable to strip the following libraries, packaging them as they are: libandroidx.graphics.path.so, libdatastore_shared_counter.so. Run with --info option to learn more.
+
+> Task :app:mergeProjectDexDebug
+> Task :app:mergeExtDexDebug
+> Task :app:packageDebug
+> Task :app:createDebugApkListingFileRedirect
+> Task :app:assembleDebug
+
+BUILD SUCCESSFUL in 1m 27s
+38 actionable tasks: 17 executed, 21 up-to-date
+
+===== IZIN DI APK (manifest gabungan: app/build/intermediates/merged_manifests/debug/processDebugManifest/AndroidManifest.xml) =====
+android.permission.ACCESS_NETWORK_STATE
+android.permission.BLUETOOTH (hanya s.d. API 30)
+android.permission.BLUETOOTH_CONNECT
+android.permission.DUMP
+android.permission.EXPAND_STATUS_BAR
+android.permission.FOREGROUND_SERVICE
+android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK
+android.permission.FOREGROUND_SERVICE_SPECIAL_USE
+android.permission.INTERNET
+android.permission.MODIFY_AUDIO_SETTINGS
+android.permission.PACKAGE_USAGE_STATS
+android.permission.POST_NOTIFICATIONS
+android.permission.READ_CALENDAR
+android.permission.READ_CONTACTS
+android.permission.RECEIVE_BOOT_COMPLETED
+android.permission.RECORD_AUDIO
+android.permission.REQUEST_DELETE_PACKAGES
+android.permission.SYSTEM_ALERT_WINDOW
+android.permission.VIBRATE
+android.permission.WAKE_LOCK
+com.vinyl.launcher.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
+moe.shizuku.manager.permission.API_V23
+
+===== SERTIFIKAT APK (SHA-256) =====
+65:1D:FE:22:03:E6:E6:DE:75:17:0F:A1:2F:86:E4:85:3A:E2:D8:A1:88:1A:33:66:D0:99:AE:8A:50:CA:61:9F
+
+===== FAKTA APK (debug): app/build/outputs/apk/debug/app-debug.apk =====
+ukuran: 74868918 bita
+package: name='com.vinyl.launcher' versionCode='212' versionName='1.0.112' platformBuildVersionName='16' platformBuildVersionCode='36' compileSdkVersion='36' compileSdkVersionCodename='16'
+minSdkVersion:'29'
+targetSdkVersion:'36'
+bisa di-debug: ya
+--- izin di APK (aapt2 dump permissions) ---
+android.permission.ACCESS_NETWORK_STATE
+android.permission.BLUETOOTH (hanya s.d. API 30)
+android.permission.BLUETOOTH_CONNECT
+android.permission.DUMP
+android.permission.EXPAND_STATUS_BAR
+android.permission.FOREGROUND_SERVICE
+android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK
+android.permission.FOREGROUND_SERVICE_SPECIAL_USE
+android.permission.INTERNET
+android.permission.MODIFY_AUDIO_SETTINGS
+android.permission.PACKAGE_USAGE_STATS
+android.permission.POST_NOTIFICATIONS
+android.permission.READ_CALENDAR
+android.permission.READ_CONTACTS
+android.permission.RECEIVE_BOOT_COMPLETED
+android.permission.RECORD_AUDIO
+android.permission.REQUEST_DELETE_PACKAGES
+android.permission.SYSTEM_ALERT_WINDOW
+android.permission.VIBRATE
+android.permission.WAKE_LOCK
+com.vinyl.launcher.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
+moe.shizuku.manager.permission.API_V23
+sertifikat SHA-256: 65:1D:FE:22:03:E6:E6:DE:75:17:0F:A1:2F:86:E4:85:3A:E2:D8:A1:88:1A:33:66:D0:99:AE:8A:50:CA:61:9F
+Verifies
+Verified using v1 scheme (JAR signing): false
+Verified using v2 scheme (APK Signature Scheme v2): true
+Verified using v3 scheme (APK Signature Scheme v3): false
+Verified using v3.1 scheme (APK Signature Scheme v3.1): false
+Verified using v3.2 scheme (APK Signature Scheme v3.2): false
+Verified using v4 scheme (APK Signature Scheme v4): false
+--- isi APK ---
+berkas classes*.dex: 17
+       57  1981-01-01 01:01   META-INF/com/android/build/gradle/app-metadata.properties
+pustaka native (.so): 8
+--- profil dasar (berkas teks antara di app/build/intermediates) ---
+(tidak ada berkas teks profil untuk varian debug)
+
+===== PERBANDINGAN RELEASE vs DEBUG =====
+izin: sama persis (22 izin)
+sertifikat: sama (65:1D:FE:22:03:E6:E6:DE:75:17:0F:A1:2F:86:E4:85:3A:E2:D8:A1:88:1A:33:66:D0:99:AE:8A:50:CA:61:9F)
+ukuran: release 6316894 bita, debug 74868918 bita
+
+===== UJI ASAP EMULATOR: pass =====
+PASS
+ok: pemilah jenis ANR lulus uji diri (jejak buatan)
+ok: APK release terpasang
+ok: APK release tidak bisa di-debug
+ok: emulator tenang sebelum aplikasi dibuka
+ok: beranda tampil dan terbaca (Tombol daya TV ada)
+ok: beranda (HomeActivity) tampil
+ok: proses hidup: setelah dibuka
+ok: ProfileInstaller memasang profil (result=1)
+ok: profil dasar terpasang berisi 39473 baris
+ok: proses hidup: setelah diputar mendatar
+ok: proses hidup: setelah diputar tegak
+ok: geser ke kiri membuka Audio Console
+ok: geser ke kanan dari Audio Console kembali ke Ruang TV
+ok: geser ke kanan membuka Perpustakaan kaset
+ok: geser ke kiri dari Perpustakaan kembali ke Ruang TV
+ok: proses hidup: setelah geser halaman
+ok: TV mati (semantik 'TV mati' ada)
+ok: TV menyala lagi (semantik 'TV mati' hilang)
+ok: proses hidup: setelah tombol daya
+ok: lampu ruangan berganti setelah diketuk (checked false -> true)
+ok: ketukan kedua mengembalikan lampu ruangan (checked true -> false)
+ok: proses hidup: setelah lampu ruangan
+ok: 3 benda ruangan terlihat di beranda
+ok: buku harian terbuka dengan saklar perekaman
+ok: perekaman buku harian dinyalakan lewat saklar utama
+ok: saklar per jenis (Musik, Film, Game) muncul setelah perekaman menyala
+ok: proses hidup: setelah benda ruangan
+ok: kaset Ular ada di laci dan diketuk
+ok: TV menampilkan game Ular
+ok: proses hidup: setelah main Ular
+ok: kaset Ular keluar dari deck
+ok: proses hidup: setelah kaset Ular dikeluarkan
+ok: kaset Bata ada di laci dan diketuk
+ok: TV menampilkan game Bata
+ok: tombol deck Bata menawarkan 'Mulai game' sebelum dimainkan
+ok: Bata berjalan: tombol deck berubah menjadi 'Jeda game'
+ok: Bata menunggu luncuran (bola lolos selama usapan); diluncurkan lagi lewat tombol deck
+ok: Bata dijeda lewat tombol deck
+ok: rekor Bata tersimpan dan tampil di label kaset
+ok: proses hidup: setelah main Bata
+ok: kaset Bata keluar dari deck
+ok: proses hidup: setelah kaset Bata dikeluarkan
+ok: kaset film diketuk
+ok: proses hidup: setelah kaset film dimuat
+ok: proses hidup: film saat diputar mendatar
+ok: proses hidup: setelah kaset film
+ok: ikon aplikasi membuka Pengaturan
+ok: halaman Benda ruangan memuat saklar telepon putar
+ok: editor ambang piala terbuka dengan kolom perunggu, perak, dan emas
+ok: proses hidup: setelah Pengaturan
+ok: editor beranda terbuka lewat tekan lama
+ok: proses hidup: setelah editor beranda
+ok: pilihan 'Ingat tombol daya TV' menyala setelah diketuk (checked=true)
+ok: TV dimatikan dengan tombol daya sementara 'Ingat tombol daya TV' dinyalakan
+ok: proses hidup: setelah menyiapkan 'Ingat tombol daya TV'
+ok: proses dimatikan
+ok: beranda terbuka tanpa onboarding: pengaturan bertahan setelah proses dimatikan
+ok: proses hidup: setelah dibuka kembali
+ok: TV tetap mati setelah proses dimatikan (pilihan 'Ingat tombol daya TV')
+ok: catatan game (nama dan skor ronde) ada di buku harian setelah proses dimatikan
+ok: catatan film (nama kaset) ada di buku harian setelah proses dimatikan
+ok: buku harian tidak memuat alamat situs
+ok: catatan buku harian di disk hanya berupa nilai tersegel (entries_sealed), tanpa teks polos
+ok: saklar perekaman buku harian bertahan di disk
+ok: proses hidup: setelah memeriksa buku harian
+ok: proses hidup: setelah paket com.android.egg dihapus
+ok: proses hidup: setelah paket com.android.egg dipasang kembali
+ok: proses hidup: uji kelancaran (release)
+ok: proses hidup: uji kelancaran (debug)
+--- log.txt ---
+OK: pemilah jenis ANR lulus uji diri (jejak buatan)
+
+=== Persiapan ===
+API: 35
+model: sdk_gphone64_x86_64
+layar: 1080x2400, inti CPU: 3
+
+=== Pasang APK release dan jadikan launcher default ===
+Performing Streamed Install
+Success
+set-home-activity (release): Success
+launcher default sekarang (release): com.vinyl.launcher/.ui.home.HomeActivity
+OK: APK release terpasang
+    flags=0x0
+    versionCode=212 minSdk=29 targetSdk=36
+    versionName=1.0.112
+    flags=[ HAS_CODE ALLOW_CLEAR_USER_DATA ]
+OK: APK release tidak bisa di-debug
+
+=== Tunggu emulator tenang (sesudah booting, aplikasi Google menyiapkan diri dan memakai hampir semua CPU) ===
+tunggu emulator tenang: CPU terpakai 98% (load 13.34)
+tunggu emulator tenang: CPU terpakai 96% (load 15.56)
+tunggu emulator tenang: CPU terpakai 96% (load 15.56)
+tunggu emulator tenang: CPU terpakai 94% (load 16.80)
+tunggu emulator tenang: CPU terpakai 93% (load 17.61)
+tunggu emulator tenang: CPU terpakai 90% (load 17.96)
+tunggu emulator tenang: CPU terpakai 95% (load 17.41)
+tunggu emulator tenang: CPU terpakai 89% (load 17.41)
+tunggu emulator tenang: CPU terpakai 39% (load 16.89)
+tunggu emulator tenang: CPU terpakai 8% (load 16.02)
+tunggu emulator tenang: CPU terpakai 12% (load 14.74)
+tunggu emulator tenang: CPU terpakai 8% (load 13.56)
+OK: emulator tenang sebelum aplikasi dibuka
+
+=== Buka aplikasi (onboarding pertama-buka) ===
+am start (release): Status: ok LaunchState: COLD TotalTime: 1452 WaitTime: 1454 
+onboarding tampil (release)
+dialog sistem menutupi layar: "Pixel Launcher isn't responding" (aplikasi lain, bukan yang diuji); tombol "Wait" diketuk
+OK: beranda tampil dan terbaca (Tombol daya TV ada)
+OK: beranda (HomeActivity) tampil
+OK: proses hidup: setelah dibuka
+info: FocusEvent beranda diproses (buka): 3326ms (batas ANR 5000ms)
+
+=== Profil dasar (Baseline Profile) ===
+Broadcasting: Intent { act=androidx.profileinstaller.action.INSTALL_PROFILE flg=0x400000 cmp=com.vinyl.launcher/androidx.profileinstaller.ProfileInstallReceiver }
+Broadcast completed: result=1
+OK: ProfileInstaller memasang profil (result=1)
+profil terpasang: /data/misc/profman/com.vinyl.launcher-primary.prof.txt (39473 baris)
+=== Dex files  ===
+/data/app/~~j87FlXzckRhGcld88decUQ==/com.vinyl.launcher-XP6_COt5ksFO-ERtuZqBRw==/base.apk [checksum=4b5acbda]
+=== profile ===
+OK: profil dasar terpasang berisi 39473 baris
+
+=== Putar layar ===
+OK: proses hidup: setelah diputar mendatar
+OK: proses hidup: setelah diputar tegak
+
+=== Geser halaman (Perpustakaan kaset <- Ruang TV -> Audio Console) ===
+OK: geser ke kiri membuka Audio Console
+OK: geser ke kanan dari Audio Console kembali ke Ruang TV
+OK: geser ke kanan membuka Perpustakaan kaset
+OK: geser ke kiri dari Perpustakaan kembali ke Ruang TV
+OK: proses hidup: setelah geser halaman
+
+=== Tombol daya TV ===
+OK: TV mati (semantik 'TV mati' ada)
+OK: TV menyala lagi (semantik 'TV mati' hilang)
+OK: proses hidup: setelah tombol daya
+
+=== Lampu ruangan (ketuk berganti terang/gelap, ketuk lagi mengembalikan) ===
+lampu ruangan: checked=false
+lampu ruangan sesudah diketuk: checked=true
+OK: lampu ruangan berganti setelah diketuk (checked false -> true)
+OK: ketukan kedua mengembalikan lampu ruangan (checked true -> false)
+OK: proses hidup: setelah lampu ruangan
+
+=== Benda ruangan (jam, poster, rak piala, buku harian, radio, telepon) ===
+benda ruangan terlihat: jam
+benda ruangan terlihat: poster
+benda ruangan tidak terlihat (mungkin tidak muat di layar ini): piala
+benda ruangan terlihat: buku
+benda ruangan tidak terlihat (mungkin tidak muat di layar ini): radio
+benda ruangan tidak terlihat (mungkin tidak muat di layar ini): telepon
+OK: 3 benda ruangan terlihat di beranda
+OK: buku harian terbuka dengan saklar perekaman
+OK: perekaman buku harian dinyalakan lewat saklar utama
+OK: saklar per jenis (Musik, Film, Game) muncul setelah perekaman menyala
+OK: proses hidup: setelah benda ruangan
+
+=== Laci kaset dan game Ular ===
+OK: kaset Ular ada di laci dan diketuk
+OK: TV menampilkan game Ular
+OK: proses hidup: setelah main Ular
+OK: kaset Ular keluar dari deck
+OK: proses hidup: setelah kaset Ular dikeluarkan
+
+=== Game Bata (palet digeser dengan jari, bola memecahkan bata, rekor tampil di label kaset) ===
+OK: kaset Bata ada di laci dan diketuk
+OK: TV menampilkan game Bata
+OK: tombol deck Bata menawarkan 'Mulai game' sebelum dimainkan
+OK: Bata berjalan: tombol deck berubah menjadi 'Jeda game'
+OK: Bata menunggu luncuran (bola lolos selama usapan); diluncurkan lagi lewat tombol deck
+OK: Bata dijeda lewat tombol deck
+OK: rekor Bata tersimpan dan tampil di label kaset
+OK: proses hidup: setelah main Bata
+OK: kaset Bata keluar dari deck
+OK: proses hidup: setelah kaset Bata dikeluarkan
+
+=== Kaset film (WebView, jaringan emulator bisa saja tidak ada) ===
+OK: kaset film diketuk
+OK: proses hidup: setelah kaset film dimuat
+OK: proses hidup: film saat diputar mendatar
+OK: proses hidup: setelah kaset film
+
+=== Pengaturan (teks harus terbaca; ikon aplikasi meneruskan ke Pengaturan sesudah onboarding) ===
+am start (ikon aplikasi): Status: ok 
+OK: ikon aplikasi membuka Pengaturan
+OK: halaman Benda ruangan memuat saklar telepon putar
+OK: editor ambang piala terbuka dengan kolom perunggu, perak, dan emas
+OK: proses hidup: setelah Pengaturan
+
+=== Edit beranda (tekan lama di layar utama; teksnya harus terbaca) ===
+OK: editor beranda terbuka lewat tekan lama
+OK: proses hidup: setelah editor beranda
+
+=== Ingat tombol daya TV: nyalakan pilihannya di editor, lalu matikan TV ===
+OK: pilihan 'Ingat tombol daya TV' menyala setelah diketuk (checked=true)
+OK: TV dimatikan dengan tombol daya sementara 'Ingat tombol daya TV' dinyalakan
+OK: proses hidup: setelah menyiapkan 'Ingat tombol daya TV'
+
+=== Proses dimatikan sistem saat di latar, lalu launcher dibuka lagi (pengaturan harus bertahan) ===
+OK: proses dimatikan
+kompilasi sebelum dibuka dari nol (speed)
+Success
+  [com.vinyl.launcher]
+    path: /data/app/~~j87FlXzckRhGcld88decUQ==/com.vinyl.launcher-XP6_COt5ksFO-ERtuZqBRw==/base.apk
+      x86_64: [status=speed] [reason=cmdline] [primary-abi]
+tunggu emulator tenang: CPU terpakai 1% (load 4.75)
+tunggu emulator tenang: CPU terpakai 0% (load 4.75)
+tunggu emulator tenang: CPU terpakai 0% (load 4.37)
+OK: beranda terbuka tanpa onboarding: pengaturan bertahan setelah proses dimatikan
+OK: proses hidup: setelah dibuka kembali
+OK: TV tetap mati setelah proses dimatikan (pilihan 'Ingat tombol daya TV')
+info: FocusEvent beranda diproses (kill): 3377ms (batas ANR 5000ms)
+
+=== Buku harian: catatan game dan film terbaca setelah proses dimatikan, dan di disk hanya ada nilai tersegel (Keystore sungguhan) ===
+OK: catatan game (nama dan skor ronde) ada di buku harian setelah proses dimatikan
+OK: catatan film (nama kaset) ada di buku harian setelah proses dimatikan
+OK: buku harian tidak memuat alamat situs
+retro_diary.xml di disk (nilai tersegel disingkat):
+  <?xml version='1.0' encoding='utf-8' standalone='yes' ?>
+  <map>
+      <boolean name="rec_film" value="true" />
+      <boolean name="recording" value="true" />
+      <boolean name="rec_music" value="true" />
+      <boolean name="rec_games" value="true" />
+      <string name="entries_sealed">[nilai tersegel, disingkat]</string>
+  </map>
+OK: catatan buku harian di disk hanya berupa nilai tersegel (entries_sealed), tanpa teks polos
+OK: saklar perekaman buku harian bertahan di disk
+retro_phone.xml belum ada (tidak ada favorit kontak yang diisi)
+folder poster belum ada (tidak ada foto poster yang dipilih)
+OK: proses hidup: setelah memeriksa buku harian
+
+=== Aplikasi dihapus dan dipasang kembali saat launcher berjalan ===
+paket uji: com.android.egg
+Success
+OK: proses hidup: setelah paket com.android.egg dihapus
+Package com.android.egg installed for user: 0
+OK: proses hidup: setelah paket com.android.egg dipasang kembali
+meminfo release:   Native Heap    18178    18080        0        0    22112    32948    23733     4845
+meminfo release:            Java Heap:     9884                          46160
+meminfo release:          Native Heap:    18080                          22112
+meminfo release:            TOTAL PSS:    60396            TOTAL RSS:   195192      TOTAL SWAP (KB):       24
+
+=== Kompilasi dengan profil (speed-profile) ===
+Success
+  [com.vinyl.launcher]
+    path: /data/app/~~j87FlXzckRhGcld88decUQ==/com.vinyl.launcher-XP6_COt5ksFO-ERtuZqBRw==/base.apk
+      x86_64: [status=speed-profile] [reason=cmdline] [primary-abi]
+
+=== Perbandingan kelancaran geser: release lalu debug (emulator render perangkat lunak, hanya relatif) ===
+Performing Streamed Install
+Success
+set-home-activity (release): Success
+launcher default sekarang (release): com.vinyl.launcher/.ui.home.HomeActivity
+tunggu emulator tenang: CPU terpakai 50% (load 6.45)
+tunggu emulator tenang: CPU terpakai 28% (load 6.45)
+tunggu emulator tenang: CPU terpakai 28% (load 6.33)
+tunggu emulator tenang: CPU terpakai 13% (load 5.83)
+am start (perf_release): Status: ok LaunchState: COLD TotalTime: 5005 WaitTime: 5011 
+onboarding tampil (perf_release)
+--- gfxinfo release ---
+Total frames rendered: 131
+Janky frames: 127 (96.95%)
+Janky frames (legacy): 131 (100.00%)
+50th percentile: 150ms
+90th percentile: 300ms
+95th percentile: 350ms
+99th percentile: 550ms
+Number Missed Vsync: 119
+Number High input latency: 8
+Number Slow UI thread: 89
+Number Slow issue draw commands: 127
+meminfo release:   Native Heap    19609    19516        0        0    23536    34748    24300     6457
+meminfo release:            Java Heap:     8576                          44860
+meminfo release:          Native Heap:    19516                          23536
+meminfo release:            TOTAL PSS:    48139            TOTAL RSS:   187772      TOTAL SWAP (KB):       24
+OK: proses hidup: uji kelancaran (release)
+Performing Streamed Install
+Success
+set-home-activity (debug): Success
+launcher default sekarang (debug): com.vinyl.launcher/.ui.home.HomeActivity
+tunggu emulator tenang: CPU terpakai 19% (load 4.35)
+tunggu emulator tenang: CPU terpakai 0% (load 4.00)
+tunggu emulator tenang: CPU terpakai 0% (load 4.00)
+am start (perf_debug): Status: ok LaunchState: COLD TotalTime: 6051 WaitTime: 6062 
+onboarding tampil (perf_debug)
+--- gfxinfo debug ---
+Total frames rendered: 128
+Janky frames: 126 (98.44%)
+Janky frames (legacy): 128 (100.00%)
+50th percentile: 150ms
+90th percentile: 350ms
+95th percentile: 350ms
+99th percentile: 600ms
+Number Missed Vsync: 114
+Number High input latency: 4
+Number Slow UI thread: 110
+Number Slow issue draw commands: 126
+meminfo debug:   Native Heap    20065    19972        0        0    23980    36284    24515     7455
+meminfo debug:            Java Heap:    15704                          44720
+meminfo debug:          Native Heap:    19972                          23980
+meminfo debug:            TOTAL PSS:   139297            TOTAL RSS:   277228      TOTAL SWAP (KB):       24
+OK: proses hidup: uji kelancaran (debug)
+
+Selesai. gagal=0 peringatan=0 ok=69
