@@ -138,9 +138,10 @@ internal fun DrawScope.drawStageBackdrop(
     drawEraDecor(pal, f)
     // Cahaya proyeksi memantul ke dinding di sekitar gambar (halo lembut)
     if (projectionGlow.alpha > 0f) {
+        val glowK = if (pal.era == RoomEra.LOOKOUT) 0.5f else 1f
         val r = maxOf(proj.width, proj.height) * 0.85f
         drawCircle(
-            Brush.radialGradient(listOf(projectionGlow, Color.Transparent), center = proj.center, radius = r),
+            Brush.radialGradient(listOf(projectionGlow.copy(alpha = projectionGlow.alpha * glowK), Color.Transparent), center = proj.center, radius = r),
             r, proj.center, blendMode = BlendMode.Screen,
         )
     }
@@ -229,20 +230,29 @@ private fun DrawScope.drawEraDecor(pal: StagePalette, f: StageLayout.Frame) {
                     i++
                 }
             }
-            // Dua jendela senja ke hutan pinus, hanya di tempat dinding yang kosong (tidak menimpa proyeksi, TV, lampu, atau benda)
-            val blocked = listOfNotNull(f.projection, f.tvFront, f.lamp) + f.props.values.map { it.bounds }
-            val ww = (f.width * 0.13f).coerceIn(56f, 150f)
+            // Dua jendela senja ke hutan pinus, hanya di tempat dinding yang kosong (tidak menimpa TV, lampu, kaset, atau benda;
+            // gambar proyeksi hanya cahaya di dinding, jadi boleh ditimpa). Dicari dari kiri-atas ke kanan-bawah.
+            val blocked = listOfNotNull(f.tvFront, f.lamp, f.cassetteBounds) + f.props.values.map { it.bounds }
+            val deskBack = f.camera.project(V3(0f, StageLayout.STAND_H, StageLayout.STAND_BACK_Z)).y
+            val ww = (f.width * 0.12f).coerceIn(56f, 140f)
             val wh = ww * 1.15f
-            val wy = (f.osdTop + 26f).coerceAtLeast(f.baseboardTop * 0.18f)
-            var placed = 0
-            for (fx in floatArrayOf(0.04f, 0.83f, 0.20f, 0.67f, 0.30f, 0.57f)) {
-                if (placed >= 2) break
-                val cand = SRect(f.width * fx, wy, f.width * fx + ww, wy + wh)
-                if (cand.right > f.width - 4f || cand.bottom > f.baseboardTop * 0.62f) continue
-                if (blocked.any { it.overlaps(SRect(cand.left - 8f, cand.top - 8f, cand.right + 8f, cand.bottom + 8f)) }) continue
-                drawDuskWindow(cand.px(d))
-                placed++
+            val placedAt = ArrayList<SRect>()
+            var wy = f.osdTop + 30f
+            while (placedAt.size < 2 && wy + wh <= deskBack - 6f) {
+                var wx = 8f
+                while (placedAt.size < 2 && wx + ww <= f.width - 8f) {
+                    val cand = SRect(wx, wy, wx + ww, wy + wh)
+                    val pad = SRect(cand.left - 10f, cand.top - 10f, cand.right + 10f, cand.bottom + 10f)
+                    if (blocked.none { it.overlaps(pad) } && placedAt.none { it.overlaps(pad) }) {
+                        drawDuskWindow(cand.px(d))
+                        placedAt.add(cand)
+                        wx += ww * 2.2f
+                    } else wx += 12f
+                }
+                wy += 14f
             }
+            // Dinding keseluruhan dibuat lebih redup; hanya bohlam yang terang
+            drawRect(Color.Black.copy(alpha = 0.22f), Offset.Zero, Size(w, baseY))
             val band = baseY * 0.64f
             drawRect(pal.accent2.copy(alpha = 0.16f), Offset(0f, band), Size(w, baseY - band))
             drawRect(Color.Black.copy(alpha = 0.40f), Offset(0f, band), Size(w, 2.2f * d))
