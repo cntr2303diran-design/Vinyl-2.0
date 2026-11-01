@@ -1,0 +1,11 @@
+Total frames rendered: 125
+Janky frames: 117 (93.60%)
+Janky frames (legacy): 125 (100.00%)
+50th percentile: 150ms
+90th percentile: 300ms
+95th percentile: 350ms
+99th percentile: 600ms
+Number Missed Vsync: 107
+Number High input latency: 14
+Number Slow UI thread: 106
+Number Slow issue draw commands: 117

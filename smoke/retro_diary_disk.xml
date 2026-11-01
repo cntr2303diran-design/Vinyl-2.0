@@ -1,0 +1,8 @@
+<?xml version='1.0' encoding='utf-8' standalone='yes' ?>
+<map>
+    <boolean name="rec_film" value="true" />
+    <boolean name="recording" value="true" />
+    <boolean name="rec_music" value="true" />
+    <boolean name="rec_games" value="true" />
+    <string name="entries_sealed">[nilai tersegel, disingkat]</string>
+</map>

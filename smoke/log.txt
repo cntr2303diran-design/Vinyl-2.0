@@ -1,0 +1,240 @@
+OK: pemilah jenis ANR lulus uji diri (jejak buatan)
+
+=== Persiapan ===
+API: 35
+model: sdk_gphone64_x86_64
+layar: 1080x2400, inti CPU: 3
+
+=== Pasang APK release dan jadikan launcher default ===
+Performing Streamed Install
+Success
+set-home-activity (release): Success
+launcher default sekarang (release): com.vinyl.launcher/.ui.home.HomeActivity
+OK: APK release terpasang
+    flags=0x0
+    versionCode=213 minSdk=29 targetSdk=36
+    versionName=1.0.113
+    flags=[ HAS_CODE ALLOW_CLEAR_USER_DATA ]
+OK: APK release tidak bisa di-debug
+
+=== Tunggu emulator tenang (sesudah booting, aplikasi Google menyiapkan diri dan memakai hampir semua CPU) ===
+tunggu emulator tenang: CPU terpakai 98% (load 16.24)
+tunggu emulator tenang: CPU terpakai 96% (load 17.34)
+tunggu emulator tenang: CPU terpakai 97% (load 17.34)
+tunggu emulator tenang: CPU terpakai 89% (load 17.71)
+tunggu emulator tenang: CPU terpakai 92% (load 17.50)
+tunggu emulator tenang: CPU terpakai 95% (load 17.70)
+tunggu emulator tenang: CPU terpakai 97% (load 17.40)
+tunggu emulator tenang: CPU terpakai 88% (load 17.40)
+tunggu emulator tenang: CPU terpakai 62% (load 16.49)
+tunggu emulator tenang: CPU terpakai 22% (load 15.17)
+tunggu emulator tenang: CPU terpakai 17% (load 14.03)
+tunggu emulator tenang: CPU terpakai 34% (load 13.07)
+tunggu emulator tenang: CPU terpakai 24% (load 12.02)
+tunggu emulator tenang: CPU terpakai 17% (load 12.02)
+tunggu emulator tenang: CPU terpakai 1% (load 11.06)
+OK: emulator tenang sebelum aplikasi dibuka
+
+=== Buka aplikasi (onboarding pertama-buka) ===
+am start (release): Status: ok LaunchState: COLD TotalTime: 1491 WaitTime: 1493 
+onboarding tampil (release)
+OK: beranda tampil dan terbaca (Tombol daya TV ada)
+OK: beranda (HomeActivity) tampil
+OK: proses hidup: setelah dibuka
+info: FocusEvent beranda diproses (buka): 2705ms (batas ANR 5000ms)
+
+=== Profil dasar (Baseline Profile) ===
+Broadcasting: Intent { act=androidx.profileinstaller.action.INSTALL_PROFILE flg=0x400000 cmp=com.vinyl.launcher/androidx.profileinstaller.ProfileInstallReceiver }
+Broadcast completed: result=1
+OK: ProfileInstaller memasang profil (result=1)
+profil terpasang: /data/misc/profman/com.vinyl.launcher-primary.prof.txt (39473 baris)
+=== Dex files  ===
+/data/app/~~yYFAY8_yqoNdQD6bjX82ww==/com.vinyl.launcher-CROVluuveS01enTT6Bw9iw==/base.apk [checksum=4b5acbda]
+=== profile ===
+OK: profil dasar terpasang berisi 39473 baris
+
+=== Putar layar ===
+OK: proses hidup: setelah diputar mendatar
+OK: proses hidup: setelah diputar tegak
+
+=== Geser halaman (Perpustakaan kaset <- Ruang TV -> Audio Console) ===
+OK: geser ke kiri membuka Audio Console
+OK: geser ke kanan dari Audio Console kembali ke Ruang TV
+OK: geser ke kanan membuka Perpustakaan kaset
+OK: geser ke kiri dari Perpustakaan kembali ke Ruang TV
+OK: proses hidup: setelah geser halaman
+
+=== Tombol daya TV ===
+OK: TV mati (semantik 'TV mati' ada)
+OK: TV menyala lagi (semantik 'TV mati' hilang)
+OK: proses hidup: setelah tombol daya
+
+=== Lampu ruangan (ketuk berganti terang/gelap, ketuk lagi mengembalikan) ===
+lampu ruangan: checked=false
+lampu ruangan sesudah diketuk: checked=true
+OK: lampu ruangan berganti setelah diketuk (checked false -> true)
+OK: ketukan kedua mengembalikan lampu ruangan (checked true -> false)
+OK: proses hidup: setelah lampu ruangan
+
+=== Benda ruangan (jam, poster, rak piala, buku harian, radio, telepon) ===
+benda ruangan terlihat: jam
+benda ruangan terlihat: poster
+benda ruangan tidak terlihat (mungkin tidak muat di layar ini): piala
+benda ruangan terlihat: buku
+benda ruangan tidak terlihat (mungkin tidak muat di layar ini): radio
+benda ruangan tidak terlihat (mungkin tidak muat di layar ini): telepon
+OK: 3 benda ruangan terlihat di beranda
+OK: buku harian terbuka dengan saklar perekaman
+OK: perekaman buku harian dinyalakan lewat saklar utama
+OK: saklar per jenis (Musik, Film, Game) muncul setelah perekaman menyala
+OK: proses hidup: setelah benda ruangan
+
+=== Laci kaset dan game Ular ===
+OK: kaset Ular ada di laci dan diketuk
+OK: TV menampilkan game Ular
+OK: proses hidup: setelah main Ular
+OK: kaset Ular keluar dari deck
+OK: proses hidup: setelah kaset Ular dikeluarkan
+
+=== Game Bata (palet digeser dengan jari, bola memecahkan bata, rekor tampil di label kaset) ===
+OK: kaset Bata ada di laci dan diketuk
+OK: TV menampilkan game Bata
+OK: tombol deck Bata menawarkan 'Mulai game' sebelum dimainkan
+OK: Bata berjalan: tombol deck berubah menjadi 'Jeda game'
+OK: Bata menunggu luncuran (bola lolos selama usapan); diluncurkan lagi lewat tombol deck
+OK: Bata dijeda lewat tombol deck
+OK: rekor Bata tersimpan dan tampil di label kaset
+OK: proses hidup: setelah main Bata
+OK: kaset Bata keluar dari deck
+OK: proses hidup: setelah kaset Bata dikeluarkan
+
+=== Kaset film (WebView, jaringan emulator bisa saja tidak ada) ===
+OK: kaset film diketuk
+OK: proses hidup: setelah kaset film dimuat
+OK: proses hidup: film saat diputar mendatar
+OK: proses hidup: setelah kaset film
+
+=== Pengaturan (teks harus terbaca; ikon aplikasi meneruskan ke Pengaturan sesudah onboarding) ===
+am start (ikon aplikasi): Status: ok 
+OK: ikon aplikasi membuka Pengaturan
+OK: halaman Benda ruangan memuat saklar telepon putar
+OK: editor ambang piala terbuka dengan kolom perunggu, perak, dan emas
+OK: proses hidup: setelah Pengaturan
+
+=== Edit beranda (tekan lama di layar utama; teksnya harus terbaca) ===
+OK: editor beranda terbuka lewat tekan lama
+OK: proses hidup: setelah editor beranda
+
+=== Ingat tombol daya TV: nyalakan pilihannya di editor, lalu matikan TV ===
+OK: pilihan 'Ingat tombol daya TV' menyala setelah diketuk (checked=true)
+OK: TV dimatikan dengan tombol daya sementara 'Ingat tombol daya TV' dinyalakan
+OK: proses hidup: setelah menyiapkan 'Ingat tombol daya TV'
+
+=== Proses dimatikan sistem saat di latar, lalu launcher dibuka lagi (pengaturan harus bertahan) ===
+OK: proses dimatikan
+kompilasi sebelum dibuka dari nol (speed)
+Success
+  [com.vinyl.launcher]
+    path: /data/app/~~yYFAY8_yqoNdQD6bjX82ww==/com.vinyl.launcher-CROVluuveS01enTT6Bw9iw==/base.apk
+      x86_64: [status=speed] [reason=cmdline] [primary-abi]
+tunggu emulator tenang: CPU terpakai 0% (load 3.00)
+tunggu emulator tenang: CPU terpakai 0% (load 2.76)
+tunggu emulator tenang: CPU terpakai 0% (load 2.54)
+OK: beranda terbuka tanpa onboarding: pengaturan bertahan setelah proses dimatikan
+OK: proses hidup: setelah dibuka kembali
+OK: TV tetap mati setelah proses dimatikan (pilihan 'Ingat tombol daya TV')
+info: FocusEvent beranda diproses (kill): 4302ms (batas ANR 5000ms)
+
+=== Buku harian: catatan game dan film terbaca setelah proses dimatikan, dan di disk hanya ada nilai tersegel (Keystore sungguhan) ===
+OK: catatan game (nama dan skor ronde) ada di buku harian setelah proses dimatikan
+OK: catatan film (nama kaset) ada di buku harian setelah proses dimatikan
+OK: buku harian tidak memuat alamat situs
+retro_diary.xml di disk (nilai tersegel disingkat):
+  <?xml version='1.0' encoding='utf-8' standalone='yes' ?>
+  <map>
+      <boolean name="rec_film" value="true" />
+      <boolean name="recording" value="true" />
+      <boolean name="rec_music" value="true" />
+      <boolean name="rec_games" value="true" />
+      <string name="entries_sealed">[nilai tersegel, disingkat]</string>
+  </map>
+OK: catatan buku harian di disk hanya berupa nilai tersegel (entries_sealed), tanpa teks polos
+OK: saklar perekaman buku harian bertahan di disk
+retro_phone.xml belum ada (tidak ada favorit kontak yang diisi)
+folder poster belum ada (tidak ada foto poster yang dipilih)
+OK: proses hidup: setelah memeriksa buku harian
+
+=== Aplikasi dihapus dan dipasang kembali saat launcher berjalan ===
+paket uji: com.android.egg
+Success
+OK: proses hidup: setelah paket com.android.egg dihapus
+Package com.android.egg installed for user: 0
+OK: proses hidup: setelah paket com.android.egg dipasang kembali
+meminfo release:   Native Heap    18233    18136       16       16    21456    32692    24550     3915
+meminfo release:            Java Heap:    12612                          48880
+meminfo release:          Native Heap:    18136                          21456
+meminfo release:            TOTAL PSS:    63392            TOTAL RSS:   195196       TOTAL SWAP PSS:       23
+
+=== Kompilasi dengan profil (speed-profile) ===
+Success
+  [com.vinyl.launcher]
+    path: /data/app/~~yYFAY8_yqoNdQD6bjX82ww==/com.vinyl.launcher-CROVluuveS01enTT6Bw9iw==/base.apk
+      x86_64: [status=speed-profile] [reason=cmdline] [primary-abi]
+
+=== Perbandingan kelancaran geser: release lalu debug (emulator render perangkat lunak, hanya relatif) ===
+Performing Streamed Install
+Success
+set-home-activity (release): Success
+launcher default sekarang (release): com.vinyl.launcher/.ui.home.HomeActivity
+tunggu emulator tenang: CPU terpakai 38% (load 4.33)
+tunggu emulator tenang: CPU terpakai 28% (load 3.99)
+tunggu emulator tenang: CPU terpakai 22% (load 3.91)
+tunggu emulator tenang: CPU terpakai 0% (load 3.60)
+am start (perf_release): Status: ok LaunchState: COLD TotalTime: 5328 WaitTime: 5351 
+onboarding tampil (perf_release)
+--- gfxinfo release ---
+Total frames rendered: 141
+Janky frames: 136 (96.45%)
+Janky frames (legacy): 141 (100.00%)
+50th percentile: 150ms
+90th percentile: 300ms
+95th percentile: 300ms
+99th percentile: 550ms
+Number Missed Vsync: 127
+Number High input latency: 9
+Number Slow UI thread: 93
+Number Slow issue draw commands: 136
+meminfo release:   Native Heap    19340    19244       20       16    22552    34492    24363     6395
+meminfo release:            Java Heap:     8808                          45092
+meminfo release:          Native Heap:    19244                          22552
+meminfo release:            TOTAL PSS:    48587            TOTAL RSS:   185448       TOTAL SWAP PSS:       21
+OK: proses hidup: uji kelancaran (release)
+Performing Streamed Install
+Success
+set-home-activity (debug): Success
+launcher default sekarang (debug): com.vinyl.launcher/.ui.home.HomeActivity
+tunggu emulator tenang: CPU terpakai 12% (load 4.19)
+tunggu emulator tenang: CPU terpakai 0% (load 3.85)
+tunggu emulator tenang: CPU terpakai 0% (load 3.54)
+am start (perf_debug): Status: ok LaunchState: COLD TotalTime: 1534 WaitTime: 1537 
+onboarding tampil (perf_debug)
+--- gfxinfo debug ---
+Total frames rendered: 125
+Janky frames: 117 (93.60%)
+Janky frames (legacy): 125 (100.00%)
+50th percentile: 150ms
+90th percentile: 300ms
+95th percentile: 350ms
+99th percentile: 600ms
+Number Missed Vsync: 107
+Number High input latency: 14
+Number Slow UI thread: 106
+Number Slow issue draw commands: 117
+meminfo debug:   Native Heap    20084    19988       20       16    23296    35656    25081     6432
+meminfo debug:            Java Heap:    15624                          44632
+meminfo debug:          Native Heap:    19988                          23296
+meminfo debug:            TOTAL PSS:   140553            TOTAL RSS:   275696       TOTAL SWAP PSS:       21
+OK: proses hidup: uji kelancaran (debug)
+info: FocusEvent beranda diproses (perf): 2308ms (batas ANR 5000ms)
+
+Selesai. gagal=0 peringatan=0 ok=69
