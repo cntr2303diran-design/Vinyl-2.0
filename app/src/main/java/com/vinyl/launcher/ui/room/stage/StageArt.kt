@@ -219,13 +219,39 @@ private fun DrawScope.drawEraDecor(pal: StagePalette, f: StageLayout.Frame) {
                         val top = baseY * (0.08f + (r % 7) * 0.09f)
                         drawRect(Color.White.copy(alpha = 0.07f), Offset(x + step * 0.15f, top), Size(step * 0.55f, baseY * 0.16f))
                     }
+                    // Cat terkelupas: bercak kayu gelap telanjang dengan tepi kusam abu-beige di beberapa papan
+                    if (r % 5 == 2) {
+                        val top = baseY * (0.12f + (r % 6) * 0.1f)
+                        val ph = baseY * (0.10f + (r % 4) * 0.04f)
+                        drawRect(Color(0xFFB8AD94).copy(alpha = 0.12f), Offset(x + step * 0.05f, top - 2f * d), Size(step * 0.8f, ph + 4f * d))
+                        drawRect(Color(0xFF2A1D12).copy(alpha = 0.45f), Offset(x + step * 0.12f, top), Size(step * 0.62f, ph))
+                    }
                     i++
                 }
+            }
+            // Dua jendela senja ke hutan pinus, hanya di tempat dinding yang kosong (tidak menimpa proyeksi, TV, lampu, atau benda)
+            val blocked = listOfNotNull(f.projection, f.tvFront, f.lamp) + f.props.values.map { it.bounds }
+            val ww = (f.width * 0.13f).coerceIn(56f, 150f)
+            val wh = ww * 1.15f
+            val wy = (f.osdTop + 26f).coerceAtLeast(f.baseboardTop * 0.18f)
+            var placed = 0
+            for (fx in floatArrayOf(0.04f, 0.83f, 0.20f, 0.67f, 0.30f, 0.57f)) {
+                if (placed >= 2) break
+                val cand = SRect(f.width * fx, wy, f.width * fx + ww, wy + wh)
+                if (cand.right > f.width - 4f || cand.bottom > f.baseboardTop * 0.62f) continue
+                if (blocked.any { it.overlaps(SRect(cand.left - 8f, cand.top - 8f, cand.right + 8f, cand.bottom + 8f)) }) continue
+                drawDuskWindow(cand.px(d))
+                placed++
             }
             val band = baseY * 0.64f
             drawRect(pal.accent2.copy(alpha = 0.16f), Offset(0f, band), Size(w, baseY - band))
             drawRect(Color.Black.copy(alpha = 0.40f), Offset(0f, band), Size(w, 2.2f * d))
             drawRect(Color.White.copy(alpha = 0.07f), Offset(0f, band + 2.2f * d), Size(w, 1f * d))
+            // Sudut ruangan digelapkan supaya cahaya bohlam terasa satu-satunya sumber terang
+            drawRect(
+                Brush.radialGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.55f)), center = Offset(w * 0.5f, baseY * 0.3f), radius = maxOf(w, baseY) * 0.7f),
+                Offset.Zero, Size(w, baseY),
+            )
             drawRect(
                 Brush.radialGradient(listOf(pal.accent.copy(alpha = 0.30f), Color.Transparent), center = Offset(w * 0.5f, 0f), radius = w * 0.62f),
                 Offset.Zero, Size(w, baseY),
@@ -238,6 +264,41 @@ private fun DrawScope.drawEraDecor(pal: StagePalette, f: StageLayout.Frame) {
             drawCircle(Color(0xFFFFF3C4), 6.5f * d, bulb)
         }
     }
+}
+
+/** Jendela berkusen kayu ke hutan pinus saat senja: langit ungu-biru, siluet pinus, dan sekat silang. [r] dalam piksel. */
+private fun DrawScope.drawDuskWindow(r: Rect) {
+    val d = density
+    val fr = 4f * d
+    drawRect(Color(0xFF1B140D), r.topLeft, r.size)
+    val g = Rect(r.left + fr, r.top + fr, r.right - fr, r.bottom - fr)
+    clipRect(g.left, g.top, g.right, g.bottom) {
+        drawRect(
+            Brush.verticalGradient(listOf(Color(0xFF1C2140), Color(0xFF4A3A63), Color(0xFF8A5A5E)), startY = g.top, endY = g.bottom),
+            g.topLeft, g.size,
+        )
+        val tree = Color(0xFF070D09)
+        val n = 5
+        for (k in 0 until n) {
+            val cx = g.left + g.width * (k + 0.5f) / n
+            val th = g.height * (0.45f + ((k * 37) % 5) * 0.08f)
+            val tw = g.width / n * 1.5f
+            val p = Path().apply {
+                moveTo(cx, g.bottom - th)
+                lineTo(cx + tw * 0.28f, g.bottom - th * 0.62f); lineTo(cx + tw * 0.14f, g.bottom - th * 0.62f)
+                lineTo(cx + tw * 0.40f, g.bottom - th * 0.30f); lineTo(cx + tw * 0.22f, g.bottom - th * 0.30f)
+                lineTo(cx + tw * 0.5f, g.bottom); lineTo(cx - tw * 0.5f, g.bottom)
+                lineTo(cx - tw * 0.22f, g.bottom - th * 0.30f); lineTo(cx - tw * 0.40f, g.bottom - th * 0.30f)
+                lineTo(cx - tw * 0.14f, g.bottom - th * 0.62f); lineTo(cx - tw * 0.28f, g.bottom - th * 0.62f)
+                close()
+            }
+            drawPath(p, tree)
+        }
+        drawRect(Color.White.copy(alpha = 0.05f), g.topLeft, Size(g.width * 0.4f, g.height))
+    }
+    drawRect(Color(0xFF1B140D), Offset(r.centerX - 1.5f * d, g.top), Size(3f * d, g.height))
+    drawRect(Color(0xFF1B140D), Offset(g.left, r.centerY - 1.5f * d), Size(g.width, 3f * d))
+    drawRect(Color.White.copy(alpha = 0.10f), Offset(r.left, r.bottom - 1.5f * d), Size(r.width, 1.5f * d))
 }
 
 /**
