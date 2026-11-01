@@ -1,0 +1,10 @@
+  [ok] render menunggu GPU emulator: EMULATOR_GPU (thread utama menunggu RenderThread (HardwareRenderer.nSetStopped); RenderThread di libEGL_emulation.so (menunggu GPU emulator); CPU thread utama 140 ms, RenderThread 5770 ms)
+  [ok] sync-and-draw juga dikenali: EMULATOR_GPU (thread utama menunggu RenderThread (HardwareRenderer.nSyncAndDrawFrame); RenderThread di libEGL_emulation.so (menunggu GPU emulator); CPU thread utama 140 ms, RenderThread 5770 ms)
+  [ok] kode aplikasi (diacak R8) di puncak tumpukan utama: APP (thread utama sedang di: at p3.g0.b(Unknown Source:12))
+  [ok] thread utama menunggu kunci: APP (thread utama sedang di: at java.lang.Object.wait(Native method))
+  [ok] RenderThread tidak menunggu GPU emulator: APP (thread utama menunggu RenderThread, tetapi RenderThread tidak sedang menunggu GPU emulator)
+  [ok] paket lain: TANPA-JEJAK (paket com.vinyl.launcher tidak ada di jejak)
+  [ok] jejak cocok (berkas .gz): EMULATOR_GPU
+  [ok] jejak cocok (berkas polos): APP
+  [ok] tidak ada jejak yang cocok: TANPA-JEJAK
+uji diri: lulus
