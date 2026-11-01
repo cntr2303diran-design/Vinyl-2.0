@@ -296,8 +296,8 @@ private fun DrawScope.drawDuskWindow(r: Rect) {
         }
         drawRect(Color.White.copy(alpha = 0.05f), g.topLeft, Size(g.width * 0.4f, g.height))
     }
-    drawRect(Color(0xFF1B140D), Offset(r.centerX - 1.5f * d, g.top), Size(3f * d, g.height))
-    drawRect(Color(0xFF1B140D), Offset(g.left, r.centerY - 1.5f * d), Size(g.width, 3f * d))
+    drawRect(Color(0xFF1B140D), Offset(r.center.x - 1.5f * d, g.top), Size(3f * d, g.height))
+    drawRect(Color(0xFF1B140D), Offset(g.left, r.center.y - 1.5f * d), Size(g.width, 3f * d))
     drawRect(Color.White.copy(alpha = 0.10f), Offset(r.left, r.bottom - 1.5f * d), Size(r.width, 1.5f * d))
 }
 
